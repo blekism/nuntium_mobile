@@ -3,6 +3,7 @@ import '../Homepage/CardsTemplate/normalpost.dart';
 import 'commenttemplat.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 
 class ContentPage extends StatefulWidget {
   const ContentPage({super.key});
@@ -13,12 +14,19 @@ class ContentPage extends StatefulWidget {
 
 class _ContentPageState extends State<ContentPage> {
   bool isLoading = true;
+  bool isCommentsLoading = true;
   Map<String, dynamic>? postData;
   String? postid;
   User? user;
   String? userid;
   final _commentController = TextEditingController();
   bool _isTextNotEmpty = false;
+  Map<String, String> userCache = {};
+  Map<String, Future<String>> userFutures = {};
+  List<String> comments = [];
+  int _currentIndex = 0;
+  double _opacity = 1.0;
+  late Timer _timer;
 
   @override
   void didChangeDependencies() {
@@ -28,7 +36,8 @@ class _ContentPageState extends State<ContentPage> {
       final args = ModalRoute.of(context)!.settings.arguments as Map?;
       postid = args?['postID'];
       if (postid != null) {
-        fetchPostData(postid!); // Fetch data when dependencies change
+        fetchPostData(postid!);
+        _fetchComments(postid!);
       }
     }
   }
@@ -53,6 +62,39 @@ class _ContentPageState extends State<ContentPage> {
     });
   }
 
+  void _startCommentAnimation() {
+    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      setState(() {
+        _opacity = 0.0; // Start fade-out animation
+      });
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          setState(() {
+            _currentIndex = (_currentIndex + 1) % comments.length;
+            _opacity = 1.0; // Start fade-in animation
+          });
+        }
+      });
+    });
+  }
+
+  Future<String> getUserName(String userId) async {
+    if (userCache.containsKey(userId)) {
+      return userCache[userId]!; // Return cached name
+    }
+
+    DocumentSnapshot userDoc =
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+    String userName = userDoc.exists ? userDoc['username'] : 'Unknown';
+    userCache[userId] = userName; // Cache the name for future use
+    setState(() {
+      isCommentsLoading = false;
+    });
+    return userName;
+  }
+
   void _updateSendButton() {
     setState(() {
       _isTextNotEmpty = _commentController.text.trim().isNotEmpty;
@@ -62,22 +104,16 @@ class _ContentPageState extends State<ContentPage> {
   @override
   void dispose() {
     _commentController.dispose();
+    _timer.cancel();
     super.dispose();
   }
 
   Future<void> insertComment(String comment) async {
     try {
-      DocumentReference postRef = FirebaseFirestore.instance
-          .collection('posts')
-          .doc(postid); // Reference to post
-      DocumentReference userRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(userid); // Reference to user
-
       await FirebaseFirestore.instance.collection('comments').add({
         'comment': comment,
-        'postID': postRef, // Store post reference
-        'userID': userRef, // Store user reference
+        'postID': postid, // Store post reference
+        'userID': userid, // Store user reference
         'time': Timestamp.now(),
       });
 
@@ -103,18 +139,56 @@ class _ContentPageState extends State<ContentPage> {
     }
   }
 
+  Future<void> _fetchComments(String postID) async {
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('comments')
+          .where('postID', isEqualTo: postID)
+          .orderBy('time', descending: true)
+          .get();
+
+      List<String> fetchedComments = snapshot.docs
+          .map((doc) =>
+              doc['comment'] as String) // Assuming 'text' field in Firestore
+          .toList();
+
+      if (fetchedComments.isNotEmpty) {
+        setState(() {
+          comments = fetchedComments;
+        });
+        _startCommentAnimation();
+      }
+    } catch (e) {
+      print('Error fetching comments: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    List<Map<String, dynamic>> postCommentData = [];
+
     return Scaffold(
       body: SlideContainer(
         postdata: postData,
         isLoading: isLoading,
         commentController: _commentController,
         isTextNotEmpty: _isTextNotEmpty,
+        postCommentData: postCommentData,
+        getUserName: getUserName,
+        userCache: userCache,
+        isCommentsLoading: isCommentsLoading,
+        userFutures: userFutures,
+        currentComment: comments.isNotEmpty ? comments[_currentIndex] : '',
+        opacity: _opacity,
         insertComment: () {
           insertComment(_commentController.text);
           _commentController.clear();
         },
+        postComments: FirebaseFirestore.instance
+            .collection('comments')
+            .where('postID', isEqualTo: postid)
+            .orderBy('time', descending: true)
+            .snapshots(),
       ),
     );
   }
@@ -126,6 +200,15 @@ class SlideContainer extends StatefulWidget {
   final TextEditingController commentController;
   final bool isTextNotEmpty;
   final void Function() insertComment;
+  final Stream<QuerySnapshot> postComments;
+  final List<Map<String, dynamic>> postCommentData;
+  final Function(String) getUserName;
+  final Map userCache;
+  final bool isCommentsLoading;
+  final Map<String, Future<String>> userFutures;
+  final String currentComment;
+  final double opacity;
+
   const SlideContainer({
     super.key,
     required this.postdata,
@@ -133,6 +216,14 @@ class SlideContainer extends StatefulWidget {
     required this.commentController,
     required this.isTextNotEmpty,
     required this.insertComment,
+    required this.postComments,
+    required this.postCommentData,
+    required this.getUserName,
+    required this.userCache,
+    required this.isCommentsLoading,
+    required this.userFutures,
+    required this.currentComment,
+    required this.opacity,
   });
 
   @override
@@ -211,9 +302,19 @@ class _SlideContainerState extends State<SlideContainer> {
                                     context,
                                     widget.commentController,
                                     widget.isTextNotEmpty,
-                                    widget.insertComment);
+                                    widget.insertComment,
+                                    widget.postComments,
+                                    widget.postCommentData,
+                                    widget.getUserName,
+                                    widget.userCache,
+                                    widget.isCommentsLoading,
+                                    widget.userFutures);
                               },
-                              child: _commentSection(context),
+                              child: _commentSection(
+                                context,
+                                widget.currentComment,
+                                widget.opacity,
+                              ),
                             ),
                             const SizedBox(height: 13),
                             _divider(context),
@@ -385,7 +486,8 @@ class _SlideContainerState extends State<SlideContainer> {
   //   );
   // }
 
-  Widget _commentSection(BuildContext context) {
+  Widget _commentSection(
+      BuildContext context, String currentComment, double opacity) {
     return Center(
       child: Column(
         children: [
@@ -408,9 +510,9 @@ class _SlideContainerState extends State<SlideContainer> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
-                      const Text(
+                      Text(
                         'Comments',
                         style: TextStyle(
                           color: Color(0XFF020B40),
@@ -418,15 +520,7 @@ class _SlideContainerState extends State<SlideContainer> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Text(
-                        '18k',
-                        style: TextStyle(
-                          color: Color(0XFF020B40),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      SizedBox(width: 14),
                     ],
                   ),
                   Row(
@@ -443,14 +537,18 @@ class _SlideContainerState extends State<SlideContainer> {
                             ),
                           ),
                           const SizedBox(width: 13),
-                          Container(
-                            width: MediaQuery.of(context).size.width * .5,
-                            child: Text(
-                              'Lorem Ipsum Dolor Sit Amet blablalablabalbla',
-                              style: TextStyle(
-                                color: Color(0XFF020B40),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
+                          AnimatedOpacity(
+                            duration: const Duration(milliseconds: 500),
+                            opacity: opacity,
+                            child: SizedBox(
+                              width: MediaQuery.of(context).size.width * .5,
+                              child: Text(
+                                currentComment,
+                                style: const TextStyle(
+                                  color: Color(0XFF020B40),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
@@ -473,19 +571,25 @@ class _SlideContainerState extends State<SlideContainer> {
   }
 
   void _showCommentSheet(
-    BuildContext context,
-    TextEditingController commentController,
-    bool isTextNotEmpty,
-    VoidCallback insertComment,
-  ) {
+      BuildContext context,
+      TextEditingController commentController,
+      bool isTextNotEmpty,
+      VoidCallback insertComment,
+      Stream<QuerySnapshot> postComments,
+      List<Map<String, dynamic>> postCommentsData,
+      Function getUserName,
+      Map userCache,
+      bool isCommentsLoading,
+      Map<String, Future<String>> userFutures) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-        top: Radius.circular(20),
-      )),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
       builder: (context) {
         return StatefulBuilder(
             builder: (BuildContext context, StateSetter setModalState) {
@@ -498,7 +602,7 @@ class _SlideContainerState extends State<SlideContainer> {
           return Stack(
             children: [
               FractionallySizedBox(
-                heightFactor: 0.5,
+                heightFactor: 0.75,
                 child: Column(
                   children: [
                     Container(
@@ -514,19 +618,88 @@ class _SlideContainerState extends State<SlideContainer> {
                       child: SingleChildScrollView(
                         child: Column(
                           children: [
-                            // Comments list
-                            ListView.builder(
-                              shrinkWrap: true, // Allow the list to shrink
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: 20,
-                              itemBuilder: (context, index) {
-                                return CommentTemplate(
-                                  profilePic: 'assets/images/nudasma.jpg',
-                                  comment: 'comment ${index + 1}',
-                                  commenter: 'commenter ${index + 1}',
+                            StreamBuilder(
+                              stream: postComments,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                }
+                                if (snapshot.hasError) {
+                                  return const Center(
+                                    child: Text('An error occurred'),
+                                  );
+                                }
+                                if (!snapshot.hasData ||
+                                    snapshot.data == null) {
+                                  return const Center(
+                                    child: Text('No comments found'),
+                                  );
+                                }
+
+                                postCommentsData = snapshot.data!.docs
+                                    .map((DocumentSnapshot document) {
+                                  var data =
+                                      document.data() as Map<String, dynamic>;
+                                  data['id'] =
+                                      document.id; // Store the document ID
+                                  return data;
+                                }).toList();
+
+                                return ListView.builder(
+                                  shrinkWrap: true, // Allow the list to shrink
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: postCommentsData.length,
+                                  itemBuilder: (context, index) {
+                                    String userid =
+                                        postCommentsData[index]['userID'];
+
+                                    if (!userFutures.containsKey(userid)) {
+                                      userFutures[userid] = getUserName(userid);
+                                    }
+
+                                    return FutureBuilder(
+                                        future: userFutures[userid],
+                                        builder: (context, userSnapshot) {
+                                          if (userSnapshot.connectionState ==
+                                              ConnectionState.waiting) {
+                                            return CommentTemplate(
+                                              profilePic:
+                                                  'assets/images/nudasma.jpg',
+                                              comment: postCommentsData[index]
+                                                  ['comment'],
+                                              commenter: "Loading...",
+                                              isLoading:
+                                                  true, // Placeholder while fetching
+                                            );
+                                          }
+                                          if (userCache.containsKey(userid)) {
+                                            return CommentTemplate(
+                                              profilePic:
+                                                  'assets/images/nudasma.jpg',
+                                              comment: postCommentsData[index]
+                                                  ['comment'],
+                                              commenter: userCache[userid]!,
+                                              isLoading: false,
+                                            );
+                                          }
+
+                                          return CommentTemplate(
+                                            profilePic:
+                                                'assets/images/nudasma.jpg',
+                                            comment: postCommentsData[index]
+                                                ['comment'],
+                                            commenter:
+                                                userSnapshot.data.toString(),
+                                            isLoading: false,
+                                          );
+                                        });
+                                  },
                                 );
                               },
-                            ),
+                            )
                           ],
                         ),
                       ),

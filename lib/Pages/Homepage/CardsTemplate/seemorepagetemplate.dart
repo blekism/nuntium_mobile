@@ -18,6 +18,35 @@ class SeeMorePageTemplate extends StatefulWidget {
 
 class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
   List<Map<String, dynamic>> discoverPostData = [];
+  String selectedSection = 'All';
+  Map<String, Map<String, dynamic>> _referencedPosts = {};
+
+  Future<List<DocumentSnapshot>> _fetchReferencedPosts(
+      List<DocumentReference> postRefs) async {
+    List<DocumentSnapshot> fetchedPosts = [];
+
+    for (var ref in postRefs) {
+      if (!_referencedPosts.containsKey(ref.id)) {
+        DocumentSnapshot snapshot = await ref.get(); // Get post details
+        fetchedPosts.add(snapshot);
+      }
+    }
+
+    return fetchedPosts;
+  }
+
+  Future<void> filteredSection(String section) async {
+    if (section != 'All') {
+      setState(() {
+        selectedSection = section;
+      });
+    } else {
+      setState(() {
+        selectedSection = 'All';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -59,8 +88,7 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
               stream: widget.shownContentStream,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                  //gawing skeleton loader to
+                  return _buildLoadingList();
                 }
                 if (snapshot.hasError) {
                   return const Center(
@@ -70,45 +98,70 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                   return const Center(child: Text('No data found'));
                 }
 
-                var posts = snapshot.data!.docs;
-                print('data found: ${posts.length}');
+                var savedPosts = snapshot.data!.docs;
+                var postRefs = savedPosts
+                    .map((post) => post['postId'] as DocumentReference)
+                    .toList();
 
-                return ListView.builder(
-                  itemCount: posts.length,
-                  itemBuilder: (context, index) {
-                    var post = posts[index].data() as Map<String, dynamic>;
-                    var postRef = post['postId'] as DocumentReference;
+                // print('data found: ${posts.length}');
 
-                    return StreamBuilder<DocumentSnapshot>(
-                      stream: postRef
-                          .snapshots(), // Fetch the data of the referenced post
-                      builder: (context, futureSnapshot) {
-                        if (futureSnapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator());
+                return FutureBuilder<List<DocumentSnapshot>>(
+                  future: _fetchReferencedPosts(postRefs),
+                  builder: (context, futureSnapshot) {
+                    if (futureSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return _buildLoadingList(); // Show loading UI while fetching
+                    }
+                    if (futureSnapshot.hasError) {
+                      return const Center(
+                          child: Text('Error loading referenced posts'));
+                    }
+                    if (!futureSnapshot.hasData) {
+                      return const Center(
+                          child: Text('No referenced posts found'));
+                    }
+
+                    var referencedPostDocs = futureSnapshot.data!;
+                    for (var doc in referencedPostDocs) {
+                      _referencedPosts[doc.id] =
+                          doc.data() as Map<String, dynamic>;
+                    }
+
+                    return ListView.builder(
+                      itemCount: savedPosts.length,
+                      itemBuilder: (context, index) {
+                        var postRef =
+                            savedPosts[index]['postId'] as DocumentReference;
+                        var referencedPost = _referencedPosts[postRef.id];
+
+                        if (referencedPost == null) {
+                          return const Padding(
+                            padding: EdgeInsets.only(
+                                left: 16.0, right: 16.0, bottom: 16),
+                            child: NormalPostCard(isLoading: true),
+                          );
                         }
-                        if (futureSnapshot.hasError) {
-                          return const Center(
-                              child: Text('Error loading referenced post'));
+
+                        if (selectedSection == 'All' ||
+                            referencedPost['section'] == selectedSection) {
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                                left: 16.0, right: 16.0, bottom: 16),
+                            child: NormalPostCard(
+                              imageAsset: referencedPost['image'] ??
+                                  'assets/images/nudasma.jpg',
+                              sectionType:
+                                  referencedPost['section'] ?? "unknown",
+                              articleTitle:
+                                  referencedPost['title'] ?? "unknown",
+                              datePosted: referencedPost['time'] ?? "unknown",
+                              postID: postRef.id,
+                              isLoading: false,
+                            ),
+                          );
+                        } else {
+                          return const SizedBox();
                         }
-
-                        var referencedPost =
-                            futureSnapshot.data!.data() as Map<String, dynamic>;
-
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                              left: 16.0, right: 16.0, bottom: 16),
-                          child: NormalPostCard(
-                            imageAsset: referencedPost['image'] ??
-                                'assets/images/nudasma.jpg',
-                            sectionType: referencedPost['section'] ?? "News",
-                            articleTitle:
-                                referencedPost['title'] ?? "Breaking News!",
-                            datePosted: referencedPost['time'] ?? "2 hours ago",
-                            postID: postRef.id,
-                          ),
-                        );
                       },
                     );
                   },
@@ -121,7 +174,7 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                 stream: widget.shownContentStream,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return _buildLoadingList();
                   }
                   if (snapshot.hasError) {
                     return const Center(
@@ -139,23 +192,30 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                     return data;
                   }).toList();
                   print('data found: ${discoverPostData.length}');
+                  List<Map<String, dynamic>> filteredPosts = discoverPostData;
+
+                  if (selectedSection != "All") {
+                    filteredPosts = discoverPostData
+                        .where((post) => post['section'] == selectedSection)
+                        .toList();
+                  }
 
                   return ListView.builder(
-                    itemCount: discoverPostData.length,
+                    itemCount: filteredPosts.length,
                     itemBuilder: (context, index) {
                       return Padding(
                         padding: const EdgeInsets.only(
                             left: 16.0, right: 16.0, bottom: 16),
                         child: NormalPostCard(
-                          imageAsset: discoverPostData[index]['image'] ??
+                          imageAsset: filteredPosts[index]['image'] ??
                               'assets/images/nudasma.jpg',
                           sectionType:
-                              discoverPostData[index]['section'] ?? "News",
-                          articleTitle: discoverPostData[index]['title'] ??
-                              "Breaking News!",
-                          datePosted:
-                              discoverPostData[index]['time'] ?? "2 hours ago",
-                          postID: discoverPostData[index]['id'] ?? "0",
+                              filteredPosts[index]['section'] ?? "unknown",
+                          articleTitle:
+                              filteredPosts[index]['title'] ?? "unknown",
+                          datePosted: filteredPosts[index]['time'] ?? "unknown",
+                          postID: filteredPosts[index]['id'] ?? "0",
+                          isLoading: false,
                         ),
                       );
                     },
@@ -178,6 +238,8 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
           width: 13,
         ),
         itemBuilder: (context, index) {
+          String sectionName = pubSections[index]['section'] ?? 'All';
+          bool isSelected = selectedSection == sectionName;
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Container(
@@ -185,23 +247,32 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
               height: 30,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                color: const Color(0xffF5F5F5),
+                color: isSelected
+                    ? const Color(0XFF020B40)
+                    : const Color(0xffF5F5F5),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withOpacity(0.3),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Text(
-                  pubSections[index]['section'] ?? 'Null',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w400,
-                    color: Color(0XFF515151),
-                    fontSize: 14,
+              child: GestureDetector(
+                onTap: () {
+                  filteredSection(sectionName);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                      bottom: 4, top: 2, left: 8, right: 8),
+                  child: Text(
+                    pubSections[index]['section'] ?? 'Null',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w400,
+                      color:
+                          isSelected ? const Color(0XFFD4AF37) : Colors.black,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
@@ -276,19 +347,25 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
       ],
     );
   }
+
+  Widget _buildLoadingList() {
+    return ListView.builder(
+      itemCount: 5,
+      itemBuilder: (context, index) => const Padding(
+        padding: EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16),
+        child: NormalPostCard(isLoading: true),
+      ),
+    );
+  }
 }
 
 final List<Map<String, String>> pubSections = [
+  {"section": "All"},
   {"section": "News"},
   {"section": "Sports"},
-  {"section": "Entertainment"},
-  {"section": "Business"},
-  {"section": "Politics"},
-  {"section": "Tech"},
-  {"section": "Health"},
-  {"section": "Science"},
-  {"section": "Travel"},
-  {"section": "Food"},
-  {"section": "Fashion"},
-  {"section": "Lifestyle"},
+  {"section": "Opinion"},
+  {"section": "Scitech"},
+  {"section": "Feature"},
+  {"section": "Literary"},
+  {"section": "Photography"},
 ];

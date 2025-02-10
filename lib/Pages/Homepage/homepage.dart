@@ -258,7 +258,12 @@ class _HomeScreenState extends State<HomeScreen> {
               stream: widget.featuredPost,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: FeaturedPostCard(
+                      isLoading: true,
+                    ),
+                  );
                 }
                 if (snapshot.hasError) {
                   return const Center(
@@ -282,6 +287,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     controller: _pageController,
                     itemCount: featuredPostData.length,
                     itemBuilder: (context, index) {
+                      if (!featuredPostData[index].containsKey('isFeatured')) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                          child: FeaturedPostCard(
+                            imageAsset: featuredPostData[index]['image'] ??
+                                'assets/images/nudasma.jpg',
+                            sectionType:
+                                featuredPostData[index]['section'] ?? "unknown",
+                            articleTitle:
+                                featuredPostData[index]['title'] ?? "unknown",
+                            timePosted:
+                                featuredPostData[index]['time'] ?? "unknown",
+                            postID: featuredPostData[index]['id'],
+                            isLoading: true,
+                          ),
+                        );
+                      }
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: FeaturedPostCard(
@@ -294,6 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           timePosted:
                               featuredPostData[index]['time'] ?? "2 hours ago",
                           postID: featuredPostData[index]['id'],
+                          isLoading: false,
                         ),
                       );
                     },
@@ -331,7 +354,9 @@ class _HomeScreenState extends State<HomeScreen> {
               stream: widget.normalPost,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const NormalPostCard(
+                    isLoading: true,
+                  );
                 }
                 if (snapshot.hasError) {
                   return const Center(
@@ -353,6 +378,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: ListView.builder(
                     itemCount: normalPostData.length,
                     itemBuilder: (context, index) {
+                      if (!normalPostData[index].containsKey('isNormal')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                              left: 16.0, right: 16.0, bottom: 16),
+                          child: NormalPostCard(
+                            imageAsset: normalPostData[index]['image'] ??
+                                'assets/images/nudasma.jpg',
+                            sectionType:
+                                normalPostData[index]['section'] ?? "unknown",
+                            articleTitle:
+                                normalPostData[index]['title'] ?? "unknown",
+                            datePosted:
+                                normalPostData[index]['time'] ?? "unknown",
+                            postID: normalPostData[index]['id'],
+                            isLoading: true,
+                          ),
+                        );
+                      }
+
                       return Padding(
                         padding: const EdgeInsets.only(
                             left: 16.0, right: 16.0, bottom: 16),
@@ -366,6 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           datePosted:
                               normalPostData[index]['time'] ?? "2 hours ago",
                           postID: normalPostData[index]['id'],
+                          isLoading: false,
                         ),
                       );
                     },
