@@ -1,0 +1,136 @@
+import 'package:flutter/material.dart';
+import 'package:nuntium_mobile/Pages/Contributors/Templates/taskcardtemplate.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
+
+class AssignedTaskPage extends StatefulWidget {
+  const AssignedTaskPage({super.key});
+
+  @override
+  State<AssignedTaskPage> createState() => _AssignedTaskPage();
+}
+
+class _AssignedTaskPage extends State<AssignedTaskPage> {
+  final List<Map<String, String>> taskList = [
+    {"taskTitle": "Task 1", "taskPercent": "0%", "status": "Assigned"},
+    {"taskTitle": "Task 2", "taskPercent": "70%", "status": "Assigned"},
+    {"taskTitle": "Task 3", "taskPercent": "0%", "status": "Assigned"},
+    {"taskTitle": "Task 4", "taskPercent": "50%", "status": "Assigned"},
+    {"taskTitle": "Task 5", "taskPercent": "0%", "status": "Assigned"},
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () {
+            Navigator.pop(context); // Navigate back to the previous screen
+          },
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Assigned Tasks',
+                  textAlign: TextAlign.start,
+                  style: TextStyle(
+                    fontSize: 28,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Container(
+                  width: 80,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff020B40),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Filter',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: taskList.length,
+                itemBuilder: (context, index) {
+                  final task = taskList[index];
+
+                  Widget taskCard = Container(
+                    width: MediaQuery.of(context).size.width * .90,
+                    height: MediaQuery.of(context).size.height * .10,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: TaskCardTemplate(
+                        taskPercent: task['taskPercent'],
+                        taskTitle: task['taskTitle'],
+                        status: task['status'],
+                      ),
+                    ),
+                  );
+
+                  // Wrap taskCard with Slidable
+                  return Slidable(
+                    key: ValueKey(task['taskTitle']),
+                    endActionPane: ActionPane(
+                      motion: const DrawerMotion(),
+                      dismissible: DismissiblePane(
+                        onDismissed: () {
+                          // Navigate to CreateTaskPage when fully swiped
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const CreateTaskPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      children: [
+                        SlidableAction(
+                          onPressed: (context) {
+                            // Navigate when "Edit" button is tapped
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const CreateTaskPage(),
+                              ),
+                            );
+                          },
+                          backgroundColor: const Color(0XFFD4AF37),
+                          foregroundColor: const Color(0xff020B40),
+                          borderRadius: BorderRadius.circular(12),
+                          label: 'Start Task',
+                        ),
+                      ],
+                    ),
+                    child: taskCard,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -10,8 +10,11 @@ import 'Pages/Homepage/discoverpage.dart';
 import 'Pages/Homepage/savedpostspage.dart';
 import 'Pages/Homepage/termlypostspage.dart';
 import 'Pages/Homepage/readhistory.dart';
+import 'Pages/Contributors/contribhomepage.dart';
+import 'Pages/Contributors/calendarpage.dart';
 import 'Pages/ContentPage/articlecontent.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +47,8 @@ class NuntiumApp extends StatelessWidget {
         // '/comments': (context) => const CommentsPage(),
         // '/profile': (context) => const ProfilePage(),
         // '/joinus': (context) => const JoinUsPage(),
+        '/contribhomepage': (context) => const ContribHomePage(),
+        '/calendarpage': (context) => const CalendarPage(),
         '/initial': (context) => AuthChecker(
               authStream: FirebaseAuth.instance.authStateChanges(),
             ),
@@ -62,20 +67,67 @@ class AuthChecker extends StatefulWidget {
 }
 
 class _AuthCheckerState extends State<AuthChecker> {
+  Future<String?> getUserRole(String uid) async {
+    try {
+      DocumentSnapshot userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        return userDoc['role'] as String?;
+      }
+    } catch (e) {
+      print('Error fetching user role: $e');
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: widget.authStream,
       builder: (context, snapshot) {
-        print('Auth state changed at ${DateTime.now()}');
+        // print('Auth state changed at ${DateTime.now()}');
         if (ConnectionState.active == snapshot.connectionState &&
             snapshot.hasData) {
-          print(
-              'user is verified: ${snapshot.data!.emailVerified} at ${DateTime.now()}');
           if (snapshot.data!.emailVerified) {
-            print(
-                'user is verified going to homepage ${snapshot.data!.email} at ${DateTime.now()}');
-            return const Homepage();
+            return FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(snapshot.data!.uid)
+                  .get(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                      child:
+                          CircularProgressIndicator()); // Show loading indicator
+                } else if (snapshot.hasError) {
+                  print('Error fetching user role: ${snapshot.error}');
+                  return const Homepage(); // Or handle the error as needed
+                } else if (snapshot.hasData && snapshot.data!.exists) {
+                  final userData = snapshot.data!.data()
+                      as Map<String, dynamic>?; // Cast to Map
+                  final userRole =
+                      userData?['role'] as String?; // Get the role, handle null
+                  print('user role: $userRole at ${DateTime.now()}');
+
+                  if (userRole != null) {
+                    if (userRole == 'reader') {
+                      return const Homepage();
+                    } else if (userRole == 'contributor') {
+                      return const ContribHomePage();
+                      // } else if (userRole == 'section writers') {
+                      //   return const WritersHomePage();
+                      // } else if (userRole == 'section editors') {
+                      //   return const EditorsHomePage();
+                      // } else if (userRole == 'editor in chief') {
+                      //   return const EICHomePage();
+                    } else {
+                      return const LoginPage(); // Default user homepage
+                    }
+                  }
+                }
+                return const LoginPage(); // Default if user data is missing
+              },
+            );
           } else {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               Navigator.pushNamed(context, '/verify');
