@@ -1,0 +1,2 @@
+C:/Users/user/OneDrive/Desktop/CAPSTONE_PROJECT/nuntium_mobile/android/app/.cxx/Debug/3b723l3h/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/user/OneDrive/Desktop/CAPSTONE_PROJECT/nuntium_mobile/android/app/.cxx/Debug/3b723l3h/armeabi-v7a/CMakeFiles/rebuild_cache.dir
