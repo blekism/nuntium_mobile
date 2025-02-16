@@ -14,7 +14,7 @@ class _TimelineTabState extends State<TimelineTab> {
       child: Column(
         children: [
           Container(
-            height: MediaQuery.of(context).size.height * .2 - 95,
+            height: MediaQuery.of(context).size.height * .12,
             width: MediaQuery.of(context).size.width * .75,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(15),
@@ -49,10 +49,15 @@ class _TimelineTabState extends State<TimelineTab> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
-                                padding: const EdgeInsets.only(left: 
-                                    15, right: 15, top: 3, bottom: 3), // Optional: Add padding to the container
+                                padding: const EdgeInsets.only(
+                                    left: 15,
+                                    right: 15,
+                                    top: 3,
+                                    bottom:
+                                        3), // Optional: Add padding to the container
                                 decoration: BoxDecoration(
-                                  color: const Color(0XFF020B40), // Set the background color to blue
+                                  color: const Color(
+                                      0XFF020B40), // Set the background color to blue
                                   borderRadius: BorderRadius.circular(
                                       15), // Set border radius for rounded corners
                                 ),

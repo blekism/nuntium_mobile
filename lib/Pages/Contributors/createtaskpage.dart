@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import '../Contributors/Templates/timelinetabtemplate.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class CreateTaskPage extends StatefulWidget {
-  const CreateTaskPage({super.key});
+  final String? taskId;
+
+  const CreateTaskPage({
+    super.key,
+    required this.taskId,
+  });
 
   @override
   State<CreateTaskPage> createState() => _CreateTaskPage();
@@ -10,6 +17,21 @@ class CreateTaskPage extends StatefulWidget {
 
 class _CreateTaskPage extends State<CreateTaskPage> {
   final _formKey = GlobalKey<FormState>();
+  File? _selectedImage;
+
+  // Method for handling text input
+
+  // Method for handling image selection
+  Future<void> _pickImage() async {
+    final pickedImage =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedImage == null) return;
+
+    setState(() {
+      _selectedImage = File(pickedImage.path);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,37 +144,20 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                     },
                   ),
                   const SizedBox(height: 15),
-                  TextFormField(
-                    // controller: _fname,
-                    decoration: InputDecoration(
-                      labelText: 'Content',
-                      labelStyle: const TextStyle(
-                        color: Color(0xFF020B40),
-                        fontSize: 16,
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFff5f5f5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: Color(0XFF020B40),
-                        ),
-                      ),
-                    ),
-                    keyboardType: TextInputType.multiline,
-                    maxLines: null,
+
+                  // widget.taskType == 'text'
+                  //     ? _writeTaskType()
+                  //     : _buildImageInput(),
+                  //dito mag pull ng data using the id then kunin yung task type
+                  Text(
+                    widget.taskId ?? 'Task Type',
                     style: const TextStyle(
                       color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter task title';
-                      }
-                      return null;
-                    },
                   ),
+
                   const SizedBox(height: 15),
                   Align(
                     alignment: Alignment.centerRight,
@@ -172,7 +177,7 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                             horizontal: 30.0), // Padding for the button
                       ),
                       child: const Text(
-                        'Submit for Revision',
+                        'Submit',
                         style: TextStyle(
                           color: Colors.white, // White text color
                           fontWeight: FontWeight.w700, // Bold text
@@ -233,6 +238,67 @@ class _CreateTaskPage extends State<CreateTaskPage> {
           ),
         ),
       ),
+    );
+  }
+
+  TextFormField _writeTaskType() {
+    return TextFormField(
+      // controller: _fname,
+      decoration: InputDecoration(
+        labelText: 'Content',
+        labelStyle: const TextStyle(
+          color: Color(0xFF020B40),
+          fontSize: 16,
+        ),
+        filled: true,
+        fillColor: const Color(0xFff5f5f5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderSide: BorderSide(
+            color: Color(0XFF020B40),
+          ),
+        ),
+      ),
+      keyboardType: TextInputType.multiline,
+      maxLines: null,
+      style: const TextStyle(
+        color: Colors.black,
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter task title';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildImageInput() {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: _pickImage,
+          child: _selectedImage != null
+              ? Image.file(_selectedImage!,
+                  width: 150, height: 150, fit: BoxFit.cover)
+              : Container(
+                  width: 150,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Center(child: Text("Tap to select image")),
+                ),
+        ),
+        const SizedBox(height: 10),
+        ElevatedButton(
+          onPressed: _pickImage,
+          child: const Text("Choose Image"),
+        ),
+      ],
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'Pages/SectionEditor/sectioneditorhome.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Pages/LoginRegister/login_page.dart';
@@ -44,6 +45,7 @@ class NuntiumApp extends StatelessWidget {
         '/history': (context) => const HistoryPage(),
         '/termly': (context) => const TermlyPage(),
         '/contentpage': (context) => const ContentPage(),
+        '/sectioneditorhome': (context) => const EditorsHomePage(),
         // '/comments': (context) => const CommentsPage(),
         // '/profile': (context) => const ProfilePage(),
         // '/joinus': (context) => const JoinUsPage(),
@@ -116,9 +118,10 @@ class _AuthCheckerState extends State<AuthChecker> {
                       return const ContribHomePage();
                       // } else if (userRole == 'section writers') {
                       //   return const WritersHomePage();
-                      // } else if (userRole == 'section editors') {
-                      //   return const EditorsHomePage();
-                      // } else if (userRole == 'editor in chief') {
+                    } else if (userRole == 'section_editors') {
+                      return const EditorsHomePage();
+                      // }
+                      //else if (userRole == 'editor in chief') {
                       //   return const EICHomePage();
                     } else {
                       return const LoginPage(); // Default user homepage
