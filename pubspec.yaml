@@ -41,6 +41,7 @@ dependencies:
   google_fonts: ^6.2.1
   shimmer: ^3.0.0
   flutter_slidable: ^4.0.0
+  timeline_tile: ^2.0.0
 
 dev_dependencies:
   flutter_test:
