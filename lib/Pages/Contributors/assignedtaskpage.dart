@@ -4,7 +4,12 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 
 class AssignedTaskPage extends StatefulWidget {
-  const AssignedTaskPage({super.key});
+  final String taskType;
+
+  const AssignedTaskPage({
+    super.key,
+    required this.taskType,
+  });
 
   @override
   State<AssignedTaskPage> createState() => _AssignedTaskPage();
@@ -12,11 +17,36 @@ class AssignedTaskPage extends StatefulWidget {
 
 class _AssignedTaskPage extends State<AssignedTaskPage> {
   final List<Map<String, String>> taskList = [
-    {"taskTitle": "Task 1", "taskPercent": "0%", "status": "Assigned"},
-    {"taskTitle": "Task 2", "taskPercent": "70%", "status": "Assigned"},
-    {"taskTitle": "Task 3", "taskPercent": "0%", "status": "Assigned"},
-    {"taskTitle": "Task 4", "taskPercent": "50%", "status": "Assigned"},
-    {"taskTitle": "Task 5", "taskPercent": "0%", "status": "Assigned"},
+    {
+      "taskid": "001",
+      "taskTitle": "Task 1",
+      "taskPercent": "0%",
+      "status": "Assigned"
+    },
+    {
+      "taskid": "002",
+      "taskTitle": "Task 2",
+      "taskPercent": "69%",
+      "status": "Assigned"
+    },
+    {
+      "taskid": "003",
+      "taskTitle": "Task 3",
+      "taskPercent": "0%",
+      "status": "Assigned"
+    },
+    {
+      "taskid": "004",
+      "taskTitle": "Task 4",
+      "taskPercent": "50%",
+      "status": "Assigned"
+    },
+    {
+      "taskid": "005",
+      "taskTitle": "Task 590",
+      "taskPercent": "0%",
+      "status": "Assigned"
+    },
   ];
 
   @override
@@ -51,7 +81,9 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
                   width: 80,
                   height: 30,
                   decoration: BoxDecoration(
-                    color: const Color(0xff020B40),
+                    color: widget.taskType == "Assigned"
+                        ? const Color(0xA6E4BD3D)
+                        : const Color(0xff020B40),
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: const Center(
@@ -84,7 +116,8 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
                       child: TaskCardTemplate(
                         taskPercent: task['taskPercent'],
                         taskTitle: task['taskTitle'],
-                        status: task['status'],
+                        status: widget.taskType,
+                        taskid: task['taskid'],
                       ),
                     ),
                   );
@@ -96,11 +129,17 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
                       motion: const DrawerMotion(),
                       dismissible: DismissiblePane(
                         onDismissed: () {
+                          setState(() {
+                            taskList.removeWhere(
+                                (t) => t['taskid'] == task['taskid']);
+                          });
                           // Navigate to CreateTaskPage when fully swiped
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const CreateTaskPage(),
+                              builder: (context) => CreateTaskPage(
+                                taskId: task['taskid'],
+                              ),
                             ),
                           );
                         },
@@ -112,12 +151,18 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const CreateTaskPage(),
+                                builder: (context) => CreateTaskPage(
+                                  taskId: task['taskid'],
+                                ),
                               ),
                             );
                           },
-                          backgroundColor: const Color(0XFFD4AF37),
-                          foregroundColor: const Color(0xff020B40),
+                          backgroundColor: widget.taskType == "Assigned"
+                              ? const Color(0XFFD4AF37)
+                              : const Color(0xff020B40),
+                          foregroundColor: widget.taskType == "Assigned"
+                              ? const Color(0xff020B40)
+                              : const Color(0XFFD4AF37),
                           borderRadius: BorderRadius.circular(12),
                           label: 'Start Task',
                         ),

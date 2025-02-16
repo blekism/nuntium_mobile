@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Contributors/Templates/taskcardtemplate.dart';
 import 'package:nuntium_mobile/Pages/Contributors/assignedtaskpage.dart';
-import 'package:nuntium_mobile/Pages/Contributors/ongoingtaskpage.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 
 class HomePageTemplate extends StatefulWidget {
   const HomePageTemplate({super.key});
@@ -15,17 +15,48 @@ class _HomePageTemplate extends State<HomePageTemplate> {
   String selectedSection = 'All';
 
   final List<Map<String, String>> taskList = [
-    {"taskTitle": "Task 1", "taskPercent": "0%", "status": "Assigned"},
-    {"taskTitle": "Task 2", "taskPercent": "70%", "status": "Ongoing"},
-    {"taskTitle": "Task 3", "taskPercent": "0%", "status": "Assigned"},
-    {"taskTitle": "Task 4", "taskPercent": "50%", "status": "Ongoing"},
-    {"taskTitle": "Task 5", "taskPercent": "0%", "status": "Assigned"},
+    {
+      "taskid": "001",
+      "taskTitle": "Task 1",
+      "taskPercent": "0%",
+      "status": "Ongoing"
+    },
+    {
+      "taskid": "002",
+      "taskTitle": "Task 2",
+      "taskPercent": "69%",
+      "status": "Assigned"
+    },
+    {
+      "taskid": "003",
+      "taskTitle": "Task 360",
+      "taskPercent": "0%",
+      "status": "Ongoing"
+    },
+    {
+      "taskid": "004",
+      "taskTitle": "Task 4",
+      "taskPercent": "50%",
+      "status": "Assigned"
+    },
+    {
+      "taskid": "005",
+      "taskTitle": "Task 590",
+      "taskPercent": "0%",
+      "status": "Ongoing"
+    },
   ];
 
-  void filteredSection(String section) {
-    setState(() {
-      selectedSection = section;
-    });
+  Future<void> filteredSection(String section) async {
+    if (section != 'All') {
+      setState(() {
+        selectedSection = section;
+      });
+    } else {
+      setState(() {
+        selectedSection = 'All';
+      });
+    }
   }
 
   @override
@@ -50,21 +81,14 @@ class _HomePageTemplate extends State<HomePageTemplate> {
                 ),
                 GestureDetector(
                   onTap: () {
-                    if (selectedSection == "Assigned") {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AssignedTaskPage(),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AssignedTaskPage(
+                          taskType: selectedSection,
                         ),
-                      );
-                    } else if (selectedSection == "Ongoing") {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const OngoingTaskPage(),
-                        ),
-                      );
-                    }
+                      ),
+                    );
                   },
                   child: const Text(
                     'View All',
@@ -174,6 +198,23 @@ class _HomePageTemplate extends State<HomePageTemplate> {
                   key: ValueKey(task['taskTitle']),
                   endActionPane: ActionPane(
                     motion: const StretchMotion(),
+                    dismissible: DismissiblePane(
+                      onDismissed: () {
+                        setState(() {
+                          taskList.removeWhere(
+                              (t) => t['taskid'] == task['taskid']);
+                        }); //aalisin pag connected na sadb since di na need mag update ng list
+                        // Navigate to CreateTaskPage when fully swiped
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CreateTaskPage(
+                              taskId: task['taskid'],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                     children: [
                       CustomSlidableAction(
                         onPressed: (context) {
