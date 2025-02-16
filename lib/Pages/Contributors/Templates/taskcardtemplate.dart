@@ -6,6 +6,8 @@ class TaskCardTemplate extends StatefulWidget {
   final String? taskTitle;
   final String? status;
   final String? taskid;
+  final String? taskType;
+  final String? details;
 
   const TaskCardTemplate({
     super.key,
@@ -13,6 +15,8 @@ class TaskCardTemplate extends StatefulWidget {
     this.taskTitle,
     this.status,
     this.taskid,
+    this.taskType,
+    this.details,
   });
 
   @override
@@ -29,6 +33,9 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
           MaterialPageRoute(
               builder: (context) => CreateTaskPage(
                     taskId: widget.taskid,
+                    details: widget.details,
+                    title: widget.taskTitle,
+                    taskType: widget.taskType,
                   )),
         );
       },
@@ -36,7 +43,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
         width: MediaQuery.of(context).size.width * .90,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
-          color: widget.status == "Assigned"
+          color: widget.status == "assigned"
               ? const Color(0xA6E4BD3D)
               : const Color(0xffB8CFED),
           boxShadow: [
@@ -82,13 +89,27 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
               ),
             ),
             const SizedBox(width: 15),
-            Text(
-              widget.taskTitle ?? 'Task Title', // Default text if null
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.taskTitle ?? 'Task Title', // Default text if null
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  widget.taskType ?? 'Task Type', // Default text if null
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

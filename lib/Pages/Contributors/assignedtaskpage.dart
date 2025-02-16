@@ -21,31 +21,36 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
       "taskid": "001",
       "taskTitle": "Task 1",
       "taskPercent": "0%",
-      "status": "Assigned"
+      "status": "Assigned",
+      "type": "pubmat"
     },
     {
       "taskid": "002",
       "taskTitle": "Task 2",
       "taskPercent": "69%",
-      "status": "Assigned"
+      "status": "Assigned",
+      "type": "pubmat"
     },
     {
       "taskid": "003",
       "taskTitle": "Task 3",
       "taskPercent": "0%",
-      "status": "Assigned"
+      "status": "Assigned",
+      "type": "writing"
     },
     {
       "taskid": "004",
       "taskTitle": "Task 4",
       "taskPercent": "50%",
-      "status": "Assigned"
+      "status": "Assigned",
+      "type": "writing"
     },
     {
       "taskid": "005",
       "taskTitle": "Task 590",
       "taskPercent": "0%",
-      "status": "Assigned"
+      "status": "Assigned",
+      "type": "writing"
     },
   ];
 
@@ -139,6 +144,9 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
                             MaterialPageRoute(
                               builder: (context) => CreateTaskPage(
                                 taskId: task['taskid'],
+                                details: task['taskTitle'],
+                                title: task['taskTitle'],
+                                taskType: task['status'],
                               ),
                             ),
                           );
@@ -153,6 +161,9 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
                               MaterialPageRoute(
                                 builder: (context) => CreateTaskPage(
                                   taskId: task['taskid'],
+                                  details: task['taskTitle'],
+                                  title: task['taskTitle'],
+                                  taskType: task['status'],
                                 ),
                               ),
                             );
