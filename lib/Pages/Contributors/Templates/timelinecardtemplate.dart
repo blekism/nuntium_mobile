@@ -121,6 +121,7 @@ class _TimelineCardState extends State<TimelineCard> {
               SizedBox(height: 5),
               TextField(
                 maxLines: 3,
+                readOnly: true,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white,
@@ -133,6 +134,7 @@ class _TimelineCardState extends State<TimelineCard> {
               SizedBox(height: 5),
               TextField(
                 maxLines: 2,
+                readOnly: true,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white,
