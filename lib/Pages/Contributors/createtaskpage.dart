@@ -36,24 +36,7 @@ class _CreateTaskPage extends State<CreateTaskPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () {
-            Navigator.pop(context); // Navigate back to the previous screen
-          },
-        ),
-        title: const Text(
-          'Ongoing Task',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
+      appBar: _appBar(context),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(35),
@@ -114,12 +97,14 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                   const SizedBox(height: 10),
                   TextFormField(
                     // controller: _fname,
+                    maxLines: 2,
                     decoration: InputDecoration(
                       labelText: 'Description',
                       labelStyle: const TextStyle(
                         color: Color(0xFF020B40),
                         fontSize: 16,
                       ),
+                      alignLabelWithHint: true,
                       filled: true,
                       fillColor: const Color(0xFff5f5f5),
                       border: OutlineInputBorder(
@@ -132,7 +117,7 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                       ),
                     ),
                     keyboardType: TextInputType.multiline,
-                    maxLines: null,
+
                     style: const TextStyle(
                       color: Colors.black,
                     ),
@@ -144,7 +129,6 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                     },
                   ),
                   const SizedBox(height: 15),
-
                   // widget.taskType == 'text'
                   //     ? _writeTaskType()
                   //     : _buildImageInput(),
@@ -189,7 +173,7 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                   // dito yung button for timeline
                   const SizedBox(height: 15),
 
-                  TimelineTab(),
+                  const TimelineTab(),
                   const SizedBox(height: 15),
 
                   const Text(
@@ -209,6 +193,7 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                         color: Color(0xFF020B40),
                         fontSize: 16,
                       ),
+                      alignLabelWithHint: true,
                       filled: true,
                       fillColor: const Color(0xFff5f5f5),
                       border: OutlineInputBorder(
@@ -221,7 +206,7 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                       ),
                     ),
                     keyboardType: TextInputType.multiline,
-                    maxLines: null,
+                    maxLines: 5,
                     style: const TextStyle(
                       color: Colors.black,
                     ),
@@ -241,6 +226,28 @@ class _CreateTaskPage extends State<CreateTaskPage> {
     );
   }
 
+  AppBar _appBar(BuildContext context) {
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        onPressed: () {
+          Navigator.pop(context); // Navigate back to the previous screen
+        },
+      ),
+      title: const Text(
+        'Ongoing Task',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      backgroundColor: Colors.white,
+      elevation: 0,
+      );
+  }
+      
+      
   TextFormField _writeTaskType() {
     return TextFormField(
       // controller: _fname,
