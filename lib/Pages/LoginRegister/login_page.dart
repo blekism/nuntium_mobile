@@ -409,8 +409,8 @@ class _LoginPageState extends State<LoginPage> {
               padding: EdgeInsets.only(
                   top: MediaQuery.of(context).size.height * 0.12),
               child: SizedBox(
-                width: 160,
-                height: 160,
+                width: MediaQuery.of(context).size.width * 0.4,
+                height: MediaQuery.of(context).size.height * 0.2,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(
                       80), // Half of the width/height to make it fully rounded

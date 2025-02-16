@@ -103,8 +103,6 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                     .map((post) => post['postId'] as DocumentReference)
                     .toList();
 
-                // print('data found: ${posts.length}');
-
                 return FutureBuilder<List<DocumentSnapshot>>(
                   future: _fetchReferencedPosts(postRefs),
                   builder: (context, futureSnapshot) {
@@ -122,46 +120,43 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                     }
 
                     var referencedPostDocs = futureSnapshot.data!;
+                    _referencedPosts.clear();
                     for (var doc in referencedPostDocs) {
                       _referencedPosts[doc.id] =
                           doc.data() as Map<String, dynamic>;
                     }
 
+                    // **Filtering posts before building UI**
+                    var filteredPosts = savedPosts.where((post) {
+                      var postRef = post['postId'] as DocumentReference;
+                      var referencedPost = _referencedPosts[postRef.id];
+
+                      return referencedPost != null &&
+                          (selectedSection == 'All' ||
+                              referencedPost['section'] == selectedSection);
+                    }).toList();
+
                     return ListView.builder(
-                      itemCount: savedPosts.length,
+                      itemCount: filteredPosts.length,
                       itemBuilder: (context, index) {
                         var postRef =
-                            savedPosts[index]['postId'] as DocumentReference;
+                            filteredPosts[index]['postId'] as DocumentReference;
                         var referencedPost = _referencedPosts[postRef.id];
 
-                        if (referencedPost == null) {
-                          return const Padding(
-                            padding: EdgeInsets.only(
-                                left: 16.0, right: 16.0, bottom: 16),
-                            child: NormalPostCard(isLoading: true),
-                          );
-                        }
-
-                        if (selectedSection == 'All' ||
-                            referencedPost['section'] == selectedSection) {
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                                left: 16.0, right: 16.0, bottom: 16),
-                            child: NormalPostCard(
-                              imageAsset: referencedPost['image'] ??
-                                  'assets/images/nudasma.jpg',
-                              sectionType:
-                                  referencedPost['section'] ?? "unknown",
-                              articleTitle:
-                                  referencedPost['title'] ?? "unknown",
-                              datePosted: referencedPost['time'] ?? "unknown",
-                              postID: postRef.id,
-                              isLoading: false,
-                            ),
-                          );
-                        } else {
-                          return const SizedBox();
-                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                              left: 16.0, right: 16.0, bottom: 16),
+                          child: NormalPostCard(
+                            imageAsset: referencedPost?['image'] ??
+                                'assets/images/nudasma.jpg',
+                            sectionType:
+                                referencedPost?['section'] ?? "unknown",
+                            articleTitle: referencedPost?['title'] ?? "unknown",
+                            datePosted: referencedPost?['time'] ?? "unknown",
+                            postID: postRef.id,
+                            isLoading: false,
+                          ),
+                        );
                       },
                     );
                   },

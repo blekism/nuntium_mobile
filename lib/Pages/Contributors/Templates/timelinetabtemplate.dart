@@ -24,19 +24,19 @@ class _TimelineTabState extends State<TimelineTab> {
               );
             },
             child: Container(
-              height: MediaQuery.of(context).size.height * .2 - 95,
-              width: MediaQuery.of(context).size.width * .75,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                color: const Color.fromARGB(255, 240, 216, 138),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
+            height: MediaQuery.of(context).size.height * .12,
+            width: MediaQuery.of(context).size.width * .75,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(15),
+              color: const Color.fromARGB(255, 240, 216, 138),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(

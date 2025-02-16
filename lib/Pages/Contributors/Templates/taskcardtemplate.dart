@@ -5,12 +5,14 @@ class TaskCardTemplate extends StatefulWidget {
   final String? taskPercent;
   final String? taskTitle;
   final String? status;
+  final String? taskid;
 
   const TaskCardTemplate({
     super.key,
     this.taskPercent,
     this.taskTitle,
     this.status,
+    this.taskid,
   });
 
   @override
@@ -21,6 +23,15 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => CreateTaskPage(
+                    taskId: widget.taskid,
+                  )),
+        );
+      },
       child: Container(
         width: MediaQuery.of(context).size.width * .90,
         decoration: BoxDecoration(
@@ -81,18 +92,10 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
             ),
           ],
         ),
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CreateTaskPage()),
-            );
-          },
-          child: const Icon(
-            Icons.arrow_forward_ios_rounded,
-            color: Colors.black,
-            size: 20,
-          ),
+        const Icon(
+          Icons.arrow_forward_ios_rounded,
+          color: Colors.black,
+          size: 20,
         ),
       ],
     );
