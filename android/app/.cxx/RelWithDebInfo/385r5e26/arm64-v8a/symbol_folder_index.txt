@@ -1,0 +1,1 @@
+C:\Users\crist\Desktop\projects\flutter\nuntium_mobile\build\app\intermediates\cxx\RelWithDebInfo\385r5e26\obj\arm64-v8a

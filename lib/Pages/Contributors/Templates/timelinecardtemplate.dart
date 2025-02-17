@@ -1,15 +1,21 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class TimelineCard extends StatefulWidget {
   final String? timelinestatus;
   final String? date;
   final String? revision;
+  final String? content;
+  final String? comments;
 
   const TimelineCard({
     super.key,
     this.timelinestatus,
     this.date,
     this.revision,
+    this.content,
+    this.comments,
   });
 
   @override
@@ -18,11 +24,20 @@ class TimelineCard extends StatefulWidget {
 
 class _TimelineCardState extends State<TimelineCard> {
   bool _showDetails = false;
+  final TextEditingController _contentController = TextEditingController();
+  final TextEditingController _commentsController = TextEditingController();
 
   void _toggleDetails() {
     setState(() {
       _showDetails = !_showDetails;
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _contentController.text = widget.content ?? '';
+    _commentsController.text = widget.comments ?? '';
   }
 
   @override
@@ -35,7 +50,12 @@ class _TimelineCardState extends State<TimelineCard> {
           child: child,
         );
       },
-      child: _showDetails ? _timelineDetailsCard() : _timelineCard(),
+      child: _showDetails
+          ? _timelineDetailsCard(
+              _contentController,
+              _commentsController,
+            )
+          : _timelineCard(),
     );
   }
 
@@ -104,7 +124,8 @@ class _TimelineCardState extends State<TimelineCard> {
     );
   }
 
-  Widget _timelineDetailsCard() {
+  Widget _timelineDetailsCard(TextEditingController contentController,
+      TextEditingController commentsController) {
     return GestureDetector(
       onTap: _toggleDetails,
       child: Card(
@@ -112,38 +133,42 @@ class _TimelineCardState extends State<TimelineCard> {
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         color: const Color(0xfff5f5f5),
-        child: const Padding(
-          padding: EdgeInsets.all(15),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Content", style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 5),
+              const Text("Content",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 5),
               TextField(
+                controller: contentController,
                 maxLines: 3,
                 readOnly: true,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(),
                   hintText: 'Enter content...',
                 ),
               ),
-              SizedBox(height: 10),
-              Text("Comments", style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 5),
+              const SizedBox(height: 10),
+              const Text("Comments",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 5),
               TextField(
+                controller: commentsController,
                 maxLines: 2,
                 readOnly: true,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(),
                   hintText: 'Enter comments...',
                 ),
               ),
-              SizedBox(height: 10),
-              Align(
+              const SizedBox(height: 10),
+              const Align(
                 alignment: Alignment.bottomRight,
                 child: Padding(
                   padding: EdgeInsets.only(bottom: 0, right: 0),
