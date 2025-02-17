@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Contributors/Templates/taskcardtemplate.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AssignedTaskPage extends StatefulWidget {
   final String taskType;
@@ -123,6 +125,7 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
                         taskTitle: task['taskTitle'],
                         status: widget.taskType,
                         taskid: task['taskid'],
+                        isLoading: false,
                       ),
                     ),
                   );

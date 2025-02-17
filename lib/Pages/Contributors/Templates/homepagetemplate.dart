@@ -16,81 +16,106 @@ class HomePageTemplate extends StatefulWidget {
 class _HomePageTemplate extends State<HomePageTemplate> {
   String selectedSection = 'all';
   List<Map<String, dynamic>> yourTasksData = [];
+  final ScrollController _scrollController = ScrollController();
+  DocumentSnapshot? lastDocument; // Stores last fetched document for pagination
+  bool isLoadingMore = false;
+  bool hasMoreTasks = true;
+  static const int initialBatchSize = 2; // Start with a small batch size
+  int batchSize = initialBatchSize; // Dynamic batch size
 
-  Stream<List<Map<String, dynamic>>> getUserTasksStream() {
-    return FirebaseFirestore.instance
-        .collection('tasks') // First, query the tasks collection
-        .snapshots()
-        .asyncMap((taskSnapshot) async {
-      List<Map<String, dynamic>> tasks = [];
-
-      for (var taskDoc in taskSnapshot.docs) {
-        String taskId = taskDoc.id;
-
-        // Fetch assigned_tasks subcollection for this task
-        QuerySnapshot assignedTasksSnapshot = await FirebaseFirestore.instance
-            .collection('tasks')
-            .doc(taskId)
-            .collection('assigned_tasks')
-            .where('assignee_id',
-                isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-            .get();
-
-        for (var assignedTaskDoc in assignedTasksSnapshot.docs) {
-          // Combine assigned task & parent task data
-          Map<String, dynamic> combinedTask = {
-            'taskId': taskId,
-            'title': taskDoc['title'],
-            'details': taskDoc['details'],
-            'deadline': taskDoc['deadline'],
-            'priority': taskDoc['priority'],
-            'assignee_id': assignedTaskDoc['assignee_id'],
-            'assigned_by': taskDoc['assigned_by'],
-            'status': assignedTaskDoc['status'],
-            'section': taskDoc['section'],
-            'task_type': assignedTaskDoc['task_type'],
-            // Add additional fields if needed
-          };
-          tasks.add(combinedTask);
-        }
-      }
-
-      return tasks; // Return a list of combined task data
-    });
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+    fetchInitialTasks(); // Load the first batch
   }
 
-  // final List<Map<String, String>> taskList = [
-  //   {
-  //     "taskid": "001",
-  //     "taskTitle": "Task 1",
-  //     "taskPercent": "0%",
-  //     "status": "Ongoing"
-  //   },
-  //   {
-  //     "taskid": "002",
-  //     "taskTitle": "Task 2",
-  //     "taskPercent": "69%",
-  //     "status": "Assigned"
-  //   },
-  //   {
-  //     "taskid": "003",
-  //     "taskTitle": "Task 360",
-  //     "taskPercent": "0%",
-  //     "status": "Ongoing"
-  //   },
-  //   {
-  //     "taskid": "004",
-  //     "taskTitle": "Task 4",
-  //     "taskPercent": "50%",
-  //     "status": "Assigned"
-  //   },
-  //   {
-  //     "taskid": "005",
-  //     "taskTitle": "Task 590",
-  //     "taskPercent": "0%",
-  //     "status": "Ongoing"
-  //   },
-  // ];
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent * 0.9 &&
+        !isLoadingMore &&
+        hasMoreTasks) {
+      fetchNextBatch();
+    }
+  }
+
+  Future<void> fetchInitialTasks() async {
+    setState(() {
+      yourTasksData.clear();
+      lastDocument = null;
+      hasMoreTasks = true;
+      batchSize = initialBatchSize;
+    });
+    await fetchNextBatch();
+  }
+
+  Future<void> fetchNextBatch() async {
+    if (!hasMoreTasks || isLoadingMore) return;
+    setState(() => isLoadingMore = true);
+
+    Query query = FirebaseFirestore.instance
+        .collection('tasks')
+        .orderBy('deadline')
+        .limit(batchSize);
+
+    if (lastDocument != null) {
+      query = query.startAfterDocument(lastDocument!);
+    }
+
+    QuerySnapshot taskSnapshot = await query.get();
+    if (taskSnapshot.docs.isEmpty) {
+      setState(() => hasMoreTasks = false);
+    } else {
+      lastDocument =
+          taskSnapshot.docs.last; // Save last document for pagination
+    }
+
+    List<Map<String, dynamic>> newTasks = [];
+
+    for (var taskDoc in taskSnapshot.docs) {
+      String taskId = taskDoc.id;
+
+      QuerySnapshot assignedTasksSnapshot = await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(taskId)
+          .collection('assigned_tasks')
+          .where('assignee_id',
+              isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+          .get();
+
+      for (var assignedTaskDoc in assignedTasksSnapshot.docs) {
+        Map<String, dynamic> combinedTask = {
+          'taskId': taskId,
+          'title': taskDoc['title'],
+          'details': taskDoc['details'],
+          'deadline': taskDoc['deadline'],
+          'priority': taskDoc['priority'],
+          'assignee_id': assignedTaskDoc['assignee_id'],
+          'assigned_by': taskDoc['assigned_by'],
+          'status': assignedTaskDoc['status'],
+          'section': taskDoc['section'],
+          'task_type': assignedTaskDoc['task_type'],
+        };
+        newTasks.add(combinedTask);
+      }
+    }
+
+    if (yourTasksData.length < 5) {
+      batchSize =
+          5; // Load more tasks if there's not enough content on the screen
+    }
+
+    setState(() {
+      yourTasksData.addAll(newTasks);
+      isLoadingMore = false;
+    });
+  }
 
   Future<void> filteredSection(String section) async {
     if (section != 'all') {
@@ -124,6 +149,7 @@ class _HomePageTemplate extends State<HomePageTemplate> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+                const SizedBox(height: 15),
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -146,6 +172,7 @@ class _HomePageTemplate extends State<HomePageTemplate> {
                 ),
               ],
             ),
+            _searchbar(),
             const SizedBox(height: 10),
             _genreFilter(),
             const SizedBox(height: 10),
@@ -158,7 +185,8 @@ class _HomePageTemplate extends State<HomePageTemplate> {
 
   Widget _genreFilter() {
     return SizedBox(
-      height: 50,
+      height: MediaQuery.of(context).size.height * .05,
+      width: double.infinity,
       child: ListView.separated(
         itemCount: pubSections.length,
         scrollDirection: Axis.horizontal,
@@ -211,107 +239,169 @@ class _HomePageTemplate extends State<HomePageTemplate> {
   }
 
   Widget _cardList() {
+    List<Map<String, dynamic>> filteredTasks = selectedSection == 'all'
+        ? yourTasksData
+        : yourTasksData
+            .where((task) => task['status'] == selectedSection)
+            .toList();
+
     return Expanded(
-      child: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: getUserTasksStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            // return _buildLoadingList();
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            print(snapshot.error);
-            return const Center(
-                child: Text('Error occurred while loading latest posts'));
-          }
-          if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('No task found good job!'));
-          }
+      child: yourTasksData.isEmpty && !isLoadingMore
+          ? const Center(child: Text('No tasks found, good job!'))
+          : ListView.builder(
+              controller: _scrollController,
+              itemCount: filteredTasks.length + (isLoadingMore ? 1 : 0),
+              itemBuilder: (context, index) {
+                if (index == filteredTasks.length) {
+                  return const TaskCardTemplate(isLoading: true);
+                }
+                final task = filteredTasks[index];
 
-          yourTasksData = snapshot.data!;
-
-          List<Map<String, dynamic>> filteredTasks = selectedSection == 'all'
-              ? snapshot.data!
-              : snapshot.data!
-                  .where((task) => task['status'] == selectedSection)
-                  .toList();
-
-          return ListView.builder(
-            itemCount: filteredTasks.length,
-            itemBuilder: (context, index) {
-              final task = filteredTasks[index];
-
-              Widget taskCard = Container(
-                width: MediaQuery.of(context).size.width * .90,
-                height: MediaQuery.of(context).size.height * .10,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(6.0),
-                  child: TaskCardTemplate(
-                    taskTitle: task['title'],
-                    status: task['status'],
-                    taskid: task['taskId'],
-                    taskType: task['task_type'],
-                    details: task['details'],
+                Widget taskCard = Container(
+                  width: MediaQuery.of(context).size.width * .90,
+                  height: MediaQuery.of(context).size.height * .10,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
                   ),
-                ),
-              );
+                  child: Padding(
+                    padding: const EdgeInsets.all(6.0),
+                    child: TaskCardTemplate(
+                      taskTitle: task['title'],
+                      status: task['status'],
+                      taskid: task['taskId'],
+                      taskType: task['task_type'],
+                      details: task['details'],
+                      isLoading: false,
+                    ),
+                  ),
+                );
 
-              // Wrap in Slidable only if status is "Assigned"
-              return task['status'] == "assigned"
-                  ? Slidable(
-                      key: ValueKey(task['title']),
-                      endActionPane: ActionPane(
-                        motion: const StretchMotion(),
-                        dismissible: DismissiblePane(
-                          onDismissed: () {
-                            // Navigate to CreateTaskPage when fully swiped
-                            //create another function to update yung task status here pagka swipe
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CreateTaskPage(
-                                  taskId: task['taskId'],
-                                  details: task['details'],
-                                  title: task['title'],
-                                  taskType: task['task_type'],
+                return task['status'] == "assigned"
+                    ? Slidable(
+                        key: ValueKey(task['title']),
+                        endActionPane: ActionPane(
+                          motion: const StretchMotion(),
+                          dismissible: DismissiblePane(
+                            onDismissed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CreateTaskPage(
+                                    taskId: task['taskId'],
+                                    details: task['details'],
+                                    title: task['title'],
+                                    taskType: task['task_type'],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                        children: [
-                          CustomSlidableAction(
-                            onPressed: (context) {
-                              // Handle action (e.g., mark as started)
+                              );
                             },
-                            backgroundColor: const Color(0XFFD4AF37),
-                            foregroundColor: const Color(0xff020B40),
-                            borderRadius: BorderRadius.circular(12),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8),
-                              child: Text(
-                                'Start',
-                                style: TextStyle(
-                                  fontSize: 15, // Custom font size
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      Color(0xff020B40), // Ensuring text color
+                          ),
+                          children: [
+                            CustomSlidableAction(
+                              onPressed: (context) {},
+                              backgroundColor: const Color(0XFFD4AF37),
+                              foregroundColor: const Color(0xff020B40),
+                              borderRadius: BorderRadius.circular(12),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
+                                child: Text(
+                                  'Start',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xff020B40),
+                                  ),
                                 ),
                               ),
                             ),
+                          ],
+                        ),
+                        child: taskCard,
+                      )
+                    : taskCard;
+              },
+            ),
+    );
+  }
+
+  Widget _searchbar() {
+    return SizedBox(
+      width: double.infinity,
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 15, left: 20, right: 20),
+            decoration: BoxDecoration(boxShadow: [
+              BoxShadow(
+                color: const Color(0xff1D1617).withOpacity(0.11),
+                blurRadius: 40,
+                spreadRadius: 0.0,
+              ),
+            ]),
+            child: TextField(
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.all(15),
+                hintText: 'What are you looking for?',
+                hintStyle: const TextStyle(
+                  color: Color(0xffDDDADA),
+                  fontSize: 14,
+                ),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Image.asset(
+                    'assets/images/searchicon.png',
+                    height: 25,
+                    width: 25,
+                  ),
+                ),
+                suffixIcon: SizedBox(
+                  width: 100,
+                  child: IntrinsicHeight(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        const VerticalDivider(
+                          color: Colors.black,
+                          thickness: 0.2,
+                          indent: 10,
+                          endIndent: 10,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Image.asset(
+                            'assets/images/felter.png',
+                            height: 25,
+                            width: 25,
                           ),
-                        ],
-                      ),
-                      child: taskCard,
-                    )
-                  : taskCard;
-            },
-          );
-        },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingList() {
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.8,
+      child: ListView.builder(
+        itemCount: 5,
+        itemBuilder: (context, index) => const Padding(
+          padding: EdgeInsets.only(bottom: 16),
+          child: TaskCardTemplate(isLoading: true),
+        ),
       ),
     );
   }

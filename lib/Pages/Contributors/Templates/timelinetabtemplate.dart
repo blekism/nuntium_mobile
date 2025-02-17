@@ -2,7 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Contributors/timelinepage.dart';
 
 class TimelineTab extends StatefulWidget {
-  const TimelineTab({super.key});
+  final String? taskId;
+  final String? taskTitle;
+  final String? taskDescription;
+
+  const TimelineTab({
+    super.key,
+    required this.taskId,
+    required this.taskTitle,
+    required this.taskDescription,
+  });
 
   @override
   State<TimelineTab> createState() => _TimelineTabState();
@@ -19,24 +28,26 @@ class _TimelineTabState extends State<TimelineTab> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const TimelinePage(),
+                  builder: (context) => TimelinePage(
+                    taskId: widget.taskId,
+                  ),
                 ),
               );
             },
             child: Container(
-            height: MediaQuery.of(context).size.height * .12,
-            width: MediaQuery.of(context).size.width * .75,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
-              color: const Color.fromARGB(255, 240, 216, 138),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
+              height: MediaQuery.of(context).size.height * .10,
+              width: MediaQuery.of(context).size.width * .75,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15),
+                color: const Color.fromARGB(255, 240, 216, 138),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
@@ -64,9 +75,9 @@ class _TimelineTabState extends State<TimelineTab> {
                                     color: const Color(0XFF020B40),
                                     borderRadius: BorderRadius.circular(15),
                                   ),
-                                  child: const Text(
-                                    'Task Title',
-                                    style: TextStyle(
+                                  child: Text(
+                                    widget.taskTitle!,
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -75,9 +86,9 @@ class _TimelineTabState extends State<TimelineTab> {
                                 ),
                                 SizedBox(
                                   width: MediaQuery.of(context).size.width * .5,
-                                  child: const Text(
-                                    'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-                                    style: TextStyle(
+                                  child: Text(
+                                    widget.taskDescription!,
+                                    style: const TextStyle(
                                       color: Color(0XFF020B40),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
