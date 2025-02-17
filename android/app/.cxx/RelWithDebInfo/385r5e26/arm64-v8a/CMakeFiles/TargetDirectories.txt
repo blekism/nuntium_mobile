@@ -1,0 +1,2 @@
+C:/Users/crist/Desktop/projects/flutter/nuntium_mobile/android/app/.cxx/RelWithDebInfo/385r5e26/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/Users/crist/Desktop/projects/flutter/nuntium_mobile/android/app/.cxx/RelWithDebInfo/385r5e26/arm64-v8a/CMakeFiles/rebuild_cache.dir
