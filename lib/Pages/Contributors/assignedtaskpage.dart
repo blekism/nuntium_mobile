@@ -150,6 +150,7 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
                                 details: task['taskTitle'],
                                 title: task['taskTitle'],
                                 taskType: task['status'],
+                                assignedId: task['assignedTaskId'],
                               ),
                             ),
                           );
@@ -167,6 +168,7 @@ class _AssignedTaskPage extends State<AssignedTaskPage> {
                                   details: task['taskTitle'],
                                   title: task['taskTitle'],
                                   taskType: task['status'],
+                                  assignedId: task['assignedTaskId'],
                                 ),
                               ),
                             );

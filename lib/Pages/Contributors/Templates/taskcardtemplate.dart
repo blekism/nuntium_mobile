@@ -10,6 +10,7 @@ class TaskCardTemplate extends StatefulWidget {
   final String? taskType;
   final String? details;
   final bool isLoading;
+  final String? assignedId;
 
   const TaskCardTemplate({
     super.key,
@@ -20,6 +21,7 @@ class TaskCardTemplate extends StatefulWidget {
     this.taskType,
     this.details,
     required this.isLoading,
+    this.assignedId,
   });
 
   @override
@@ -39,6 +41,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                     details: widget.details,
                     title: widget.taskTitle,
                     taskType: widget.taskType,
+                    assignedId: widget.assignedId,
                   )),
         );
       },

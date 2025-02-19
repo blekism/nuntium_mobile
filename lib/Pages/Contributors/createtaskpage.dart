@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../Contributors/Templates/timelinetabtemplate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:multi_image_picker_view/multi_image_picker_view.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CreateTaskPage extends StatefulWidget {
   final String? taskId;
   final String? details;
   final String? title;
   final String? taskType;
+  final String? assignedId;
 
   const CreateTaskPage({
     super.key,
@@ -15,6 +17,7 @@ class CreateTaskPage extends StatefulWidget {
     required this.details,
     required this.title,
     required this.taskType,
+    required this.assignedId,
   });
 
   @override
@@ -56,6 +59,80 @@ class _CreateTaskPage extends State<CreateTaskPage> {
     super.initState();
     _taskTitleController.text = widget.title!;
     _taskDetailsController.text = widget.details!;
+
+    if (widget.taskId != null) {
+      fetchLatestContent(widget.taskId!);
+    }
+  }
+
+  Future<void> submitContent(
+      String taskId, String content, String userId) async {
+    try {
+      // Reference to the assigned_tasks subcollection for the specific task
+      var assignedTasksRef = FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(taskId)
+          .collection('assigned_tasks');
+
+      // Get all previous submissions by the user for the specific taskId
+      var querySnapshot = await assignedTasksRef
+          .where('userId',
+              isEqualTo:
+                  userId) // Assuming userId is stored with each submission
+          .get();
+
+      // Check if the user has already submitted content for this task
+      bool isRevised = querySnapshot.docs.isNotEmpty;
+
+      // Add content to the assigned_tasks subcollection (creating a new document)
+      await assignedTasksRef.doc(widget.assignedId).update({
+        'content': content,
+        'userId': userId, // Store userId for reference
+        'submitted_at': FieldValue.serverTimestamp(),
+      });
+
+      // Add to the timeline_history subcollection
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(taskId)
+          .collection('timeline')
+          .add({
+        'comment': isRevised ? 'No comments yet' : 'Content submitted',
+        'content': content,
+        'date': FieldValue.serverTimestamp(),
+        'revision': isRevised
+            ? 'Revision ${querySnapshot.docs.length + 1}'
+            : 'Revision 1',
+        'timelinestatus': isRevised
+            ? 'revised'
+            : 'submitted', // Set status to revised if second submission
+      });
+
+      print("Content and timeline history logged successfully!");
+      fetchLatestContent(taskId);
+    } catch (e) {
+      print("Error submitting content and logging timeline history: $e");
+    }
+  }
+
+  Future<void> fetchLatestContent(String taskId) async {
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(taskId)
+          .collection('assigned_tasks')
+          .orderBy('submitted_at', descending: true) // Get latest content
+          .limit(1) // Fetch only the latest entry
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        setState(() {
+          _taskContentController.text = snapshot.docs.first['content'];
+        });
+      }
+    } catch (e) {
+      print("Error fetching content: $e");
+    }
   }
 
   @override
@@ -166,7 +243,12 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                           alignment: Alignment.centerRight,
                           child: ElevatedButton(
                             onPressed: () {
-                              // Your action goes here
+                              if (widget.taskId != null) {
+                                submitContent(widget.taskId!,
+                                    _taskContentController.text, 'userId');
+                              } else {
+                                print("Error: taskId is null");
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF020B40),
