@@ -93,6 +93,7 @@ class _HomePageTemplate extends State<HomePageTemplate> {
         Map<String, dynamic> combinedTask = {
           'taskId': taskId,
           'title': taskDoc['title'],
+          'assignedTaskId': assignedTaskDoc.id,
           'details': taskDoc['details'],
           'deadline': taskDoc['deadline'],
           'priority': taskDoc['priority'],
@@ -272,6 +273,7 @@ class _HomePageTemplate extends State<HomePageTemplate> {
                       taskType: task['task_type'],
                       details: task['details'],
                       isLoading: false,
+                      assignedId: task['assignedTaskId'],
                     ),
                   ),
                 );
@@ -291,6 +293,7 @@ class _HomePageTemplate extends State<HomePageTemplate> {
                                     details: task['details'],
                                     title: task['title'],
                                     taskType: task['task_type'],
+                                    assignedId: task['assignedTaskId'],
                                   ),
                                 ),
                               );
