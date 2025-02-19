@@ -43,15 +43,18 @@ class _ContribHomePage extends State<ContribHomePage> {
   }
 
   final List<Widget> _screens = [
-    HomeScreen(),
+    const HomeScreen(),
     const CalendarPage(),
   ];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
-      drawer: _drawer(context),
-      body: _screens[_currentIndex],
+      drawer: AppDrawer(onLogout: _logout),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: _bottomNavbar(),
     );
   }
@@ -156,6 +159,47 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreen extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    return HomePageTemplate();
+    return const HomePageTemplate();
+  }
+}
+
+class AppDrawer extends StatelessWidget {
+  final VoidCallback onLogout;
+
+  const AppDrawer({super.key, required this.onLogout});
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      // shadowColor: Colors.black,
+      child: ListView(
+        children: [
+          const DrawerHeader(
+            decoration: BoxDecoration(color: Color(0xffD9D9D9)),
+            child: Text(
+              'Menu',
+              style: TextStyle(color: Colors.black, fontSize: 24),
+            ),
+          ),
+          ListTile(
+            title: const Text('Profile'),
+            onTap: () {
+              // Navigator.pushNamed(context, '/profile');
+            },
+          ),
+          ListTile(
+            title: const Text('Change to Reader Mode!'),
+            onTap: () {
+              // Navigator.pushNamed(context, '/joinus');
+            },
+          ),
+          ListTile(
+              title: const Text('Logout!'),
+              onTap: () {
+                onLogout();
+              }),
+        ],
+      ),
+    );
   }
 }

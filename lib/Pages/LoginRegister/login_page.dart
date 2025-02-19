@@ -76,6 +76,7 @@ class _LoginPageState extends State<LoginPage> {
               'createdAt': FieldValue.serverTimestamp(),
               'creation': user.metadata.creationTime,
               'lastSignIn': user.metadata.lastSignInTime,
+              'role': 'reader',
             });
             if (mounted) {
               setState(() {
