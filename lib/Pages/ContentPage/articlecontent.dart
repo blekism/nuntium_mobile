@@ -145,6 +145,7 @@ class _ContentPageState extends State<ContentPage> {
           .collection('comments')
           .where('postID', isEqualTo: postID)
           .orderBy('time', descending: true)
+          .limit(5)
           .get();
 
       List<String> fetchedComments = snapshot.docs

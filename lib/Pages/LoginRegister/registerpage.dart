@@ -47,6 +47,7 @@ class _RegisterPageState extends State<RegisterPage> {
             'createdAt': FieldValue.serverTimestamp(),
             'creation': user.metadata.creationTime,
             'lastSignIn': user.metadata.lastSignInTime,
+            'role': 'reader',
           });
         } else {
           print('User already exists in Firestore');

@@ -53,6 +53,7 @@ class _HomepageState extends State<Homepage> {
   }
 
   Future<void> _logout() async {
+    print("Logout function called");
     try {
       await _auth.signOut();
       await _googleSignInLog.signOut();
@@ -98,8 +99,11 @@ class _HomepageState extends State<Homepage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
-      drawer: _drawer(context),
-      body: _screens[_currentIndex],
+      drawer: AppDrawer(onLogout: _logout),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: _bottomNavbar(),
     );
   }
@@ -420,6 +424,47 @@ class _HomeScreenState extends State<HomeScreen> {
           // userIsNew
           //     ? const Text('Welcome New user!')
           //     : const Text('Welcome Back!'),
+        ],
+      ),
+    );
+  }
+}
+
+class AppDrawer extends StatelessWidget {
+  final VoidCallback onLogout;
+  const AppDrawer({super.key, required this.onLogout});
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      // shadowColor: Colors.black,
+      child: ListView(
+        children: [
+          const DrawerHeader(
+            decoration: BoxDecoration(color: Colors.blue),
+            child: Text(
+              'Menu',
+              style: TextStyle(color: Colors.white, fontSize: 24),
+            ),
+          ),
+          ListTile(
+            title: const Text('Profile'),
+            onTap: () {
+              Navigator.pushNamed(context, '/profile');
+            },
+          ),
+          ListTile(
+            title: const Text('Contributor Hunt!'),
+            onTap: () {
+              Navigator.pushNamed(context, '/joinus');
+            },
+          ),
+          ListTile(
+            title: const Text('Logout!'),
+            onTap: () {
+              onLogout();
+            },
+          ),
         ],
       ),
     );

@@ -108,7 +108,7 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                   builder: (context, futureSnapshot) {
                     if (futureSnapshot.connectionState ==
                         ConnectionState.waiting) {
-                      return _buildLoadingList(); // Show loading UI while fetching
+                      return _buildLoadingList();
                     }
                     if (futureSnapshot.hasError) {
                       return const Center(
@@ -119,9 +119,7 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                           child: Text('No referenced posts found'));
                     }
 
-                    var referencedPostDocs = futureSnapshot.data!;
-                    _referencedPosts.clear();
-                    for (var doc in referencedPostDocs) {
+                    for (var doc in futureSnapshot.data!) {
                       _referencedPosts[doc.id] =
                           doc.data() as Map<String, dynamic>;
                     }
@@ -132,9 +130,13 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                       var referencedPost = _referencedPosts[postRef.id];
 
                       return referencedPost != null &&
-                          (selectedSection == 'All' ||
+                          (selectedSection == "All" ||
                               referencedPost['section'] == selectedSection);
                     }).toList();
+
+                    if (filteredPosts.isEmpty) {
+                      return const Center(child: Text('No posts available'));
+                    }
 
                     return ListView.builder(
                       itemCount: filteredPosts.length,
