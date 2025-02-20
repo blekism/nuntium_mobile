@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TaskCardTemplate extends StatefulWidget {
   final String? taskPercent;
@@ -11,6 +12,7 @@ class TaskCardTemplate extends StatefulWidget {
   final String? details;
   final bool isLoading;
   final String? assignedId;
+  final String? pageType;
 
   const TaskCardTemplate({
     super.key,
@@ -22,6 +24,7 @@ class TaskCardTemplate extends StatefulWidget {
     this.details,
     required this.isLoading,
     this.assignedId,
+    this.pageType,
   });
 
   @override
@@ -29,21 +32,40 @@ class TaskCardTemplate extends StatefulWidget {
 }
 
 class _TaskCardTemplate extends State<TaskCardTemplate> {
+  Future<List<Map<String, dynamic>>> fetchTasksById(String taskId) async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('tasks') // Change collection name if needed
+          .doc(widget.taskid)
+          .collection('assigned_tasks')
+          .get();
+
+      return querySnapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      print("Error fetching tasks: $e");
+      return [];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => CreateTaskPage(
-                    taskId: widget.taskid,
-                    details: widget.details,
-                    title: widget.taskTitle,
-                    taskType: widget.taskType,
-                    assignedId: widget.assignedId,
-                  )),
-        );
+        widget.pageType == 'eb'
+            ? _showModal(context)
+            : Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => CreateTaskPage(
+                          taskId: widget.taskid,
+                          details: widget.details,
+                          title: widget.taskTitle,
+                          taskType: widget.taskType,
+                          assignedId: widget.assignedId,
+                        )),
+              );
       },
       child: Container(
         width: MediaQuery.of(context).size.width * .90,
@@ -173,6 +195,90 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
+      ),
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: 0.8,
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const Text(
+                'Assigned Tasks',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('tasks')
+                      .doc(widget.taskid)
+                      .collection('assigned_tasks')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (snapshot.hasError) {
+                      return const SizedBox(
+                        height: 300,
+                        child: Center(child: Text("Error loading tasks")),
+                      );
+                    } else if (!snapshot.hasData ||
+                        snapshot.data!.docs.isEmpty) {
+                      return const SizedBox(
+                        height: 300,
+                        child: Center(child: Text("No tasks assigned")),
+                      );
+                    }
+
+                    var tasks = snapshot.data!.docs;
+
+                    return ListView.builder(
+                      itemCount: tasks.length,
+                      itemBuilder: (context, index) {
+                        var task = tasks[index].data() as Map<String, dynamic>;
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                              left: 16.0, right: 16.0, bottom: 16),
+                          child: TaskCardTemplate(
+                            taskid: widget.taskid,
+                            taskTitle: widget.taskTitle,
+                            taskType: tasks[index]['task_type'],
+                            details: widget.details,
+                            status: widget.status,
+                            assignedId: task['assignedId'],
+                            isLoading: false,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

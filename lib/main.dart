@@ -16,6 +16,9 @@ import 'Pages/Contributors/calendarpage.dart';
 import 'Pages/ContentPage/articlecontent.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'Pages/Eic/eiclandingpage.dart';
+import 'Pages/Eic/eichomepage.dart';
+import 'Pages/Eic/eicorgtasks.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +53,10 @@ class NuntiumApp extends StatelessWidget {
         // '/profile': (context) => const ProfilePage(),
         // '/joinus': (context) => const JoinUsPage(),
         '/contribhomepage': (context) => const ContribHomePage(),
+        '/eiclandingpage': (context) => const EicLandingPage(),
         '/calendarpage': (context) => const CalendarPage(),
+        '/eichomepage': (context) => const EicHomepage(),
+        '/eicorgtasks': (context) => const OrganizationTasks(),
         '/initial': (context) => AuthChecker(
               authStream: FirebaseAuth.instance.authStateChanges(),
             ),
@@ -69,17 +75,63 @@ class AuthChecker extends StatefulWidget {
 }
 
 class _AuthCheckerState extends State<AuthChecker> {
-  Future<String?> getUserRole(String uid) async {
+  String? userRole;
+  bool isLoading = true;
+
+  Future<void> getUserRole(
+      String uid, String? email, String? displayName, String? photoURL) async {
+    print('getUserRole called at ${DateTime.now()}');
     try {
       DocumentSnapshot userDoc =
           await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (userDoc.exists) {
-        return userDoc['role'] as String?;
+
+      if (!userDoc.exists) {
+        print('New user detected, creating Firestore record...');
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'email': email,
+          'uid': uid,
+          'username': displayName,
+          'photoURL': photoURL,
+          'createdAt': FieldValue.serverTimestamp(),
+          'role': 'reader',
+        });
+        userDoc =
+            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      }
+
+      if (mounted) {
+        if (userDoc.exists) {
+          print('User document exists.');
+          print('User name is ${displayName ?? 'No name'}');
+          final role = userDoc['role'] as String?;
+          if (role != null) {
+            setState(() {
+              userRole = role;
+              isLoading = false;
+            });
+          }
+        } else {
+          print('User document still does not exist.');
+          setState(() {
+            isLoading = false;
+          });
+        }
       }
     } catch (e) {
       print('Error fetching user role: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
-    return null;
+  }
+
+  void _onSignOut() {
+    setState(() {
+      userRole = null;
+      isLoading = true;
+    });
   }
 
   @override
@@ -87,56 +139,47 @@ class _AuthCheckerState extends State<AuthChecker> {
     return StreamBuilder<User?>(
       stream: widget.authStream,
       builder: (context, snapshot) {
-        // print('Auth state changed at ${DateTime.now()}');
+        print('Auth state changed at ${DateTime.now()}');
         if (ConnectionState.active == snapshot.connectionState &&
             snapshot.hasData) {
           if (snapshot.data!.emailVerified) {
-            return FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(snapshot.data!.uid)
-                  .get(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child:
-                          CircularProgressIndicator()); // Show loading indicator
-                } else if (snapshot.hasError) {
-                  print('Error fetching user role: ${snapshot.error}');
-                  return const Homepage(); // Or handle the error as needed
-                } else if (snapshot.hasData && snapshot.data!.exists) {
-                  final userData = snapshot.data!.data()
-                      as Map<String, dynamic>?; // Cast to Map
-                  final userRole =
-                      userData?['role'] as String?; // Get the role, handle null
-                  print('user role: $userRole at ${DateTime.now()}');
+            print('user email verified now at ${DateTime.now()}');
 
-                  if (userRole != null) {
-                    if (userRole == 'reader') {
-                      return const Homepage();
-                    } else if (userRole == 'contributor') {
-                      return const ContribHomePage();
-                      // } else if (userRole == 'section writers') {
-                      //   return const WritersHomePage();
-                    } else if (userRole == 'section_editors') {
-                      return const EditorsHomePage();
-                      // }
-                      //else if (userRole == 'editor in chief') {
-                      //   return const EICHomePage();
-                    } else {
-                      return const LoginPage(); // Default user homepage
-                    }
-                  }
-                }
-                return const LoginPage(); // Default if user data is missing
-              },
-            );
+            if (userRole == null && isLoading) {
+              getUserRole(
+                snapshot.data!.uid,
+                snapshot.data!.email,
+                snapshot.data!.displayName,
+                snapshot.data!.photoURL,
+              );
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            if (userRole == 'reader') {
+              return Homepage(
+                onLogout: _onSignOut,
+              );
+            } else if (userRole == 'contributor') {
+              return ContribHomePage(
+                onLogout: _onSignOut,
+              );
+            } else if (userRole == 'eic') {
+              return EicLandingPage(
+                onLogout: _onSignOut,
+              );
+            } else {
+              print(
+                  'early exit sa login due to future error at ${DateTime.now()}');
+              return const LoginPage();
+            }
           } else {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               Navigator.pushNamed(context, '/verify');
             });
           }
         } else {
+          print('User logged out. Resetting role.');
+          print('User name is ${snapshot.data?.displayName ?? 'No name'}');
           return const LoginPage();
         }
         return const SizedBox.shrink();
