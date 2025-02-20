@@ -86,41 +86,6 @@ class _ContribHomePage extends State<ContribHomePage> {
     );
   }
 
-  Drawer _drawer(BuildContext context) {
-    return Drawer(
-      shadowColor: Colors.black,
-      child: ListView(
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Color(0xffD9D9D9)),
-            child: Text(
-              'Menu',
-              style: TextStyle(color: Colors.black, fontSize: 24),
-            ),
-          ),
-          ListTile(
-            title: const Text('Profile'),
-            onTap: () {
-              // Navigator.pushNamed(context, '/profile');
-            },
-          ),
-          ListTile(
-            title: const Text('Change to Reader Mode!'),
-            onTap: () {
-              // Navigator.pushNamed(context, '/joinus');
-            },
-          ),
-          ListTile(
-            title: const Text('Logout!'),
-            onTap: () {
-              _logout();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   AppBar _appBar(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.transparent,

@@ -138,39 +138,19 @@ class _HomePageTemplate extends State<HomePageTemplate> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
+            const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Text(
-                  'Your Tasks',
+                Text(
+                  'Tasks',
                   style: TextStyle(
                     fontSize: 28,
                     color: Colors.black,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 15),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AssignedTaskPage(
-                          taskType: selectedSection,
-                        ),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'View All',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0XFF020B40),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
+                SizedBox(height: 15),
               ],
             ),
             _searchbar(),
