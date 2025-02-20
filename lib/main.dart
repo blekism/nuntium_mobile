@@ -167,6 +167,10 @@ class _AuthCheckerState extends State<AuthChecker> {
               return EicLandingPage(
                 onLogout: _onSignOut,
               );
+            } else if (userRole == 'section_editors') {
+              return EditorsHomePage(
+                onLogout: _onSignOut,
+              );
             } else {
               print(
                   'early exit sa login due to future error at ${DateTime.now()}');

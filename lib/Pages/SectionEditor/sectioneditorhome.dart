@@ -6,7 +6,11 @@ import 'package:nuntium_mobile/Pages/SectionEditor/Templates/sectioneditorhomete
 import 'package:nuntium_mobile/Pages/Contributors/calendarpage.dart';
 
 class EditorsHomePage extends StatefulWidget {
-  const EditorsHomePage({super.key});
+  final VoidCallback? onLogout;
+  const EditorsHomePage({
+    super.key,
+    this.onLogout,
+  });
 
   @override
   State<EditorsHomePage> createState() => _EditorsHomePageState();
@@ -22,6 +26,7 @@ class _EditorsHomePageState extends State<EditorsHomePage> {
     try {
       await _auth.signOut();
       await _googleSignInLog.signOut();
+      widget.onLogout!();
 
       // Sign the user out of Firebase
       // After successful logout, navigate to the login screen:
