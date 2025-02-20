@@ -6,7 +6,12 @@ import 'package:nuntium_mobile/Pages/Contributors/Templates/homepagetemplate.dar
 import 'calendarpage.dart';
 
 class ContribHomePage extends StatefulWidget {
-  const ContribHomePage({super.key});
+  final VoidCallback? onLogout;
+
+  const ContribHomePage({
+    super.key,
+    this.onLogout,
+  });
 
   @override
   State<ContribHomePage> createState() => _ContribHomePage();
@@ -22,6 +27,7 @@ class _ContribHomePage extends State<ContribHomePage> {
     try {
       await _auth.signOut();
       await _googleSignInLog.signOut();
+      widget.onLogout!();
 
       // Sign the user out of Firebase
       // After successful logout, navigate to the login screen:
@@ -83,41 +89,6 @@ class _ContribHomePage extends State<ContribHomePage> {
         //   label: 'Chat',
         // ),
       ],
-    );
-  }
-
-  Drawer _drawer(BuildContext context) {
-    return Drawer(
-      shadowColor: Colors.black,
-      child: ListView(
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Color(0xffD9D9D9)),
-            child: Text(
-              'Menu',
-              style: TextStyle(color: Colors.black, fontSize: 24),
-            ),
-          ),
-          ListTile(
-            title: const Text('Profile'),
-            onTap: () {
-              // Navigator.pushNamed(context, '/profile');
-            },
-          ),
-          ListTile(
-            title: const Text('Change to Reader Mode!'),
-            onTap: () {
-              // Navigator.pushNamed(context, '/joinus');
-            },
-          ),
-          ListTile(
-            title: const Text('Logout!'),
-            onTap: () {
-              _logout();
-            },
-          ),
-        ],
-      ),
     );
   }
 

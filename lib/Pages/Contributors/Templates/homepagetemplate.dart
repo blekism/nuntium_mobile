@@ -395,19 +395,6 @@ class _HomePageTemplate extends State<HomePageTemplate> {
       ),
     );
   }
-
-  Widget _buildLoadingList() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.8,
-      child: ListView.builder(
-        itemCount: 5,
-        itemBuilder: (context, index) => const Padding(
-          padding: EdgeInsets.only(bottom: 16),
-          child: TaskCardTemplate(isLoading: true),
-        ),
-      ),
-    );
-  }
 }
 
 final List<Map<String, String>> pubSections = [

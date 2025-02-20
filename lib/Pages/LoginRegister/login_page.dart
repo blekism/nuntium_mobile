@@ -56,36 +56,6 @@ class _LoginPageState extends State<LoginPage> {
             await _authLog.signInWithCredential(credential);
         final User? user = userCredential.user;
 
-        if (user != null) {
-          final userDoc = await dbLog.collection('users').doc(user.uid).get();
-          if (userDoc.exists) {
-            print('existing account logging in');
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-            return user;
-          } else {
-            print('new account logging in. requiring onboarding');
-            await dbLog.collection('users').doc(user.uid).set({
-              'email': user.email,
-              'uid': user.uid,
-              'username': user.displayName,
-              'photoURL': user.photoURL,
-              'createdAt': FieldValue.serverTimestamp(),
-              'creation': user.metadata.creationTime,
-              'lastSignIn': user.metadata.lastSignInTime,
-              'role': 'reader',
-            });
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-            return user;
-          }
-        }
         if (mounted) {
           setState(() {
             _isLoading = false;

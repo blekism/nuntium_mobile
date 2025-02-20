@@ -10,7 +10,11 @@ import 'termlypostspage.dart';
 import 'readhistory.dart';
 
 class Homepage extends StatefulWidget {
-  const Homepage({super.key});
+  final VoidCallback? onLogout;
+  const Homepage({
+    super.key,
+    this.onLogout,
+  });
 
   @override
   State<Homepage> createState() => _HomepageState();
@@ -57,6 +61,7 @@ class _HomepageState extends State<Homepage> {
     try {
       await _auth.signOut();
       await _googleSignInLog.signOut();
+      widget.onLogout!();
 
       // Sign the user out of Firebase
       // After successful logout, navigate to the login screen:
@@ -141,41 +146,6 @@ class _HomepageState extends State<Homepage> {
           label: 'History',
         ),
       ],
-    );
-  }
-
-  Drawer _drawer(BuildContext context) {
-    return Drawer(
-      shadowColor: Colors.black,
-      child: ListView(
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue),
-            child: Text(
-              'Menu',
-              style: TextStyle(color: Colors.white, fontSize: 24),
-            ),
-          ),
-          ListTile(
-            title: const Text('Profile'),
-            onTap: () {
-              Navigator.pushNamed(context, '/profile');
-            },
-          ),
-          ListTile(
-            title: const Text('Contributor Hunt!'),
-            onTap: () {
-              Navigator.pushNamed(context, '/joinus');
-            },
-          ),
-          ListTile(
-            title: const Text('Logout!'),
-            onTap: () {
-              _logout();
-            },
-          ),
-        ],
-      ),
     );
   }
 

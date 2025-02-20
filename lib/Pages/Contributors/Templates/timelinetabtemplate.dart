@@ -25,6 +25,7 @@ class _TimelineTabState extends State<TimelineTab> {
         children: [
           GestureDetector(
             onTap: () {
+              print('Timeline tapped for task: ${widget.taskId}');
               Navigator.push(
                 context,
                 MaterialPageRoute(
