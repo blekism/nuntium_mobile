@@ -256,7 +256,6 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                     return ListView.builder(
                       itemCount: tasks.length,
                       itemBuilder: (context, index) {
-                        var task = tasks[index].data() as Map<String, dynamic>;
                         return Padding(
                           padding: const EdgeInsets.only(
                               left: 16.0, right: 16.0, bottom: 16),
@@ -266,7 +265,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                             taskType: tasks[index]['task_type'],
                             details: widget.details,
                             status: widget.status,
-                            assignedId: task['assignedId'],
+                            assignedId: tasks[index].id,
                             isLoading: false,
                           ),
                         );

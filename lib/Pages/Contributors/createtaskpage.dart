@@ -17,7 +17,7 @@ class CreateTaskPage extends StatefulWidget {
     required this.details,
     required this.title,
     required this.taskType,
-    required this.assignedId,
+    this.assignedId,
   });
 
   @override

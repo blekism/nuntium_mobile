@@ -257,7 +257,6 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
                                       details: task['details'],
                                       title: task['title'],
                                       taskType: task['task_type'],
-                                      assignedId: task['assignedTaskId'],
                                     ),
                                   ),
                                 );
