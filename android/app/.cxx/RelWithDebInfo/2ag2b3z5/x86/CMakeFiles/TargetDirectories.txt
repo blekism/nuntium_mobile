@@ -1,0 +1,2 @@
+C:/Users/user/OneDrive/Desktop/CAPSTONE_PROJECT/nuntium_mobile/android/app/.cxx/RelWithDebInfo/2ag2b3z5/x86/CMakeFiles/edit_cache.dir
+C:/Users/user/OneDrive/Desktop/CAPSTONE_PROJECT/nuntium_mobile/android/app/.cxx/RelWithDebInfo/2ag2b3z5/x86/CMakeFiles/rebuild_cache.dir
