@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'CardsTemplate/SeeMorePageTemplate.dart';
+import 'CardsTemplate/seemorepagetemplate.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TermlyPage extends StatefulWidget {
@@ -20,6 +20,7 @@ class _TermlyPageState extends State<TermlyPage> {
     return SeeMorePageTemplate(
       pageName: 'Archive',
       shownContentStream: archiveStream,
+      isTermly: true,
     );
   }
 }

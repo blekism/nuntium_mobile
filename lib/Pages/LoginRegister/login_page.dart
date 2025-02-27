@@ -22,6 +22,22 @@ class _LoginPageState extends State<LoginPage> {
       RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
   bool _isLoading = false;
 
+  Future<void> _handleSignInResult(User? user) async {
+    if (user != null && mounted) {
+      // Use Navigator.pushReplacement to replace the LoginPage
+      // with the AuthChecker.  This ensures that the AuthChecker
+      // is the widget that determines the next screen.
+      Navigator.pushReplacementNamed(context, '/initial');
+    } else {
+      // Handle sign-in failure (e.g., show an error message)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign-in failed.')),
+        );
+      }
+    }
+  }
+
   Future<User?> signInWithGoogle() async {
     if (mounted) {
       setState(() {
@@ -55,6 +71,7 @@ class _LoginPageState extends State<LoginPage> {
         final UserCredential userCredential =
             await _authLog.signInWithCredential(credential);
         final User? user = userCredential.user;
+        _handleSignInResult(user);
 
         if (mounted) {
           setState(() {
@@ -103,6 +120,7 @@ class _LoginPageState extends State<LoginPage> {
 
       final User? user = userCredential.user;
       if (user != null) {
+        _handleSignInResult(user);
         print("User debug UID: ${user.uid}");
         print("User debug Email: ${user.email}");
         print("User debug Display Name: ${user.displayName}");

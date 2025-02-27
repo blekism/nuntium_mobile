@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'normalpost.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nuntium_mobile/Pages/Homepage/CardsTemplate/termlypostcard.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SeeMorePageTemplate extends StatefulWidget {
   final String pageName;
   final Stream<QuerySnapshot> shownContentStream;
+  final bool? isTermly;
 
   const SeeMorePageTemplate({
     super.key,
     required this.pageName,
     required this.shownContentStream,
+    this.isTermly,
   });
 
   @override
@@ -20,6 +24,8 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
   List<Map<String, dynamic>> discoverPostData = [];
   String selectedSection = 'All';
   Map<String, Map<String, dynamic>> _referencedPosts = {};
+  List<Map<String, dynamic>> termlyContentData = [];
+  final PageController _pageController = PageController(viewportFraction: 0.9);
 
   Future<List<DocumentSnapshot>> _fetchReferencedPosts(
       List<DocumentReference> postRefs) async {
@@ -83,142 +89,188 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
 
   Expanded _mainContent() {
     return widget.pageName == 'Saved Posts' || widget.pageName == 'History'
-        ? Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: widget.shownContentStream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildLoadingList();
-                }
-                if (snapshot.hasError) {
-                  return const Center(
-                      child: Text('Error occurred while loading latest posts'));
-                }
-                if (!snapshot.hasData || snapshot.data == null) {
-                  return const Center(child: Text('No data found'));
-                }
+        ? _userSavedContent()
+        : widget.isTermly == true
+            ? _termlyBuild(_pageController)
+            : _discoverBuild();
+  }
 
-                var savedPosts = snapshot.data!.docs;
-                var postRefs = savedPosts
-                    .map((post) => post['postId'] as DocumentReference)
-                    .toList();
+  Expanded _termlyBuild(PageController pageController) {
+    return Expanded(
+      child: StreamBuilder<QuerySnapshot>(
+        stream: widget.shownContentStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return _buildLoadingList();
+          }
+          if (snapshot.hasError) {
+            return const Center(
+                child: Text('Error occurred while loading latest posts'));
+          }
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text('No data found'));
+          }
 
-                return FutureBuilder<List<DocumentSnapshot>>(
-                  future: _fetchReferencedPosts(postRefs),
-                  builder: (context, futureSnapshot) {
-                    if (futureSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return _buildLoadingList();
-                    }
-                    if (futureSnapshot.hasError) {
-                      return const Center(
-                          child: Text('Error loading referenced posts'));
-                    }
-                    if (!futureSnapshot.hasData) {
-                      return const Center(
-                          child: Text('No referenced posts found'));
-                    }
+          return PageView.builder(
+            controller: pageController,
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              termlyContentData =
+                  snapshot.data!.docs.map((DocumentSnapshot document) {
+                var data = document.data() as Map<String, dynamic>;
+                data['id'] = document.id; // Store the document ID
+                return data;
+              }).toList();
+              return Padding(
+                padding:
+                    const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16),
+                child: Termlypostcard(
+                  termlyCover: termlyContentData[index]['image'],
+                  title: termlyContentData[index]['title'],
+                  termlyType: termlyContentData[index]['section'],
+                  isLoading: false,
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 
-                    for (var doc in futureSnapshot.data!) {
-                      _referencedPosts[doc.id] =
-                          doc.data() as Map<String, dynamic>;
-                    }
+  Expanded _userSavedContent() {
+    return Expanded(
+      child: StreamBuilder<QuerySnapshot>(
+        stream: widget.shownContentStream,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return _buildLoadingList();
+          }
+          if (snapshot.hasError) {
+            return const Center(
+                child: Text('Error occurred while loading latest posts'));
+          }
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text('No data found'));
+          }
 
-                    // **Filtering posts before building UI**
-                    var filteredPosts = savedPosts.where((post) {
-                      var postRef = post['postId'] as DocumentReference;
-                      var referencedPost = _referencedPosts[postRef.id];
+          var savedPosts = snapshot.data!.docs;
+          var postRefs = savedPosts
+              .map((post) => post['postId'] as DocumentReference)
+              .toList();
 
-                      return referencedPost != null &&
-                          (selectedSection == "All" ||
-                              referencedPost['section'] == selectedSection);
-                    }).toList();
+          return FutureBuilder<List<DocumentSnapshot>>(
+            future: _fetchReferencedPosts(postRefs),
+            builder: (context, futureSnapshot) {
+              if (futureSnapshot.connectionState == ConnectionState.waiting) {
+                return _buildLoadingList();
+              }
+              if (futureSnapshot.hasError) {
+                return const Center(
+                    child: Text('Error loading referenced posts'));
+              }
+              if (!futureSnapshot.hasData) {
+                return const Center(child: Text('No referenced posts found'));
+              }
 
-                    if (filteredPosts.isEmpty) {
-                      return const Center(child: Text('No posts available'));
-                    }
+              for (var doc in futureSnapshot.data!) {
+                _referencedPosts[doc.id] = doc.data() as Map<String, dynamic>;
+              }
 
-                    return ListView.builder(
-                      itemCount: filteredPosts.length,
-                      itemBuilder: (context, index) {
-                        var postRef =
-                            filteredPosts[index]['postId'] as DocumentReference;
-                        var referencedPost = _referencedPosts[postRef.id];
+              // **Filtering posts before building UI**
+              var filteredPosts = savedPosts.where((post) {
+                var postRef = post['postId'] as DocumentReference;
+                var referencedPost = _referencedPosts[postRef.id];
 
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                              left: 16.0, right: 16.0, bottom: 16),
-                          child: NormalPostCard(
-                            imageAsset: referencedPost?['image'] ??
-                                'assets/images/nudasma.jpg',
-                            sectionType:
-                                referencedPost?['section'] ?? "unknown",
-                            articleTitle: referencedPost?['title'] ?? "unknown",
-                            datePosted: referencedPost?['time'] ?? "unknown",
-                            postID: postRef.id,
-                            isLoading: false,
-                          ),
-                        );
-                      },
-                    );
-                  },
+                return referencedPost != null &&
+                    (selectedSection == "All" ||
+                        referencedPost['section'] == selectedSection);
+              }).toList();
+
+              if (filteredPosts.isEmpty) {
+                return const Center(child: Text('No posts available'));
+              }
+
+              return ListView.builder(
+                itemCount: filteredPosts.length,
+                itemBuilder: (context, index) {
+                  var postRef =
+                      filteredPosts[index]['postId'] as DocumentReference;
+                  var referencedPost = _referencedPosts[postRef.id];
+
+                  return Padding(
+                    padding: const EdgeInsets.only(
+                        left: 16.0, right: 16.0, bottom: 16),
+                    child: NormalPostCard(
+                      imageAsset: referencedPost?['image'] ??
+                          'assets/images/nudasma.jpg',
+                      sectionType: referencedPost?['section'] ?? "unknown",
+                      articleTitle: referencedPost?['title'] ?? "unknown",
+                      datePosted: referencedPost?['time'] ?? "unknown",
+                      postID: postRef.id,
+                      isLoading: false,
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Expanded _discoverBuild() {
+    return Expanded(
+      child: StreamBuilder<QuerySnapshot>(
+          stream: widget.shownContentStream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return _buildLoadingList();
+            }
+            if (snapshot.hasError) {
+              return const Center(
+                  child: Text('Error occurred while loading latest posts'));
+            }
+            if (!snapshot.hasData || snapshot.data == null) {
+              return const Center(child: Text('No data found'));
+            }
+
+            discoverPostData =
+                snapshot.data!.docs.map((DocumentSnapshot document) {
+              var data = document.data() as Map<String, dynamic>;
+              data['id'] = document.id; // Store the document ID
+              return data;
+            }).toList();
+            print('data found: ${discoverPostData.length}');
+            List<Map<String, dynamic>> filteredPosts = discoverPostData;
+
+            if (selectedSection != "All") {
+              filteredPosts = discoverPostData
+                  .where((post) => post['section'] == selectedSection)
+                  .toList();
+            }
+
+            return ListView.builder(
+              itemCount: filteredPosts.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(
+                      left: 16.0, right: 16.0, bottom: 16),
+                  child: NormalPostCard(
+                    imageAsset: filteredPosts[index]['image'] ??
+                        'assets/images/nudasma.jpg',
+                    sectionType: filteredPosts[index]['section'] ?? "unknown",
+                    articleTitle: filteredPosts[index]['title'] ?? "unknown",
+                    datePosted: filteredPosts[index]['time'] ?? "unknown",
+                    postID: filteredPosts[index]['id'] ?? "0",
+                    isLoading: false,
+                  ),
                 );
               },
-            ),
-          )
-        : Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-                stream: widget.shownContentStream,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return _buildLoadingList();
-                  }
-                  if (snapshot.hasError) {
-                    return const Center(
-                        child:
-                            Text('Error occurred while loading latest posts'));
-                  }
-                  if (!snapshot.hasData || snapshot.data == null) {
-                    return const Center(child: Text('No data found'));
-                  }
-
-                  discoverPostData =
-                      snapshot.data!.docs.map((DocumentSnapshot document) {
-                    var data = document.data() as Map<String, dynamic>;
-                    data['id'] = document.id; // Store the document ID
-                    return data;
-                  }).toList();
-                  print('data found: ${discoverPostData.length}');
-                  List<Map<String, dynamic>> filteredPosts = discoverPostData;
-
-                  if (selectedSection != "All") {
-                    filteredPosts = discoverPostData
-                        .where((post) => post['section'] == selectedSection)
-                        .toList();
-                  }
-
-                  return ListView.builder(
-                    itemCount: filteredPosts.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                            left: 16.0, right: 16.0, bottom: 16),
-                        child: NormalPostCard(
-                          imageAsset: filteredPosts[index]['image'] ??
-                              'assets/images/nudasma.jpg',
-                          sectionType:
-                              filteredPosts[index]['section'] ?? "unknown",
-                          articleTitle:
-                              filteredPosts[index]['title'] ?? "unknown",
-                          datePosted: filteredPosts[index]['time'] ?? "unknown",
-                          postID: filteredPosts[index]['id'] ?? "0",
-                          isLoading: false,
-                        ),
-                      );
-                    },
-                  );
-                }),
-          );
+            );
+          }),
+    );
   }
 
   SizedBox _genreFilter() {

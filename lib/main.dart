@@ -21,12 +21,17 @@ import 'Pages/Eic/eichomepage.dart';
 import 'Pages/Eic/eicorgtasks.dart';
 import 'Pages/SectionEditor/Templates/assigntaskpage.dart';
 import 'Pages/SectionEditor/assigntasklogpage.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.debug,
   );
   runApp(const NuntiumApp());
 }
@@ -108,6 +113,7 @@ class _AuthCheckerState extends State<AuthChecker> {
           print('User document exists.');
           print('User name is ${displayName ?? 'No name'}');
           final role = userDoc['role'] as String?;
+          print('User role is $role');
           if (role != null) {
             setState(() {
               userRole = role;
@@ -132,10 +138,14 @@ class _AuthCheckerState extends State<AuthChecker> {
   }
 
   void _onSignOut() {
+    print('user role not cleared yet ${userRole}');
+
     setState(() {
       userRole = null;
       isLoading = true;
     });
+
+    print('user role cleared ${userRole}');
   }
 
   @override
@@ -144,6 +154,13 @@ class _AuthCheckerState extends State<AuthChecker> {
       stream: widget.authStream,
       builder: (context, snapshot) {
         print('Auth state changed at ${DateTime.now()}');
+        if (snapshot.data == null) {
+          return Homepage(
+            onLogout: _onSignOut,
+            userRole: null,
+          );
+        }
+
         if (ConnectionState.active == snapshot.connectionState &&
             snapshot.hasData) {
           if (snapshot.data!.emailVerified) {
@@ -160,16 +177,20 @@ class _AuthCheckerState extends State<AuthChecker> {
             }
 
             if (userRole == 'reader') {
+              print('user role is ${userRole}');
               return Homepage(
                 onLogout: _onSignOut,
+                userRole: userRole,
               );
             } else if (userRole == 'contributor') {
               return ContribHomePage(
                 onLogout: _onSignOut,
               );
             } else if (userRole == 'eic') {
+              print('user role is ${userRole}');
               return EicLandingPage(
                 onLogout: _onSignOut,
+                userRole: userRole,
               );
             } else if (userRole == 'section_editors') {
               return EditorsHomePage(
@@ -181,8 +202,15 @@ class _AuthCheckerState extends State<AuthChecker> {
               return const LoginPage();
             }
           } else {
+            print('no exit ya hehe');
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.pushNamed(context, '/verify');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => VerifyPage(
+                          onLogout: _onSignOut,
+                        )),
+              );
             });
           }
         } else {
