@@ -151,7 +151,10 @@ class _AuthCheckerState extends State<AuthChecker> {
       builder: (context, snapshot) {
         print('Auth state changed at ${DateTime.now()}');
         if (snapshot.data == null) {
-          return const LoginPage();
+          return Homepage(
+            onLogout: _onSignOut,
+            userRole: null,
+          );
         }
 
         if (ConnectionState.active == snapshot.connectionState &&

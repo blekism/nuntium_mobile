@@ -190,6 +190,7 @@ class _ContentPageState extends State<ContentPage> {
             .where('postID', isEqualTo: postid)
             .orderBy('time', descending: true)
             .snapshots(),
+        user: user,
       ),
     );
   }
@@ -209,6 +210,7 @@ class SlideContainer extends StatefulWidget {
   final Map<String, Future<String>> userFutures;
   final String currentComment;
   final double opacity;
+  final User? user;
 
   const SlideContainer({
     super.key,
@@ -225,6 +227,7 @@ class SlideContainer extends StatefulWidget {
     required this.userFutures,
     required this.currentComment,
     required this.opacity,
+    required this.user,
   });
 
   @override
@@ -300,17 +303,37 @@ class _SlideContainerState extends State<SlideContainer> {
                               const SizedBox(height: 13),
                               GestureDetector(
                                 onTap: () {
-                                  _showCommentSheet(
-                                      context,
-                                      widget.commentController,
-                                      widget.isTextNotEmpty,
-                                      widget.insertComment,
-                                      widget.postComments,
-                                      widget.postCommentData,
-                                      widget.getUserName,
-                                      widget.userCache,
-                                      widget.isCommentsLoading,
-                                      widget.userFutures);
+                                  widget.user != null
+                                      ? _showCommentSheet(
+                                          context,
+                                          widget.commentController,
+                                          widget.isTextNotEmpty,
+                                          widget.insertComment,
+                                          widget.postComments,
+                                          widget.postCommentData,
+                                          widget.getUserName,
+                                          widget.userCache,
+                                          widget.isCommentsLoading,
+                                          widget.userFutures)
+                                      : showDialog(
+                                          context: context,
+                                          builder: (context) {
+                                            return AlertDialog(
+                                              title:
+                                                  const Text('Login Required'),
+                                              content: const Text(
+                                                  'Please login to comment on this post.'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                  },
+                                                  child: const Text('OK'),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
                                 },
                                 child: _commentSection(
                                   context,

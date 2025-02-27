@@ -73,11 +73,21 @@ class _AppdrawerState extends State<Appdrawer> {
           widget.userRole != 'reader'
               ? _changeButtonPerRole(widget.pageOrigin!)
               : const SizedBox.shrink(),
-          ListTile(
-              title: const Text('Logout!'),
-              onTap: () {
-                _logout();
-              }),
+          widget.userRole != 'none'
+              ? ListTile(
+                  title: const Text('Logout!'),
+                  onTap: () {
+                    _logout();
+                  })
+              : ListTile(
+                  title: const Text('Log in Now!'),
+                  onTap: () {
+                    widget.onLogout();
+                    Navigator.pushNamed(
+                      context,
+                      '/login',
+                    );
+                  }),
         ],
       ),
     );
@@ -105,20 +115,23 @@ class _AppdrawerState extends State<Appdrawer> {
           },
         );
       case 'reader':
-        return ListTile(
-          title: const Text('Exit Reader Mode!'),
-          onTap: () {
-            print('page origin is ${widget.pageOrigin}');
+        return widget.userRole != "none"
+            ? ListTile(
+                title: const Text('Exit Reader Mode!'),
+                onTap: () {
+                  print('page origin is ${widget.pageOrigin}');
 
-            // First pop closes the drawer
-            Navigator.pop(context);
+                  // First pop closes the drawer
+                  Navigator.pop(context);
 
-            // Second pop navigates back to the previous page
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          },
-        );
+                  // Second pop navigates back to the previous page
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
+              )
+            : const SizedBox.shrink();
+
       default:
         return const SizedBox.shrink(); // Or a suitable default widget
     }

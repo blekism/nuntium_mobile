@@ -26,6 +26,7 @@ class _HomepageState extends State<Homepage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool userIsNew = false;
   int _currentIndex = 0;
+  late List<Widget> _screens;
 
   Future<void> _checkNewUser() async {
     print('user role is ${widget.userRole}');
@@ -53,25 +54,29 @@ class _HomepageState extends State<Homepage> {
   void initState() {
     super.initState();
     _checkNewUser();
-  }
 
-  final List<Widget> _screens = [
-    HomeScreen(
-      //change yung qquery na posts to most recent lang e.g. 10 most recent
-      featuredPost: FirebaseFirestore.instance
-          .collection('posts')
-          .where('isFeatured', isEqualTo: true)
-          .snapshots(),
-      normalPost: FirebaseFirestore.instance
-          .collection('posts')
-          .where('isNormal', isEqualTo: true)
-          .snapshots(),
-    ),
-    const DiscoverPage(),
-    const SavedPage(),
-    const TermlyPage(),
-    const HistoryPage(),
-  ];
+    _screens = [
+      HomeScreen(
+        //change yung qquery na posts to most recent lang e.g. 10 most recent
+        featuredPost: FirebaseFirestore.instance
+            .collection('posts')
+            .where('isFeatured', isEqualTo: true)
+            .snapshots(),
+        normalPost: FirebaseFirestore.instance
+            .collection('posts')
+            .where('isNormal', isEqualTo: true)
+            .snapshots(),
+      ),
+      const DiscoverPage(),
+      SavedPage(
+        userRole: widget.userRole ?? 'none',
+      ),
+      const TermlyPage(),
+      HistoryPage(
+        userRole: widget.userRole ?? 'none',
+      ),
+    ];
+  }
 
   @override //this is whats rendered when homepage is called
   Widget build(BuildContext context) {
@@ -79,7 +84,7 @@ class _HomepageState extends State<Homepage> {
       appBar: _appBar(context),
       drawer: Appdrawer(
         onLogout: widget.onLogout!,
-        userRole: widget.userRole!,
+        userRole: widget.userRole ?? 'none',
         pageOrigin: 'reader',
       ),
       body: IndexedStack(

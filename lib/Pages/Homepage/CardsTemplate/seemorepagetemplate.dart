@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'normalpost.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nuntium_mobile/Pages/Homepage/CardsTemplate/termlypostcard.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SeeMorePageTemplate extends StatefulWidget {
   final String pageName;
