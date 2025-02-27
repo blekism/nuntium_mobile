@@ -67,6 +67,7 @@ class _TimelineCardState extends State<TimelineCard> {
         children: [
           SizedBox(
             height: 100,
+            width: MediaQuery.of(context).size.width * .90,
             child: Card(
               elevation: 3,
               shape: RoundedRectangleBorder(

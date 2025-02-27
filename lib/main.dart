@@ -19,6 +19,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'Pages/Eic/eiclandingpage.dart';
 import 'Pages/Eic/eichomepage.dart';
 import 'Pages/Eic/eicorgtasks.dart';
+import 'Pages/SectionEditor/Templates/assigntaskpage.dart';
+import 'Pages/SectionEditor/assigntasklogpage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +59,8 @@ class NuntiumApp extends StatelessWidget {
         '/calendarpage': (context) => const CalendarPage(),
         '/eichomepage': (context) => const EicHomepage(),
         '/eicorgtasks': (context) => const OrganizationTasks(),
+        '/assigntaskpage': (context) => const AssignTaskPage(),
+        '/assigntasklogpage': (context) => const AssignTaskLogPage(),
         '/initial': (context) => AuthChecker(
               authStream: FirebaseAuth.instance.authStateChanges(),
             ),
