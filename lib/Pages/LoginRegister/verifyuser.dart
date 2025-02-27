@@ -3,7 +3,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 
 class VerifyPage extends StatefulWidget {
-  const VerifyPage({super.key});
+  final VoidCallback? onLogout;
+  const VerifyPage({
+    super.key,
+    this.onLogout,
+  });
 
   @override
   State<VerifyPage> createState() => _VerifyPageState();
@@ -76,9 +80,24 @@ class _VerifyPageState extends State<VerifyPage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _logout() async {
+    _timer?.cancel();
+    await FirebaseAuth.instance.signOut();
+
+    if (mounted) {
+      print('redirected upon logout');
+      widget.onLogout!();
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/initial',
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
+
   @override
   void dispose() {
-    _timer?.cancel(); // Cancel timer when page is closed
+    _timer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -134,6 +153,27 @@ class _VerifyPageState extends State<VerifyPage> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: _logout,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF020B40),
+                    elevation: 10,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Exit',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               const Text(
                 "Once verified, you will be redirected automatically.",

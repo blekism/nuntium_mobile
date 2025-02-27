@@ -4,7 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class HistoryPage extends StatefulWidget {
-  const HistoryPage({super.key});
+  final String? userRole;
+  const HistoryPage({
+    super.key,
+    this.userRole,
+  });
 
   @override
   State<HistoryPage> createState() => _HistoryPageState();
@@ -13,7 +17,9 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   String? _userId;
   final FirebaseAuth _readPostsAuth = FirebaseAuth.instance;
-  late Stream<QuerySnapshot> readPostsByUserStream;
+  Stream<QuerySnapshot> readPostsByUserStream =
+      const Stream<QuerySnapshot>.empty();
+  bool _isLoading = true;
 
   Future<void> _getUserId() async {
     try {
@@ -29,14 +35,21 @@ class _HistoryPageState extends State<HistoryPage> {
               .where('isRead', isEqualTo: true)
               .where('postId', isNotEqualTo: null)
               .snapshots();
+          _isLoading = false;
         });
       } else {
+        setState(() {
+          _isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('User not logged in')),
         );
       }
     } catch (e) {
       print('error getting user id ${e}');
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error fetching user data')),
       );
@@ -46,11 +59,19 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   void initState() {
     super.initState();
-    _getUserId();
+    if (widget.userRole != 'none') {
+      _getUserId();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: Text('Please log in to use this feature'),
+      );
+    }
+
     return SeeMorePageTemplate(
       pageName: 'History',
       shownContentStream: readPostsByUserStream,

@@ -264,7 +264,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                             taskTitle: widget.taskTitle,
                             taskType: tasks[index]['task_type'],
                             details: widget.details,
-                            status: widget.status,
+                            status: tasks[index]['status'],
                             assignedId: tasks[index].id,
                             isLoading: false,
                           ),

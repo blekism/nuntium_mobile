@@ -63,10 +63,14 @@ class _EicHomepageState extends State<EicHomepage> {
                   );
                 }
 
-                sectionsData = snapshot.data!.docs
-                    .map((DocumentSnapshot document) =>
-                        document.data() as Map<String, dynamic>)
-                    .toList();
+                sectionsData =
+                    snapshot.data!.docs.map((DocumentSnapshot document) {
+                  Map<String, dynamic> data =
+                      document.data() as Map<String, dynamic>;
+                  data['id'] =
+                      document.id; // Add the document ID to the data map
+                  return data;
+                }).toList();
 
                 return ListView.builder(
                   shrinkWrap: true,
@@ -82,6 +86,7 @@ class _EicHomepageState extends State<EicHomepage> {
                         sectionType: sectionsData[index]['sectionType']!,
                         totalMembers: sectionsData[index]['totalMembers']!,
                         totalTask: sectionsData[index]['totalTask']!,
+                        sectionID: sectionsData[index]['id']!,
                       ),
                     );
                   },

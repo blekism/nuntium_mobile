@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:nuntium_mobile/Pages/Contributors/Templates/homepagetemplate.dart';
 import 'package:nuntium_mobile/Pages/Eic/eichomepage.dart';
+import 'package:nuntium_mobile/Pages/appdrawer.dart';
 
 class EicLandingPage extends StatefulWidget {
   final VoidCallback? onLogout;
+  final String? userRole;
 
   const EicLandingPage({
     super.key,
     this.onLogout,
+    this.userRole,
   });
 
   @override
@@ -18,34 +19,37 @@ class EicLandingPage extends StatefulWidget {
 }
 
 class _EicLandingPage extends State<EicLandingPage> {
-  final GoogleSignIn _googleSignInLog = GoogleSignIn();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   int _currentIndex = 0;
+  bool canUsersRead = false;
 
-  Future<void> _logout() async {
+  Future<bool> _canUserRead() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
     try {
-      await _auth.signOut();
-      await _googleSignInLog.signOut();
-      widget.onLogout!();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
-      // Sign the user out of Firebase
-      // After successful logout, navigate to the login screen:
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/login',
-          (Route<dynamic> route) => false,
-        ); // Or your login route
-      }
+      return userDoc.get('canUserRead') ?? false;
     } catch (e) {
-      // Handle logout errors (e.g., show a SnackBar)
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error logging out: $e")),
-        );
-      }
+      print("Error fetching canUserRead: $e");
+      return false; // Return false in case of an error
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _canUserRead().then((value) {
+      setState(() {
+        canUsersRead = value;
+      });
+    });
   }
 
   final List<Widget> _screens = [
@@ -58,7 +62,12 @@ class _EicLandingPage extends State<EicLandingPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
-      drawer: AppDrawer(onLogout: _logout),
+      drawer: Appdrawer(
+        onLogout: widget.onLogout!,
+        canUsersRead: canUsersRead,
+        userRole: widget.userRole!,
+        pageOrigin: 'eiclanding',
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
@@ -122,47 +131,6 @@ class _EicLandingPage extends State<EicLandingPage> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class AppDrawer extends StatelessWidget {
-  final VoidCallback onLogout;
-
-  const AppDrawer({super.key, required this.onLogout});
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      // shadowColor: Colors.black,
-      child: ListView(
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Color(0xffD9D9D9)),
-            child: Text(
-              'Menu',
-              style: TextStyle(color: Colors.black, fontSize: 24),
-            ),
-          ),
-          ListTile(
-            title: const Text('Profile'),
-            onTap: () {
-              // Navigator.pushNamed(context, '/profile');
-            },
-          ),
-          ListTile(
-            title: const Text('Change to Reader Mode!'),
-            onTap: () {
-              // Navigator.pushNamed(context, '/joinus');
-            },
-          ),
-          ListTile(
-              title: const Text('Logout!'),
-              onTap: () {
-                onLogout();
-              }),
-        ],
-      ),
     );
   }
 }

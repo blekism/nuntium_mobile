@@ -4,7 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SavedPage extends StatefulWidget {
-  const SavedPage({super.key});
+  final String? userRole;
+  const SavedPage({
+    super.key,
+    this.userRole,
+  });
 
   @override
   State<SavedPage> createState() => _SavedPageState();
@@ -13,7 +17,8 @@ class SavedPage extends StatefulWidget {
 class _SavedPageState extends State<SavedPage> {
   String? _userId;
   final FirebaseAuth _savedPostsAuth = FirebaseAuth.instance;
-  late Stream<QuerySnapshot> savedPostsByUserStream;
+  Stream<QuerySnapshot> savedPostsByUserStream =
+      const Stream<QuerySnapshot>.empty();
   bool _isLoading = true;
 
   Future<void> _getUserId() async {
@@ -53,13 +58,17 @@ class _SavedPageState extends State<SavedPage> {
   @override
   void initState() {
     super.initState();
-    _getUserId();
+    if (widget.userRole != 'none') {
+      _getUserId();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: Text('Please log in to use this feature'),
+      );
     }
 
     return SeeMorePageTemplate(

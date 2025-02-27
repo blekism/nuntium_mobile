@@ -3,6 +3,10 @@ import '../Contributors/Templates/timelinetabtemplate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:multi_image_picker_view/multi_image_picker_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'dart:io';
+import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 
 class CreateTaskPage extends StatefulWidget {
   final String? taskId;
@@ -10,6 +14,7 @@ class CreateTaskPage extends StatefulWidget {
   final String? title;
   final String? taskType;
   final String? assignedId;
+  final String? clickOrigin;
 
   const CreateTaskPage({
     super.key,
@@ -18,6 +23,7 @@ class CreateTaskPage extends StatefulWidget {
     required this.title,
     required this.taskType,
     this.assignedId,
+    this.clickOrigin,
   });
 
   @override
@@ -29,9 +35,11 @@ class _CreateTaskPage extends State<CreateTaskPage> {
   final TextEditingController _taskTitleController = TextEditingController();
   final TextEditingController _taskDetailsController = TextEditingController();
   final TextEditingController _taskContentController = TextEditingController();
+  bool showImageIsLoading = true;
+  List<String> retrievedImages = [];
 
   final controller = MultiImagePickerController(
-    maxImages: 100,
+    maxImages: 200,
     picker: (allowMultiple) async {
       final pickedFiles = await ImagePicker().pickMultiImage(
         maxWidth: 1024,
@@ -54,6 +62,88 @@ class _CreateTaskPage extends State<CreateTaskPage> {
     },
   );
 
+  Future<void> _uploadImages() async {
+    List<String> imageUrls = [];
+
+    for (final fileWrapper in controller.images) {
+      if (fileWrapper.hasPath) {
+        File file = File(fileWrapper.path!);
+
+        String fileExtension = file.path.split('.').last;
+        String fileName =
+            "${DateTime.now().millisecondsSinceEpoch}.$fileExtension";
+
+        Reference storageRef =
+            FirebaseStorage.instance.ref().child('images/$fileName');
+
+        UploadTask uploadTask = storageRef.putFile(file);
+
+        try {
+          // 1. Listen for upload progress (Stream)
+          uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+            double progress = snapshot.bytesTransferred / snapshot.totalBytes;
+            print("Upload Progress: $progress");
+            // Update your UI with the progress (e.g., a progress bar)
+          }, onError: (error) {
+            print("Error listening to snapshot events: $error");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Error monitoring upload: $error")),
+            );
+          });
+
+          // 2. Await the upload to complete (Future)
+          TaskSnapshot snapshot =
+              await uploadTask; // Or await uploadTask.whenComplete;
+
+          // 3. Get the download URL (after upload is complete)
+          String downloadURL = await snapshot.ref.getDownloadURL();
+          imageUrls.add(downloadURL);
+        } catch (e) {
+          print("Error uploading image: $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Image upload failed: $e")),
+          );
+          return; // Or continue; if you want to try other images
+        }
+      }
+    }
+
+    print("Image URLs: $imageUrls");
+
+    await FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(widget.taskId)
+        .collection('assigned_tasks')
+        .doc(widget.assignedId)
+        .update({
+      'submitted_at': FieldValue.serverTimestamp(),
+      'images': FieldValue.arrayUnion(imageUrls),
+    });
+    print("Images uploaded successfully!");
+  }
+
+  Future<void> _retrieveImages() async {
+    print('click origin is ${widget.clickOrigin}');
+    try {
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('assigned_tasks')
+          .doc(widget.assignedId)
+          .get();
+
+      if (snapshot.exists) {
+        List<dynamic> images = snapshot['images'];
+        setState(() {
+          retrievedImages = images.cast<String>();
+          showImageIsLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Error retrieving images: $e");
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -72,40 +162,34 @@ class _CreateTaskPage extends State<CreateTaskPage> {
       var assignedTasksRef = FirebaseFirestore.instance
           .collection('tasks')
           .doc(taskId)
-          .collection('assigned_tasks');
+          .collection('assigned_tasks')
+          .doc(widget.assignedId);
 
-      // Get all previous submissions by the user for the specific taskId
-      var querySnapshot = await assignedTasksRef
-          .where('userId',
-              isEqualTo:
-                  userId) // Assuming userId is stored with each submission
-          .get();
+      var timelineRef = FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(taskId)
+          .collection('timeline');
 
-      // Check if the user has already submitted content for this task
-      bool isRevised = querySnapshot.docs.isNotEmpty;
+      var assignedTaskSnapshot = await assignedTasksRef.get();
+      bool isRevised =
+          assignedTaskSnapshot.exists; //uf existing, its a revision
 
-      // Add content to the assigned_tasks subcollection (creating a new document)
-      await assignedTasksRef.doc(widget.assignedId).update({
+      var timelineSnapshot = await timelineRef.get();
+
+      int revisionNumber = timelineSnapshot.docs.length;
+
+      await assignedTasksRef.update({
         'content': content,
-        'userId': userId, // Store userId for reference
         'submitted_at': FieldValue.serverTimestamp(),
       });
 
       // Add to the timeline_history subcollection
-      await FirebaseFirestore.instance
-          .collection('tasks')
-          .doc(taskId)
-          .collection('timeline')
-          .add({
+      await timelineRef.add({
         'comment': isRevised ? 'No comments yet' : 'Content submitted',
         'content': content,
         'date': FieldValue.serverTimestamp(),
-        'revision': isRevised
-            ? 'Revision ${querySnapshot.docs.length + 1}'
-            : 'Revision 1',
-        'timelinestatus': isRevised
-            ? 'revised'
-            : 'submitted', // Set status to revised if second submission
+        'revision': 'Revision ${revisionNumber + 1}',
+        'timelinestatus': isRevised ? 'revised' : 'submitted',
       });
 
       print("Content and timeline history logged successfully!");
@@ -132,6 +216,33 @@ class _CreateTaskPage extends State<CreateTaskPage> {
       }
     } catch (e) {
       print("Error fetching content: $e");
+    }
+  }
+
+  Future<void> deleteImage(int index) async {
+    try {
+      String imageUrl = retrievedImages[index];
+
+      Reference storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
+
+      await storageRef.delete();
+      print('Image deleted from storage');
+
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('assigned_tasks')
+          .doc(widget.assignedId)
+          .update({
+        'images': FieldValue.arrayRemove([retrievedImages[index]]),
+      });
+      print('image deleted successfully');
+
+      setState(() {
+        retrievedImages.removeAt(index);
+      });
+    } catch (e) {
+      print("Error deleting image: $e");
     }
   }
 
@@ -388,9 +499,10 @@ class _CreateTaskPage extends State<CreateTaskPage> {
   }
 
   Widget _buildImageInput() {
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const SizedBox(height: 10),
         ElevatedButton(
           onPressed: () {
             print('image selected');
@@ -403,10 +515,35 @@ class _CreateTaskPage extends State<CreateTaskPage> {
             ),
             elevation: 10, // Add elevation for shadow
             padding: const EdgeInsets.symmetric(
-                vertical: 15.0, horizontal: 30.0), // Padding for the button
+                vertical: 15.0, horizontal: 20.0), // Padding for the button
           ),
           child: const Text(
             'Add Photos',
+            style: TextStyle(
+              color: Colors.white, // White text color
+              fontWeight: FontWeight.w700, // Bold text
+            ),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            print('images shown');
+            await _retrieveImages();
+            if (mounted) {
+              _showImageSection(context, showImageIsLoading);
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF020B40),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10), // Rounded corners
+            ),
+            elevation: 10, // Add elevation for shadow
+            padding: const EdgeInsets.symmetric(
+                vertical: 15.0, horizontal: 20.0), // Padding for the button
+          ),
+          child: const Text(
+            'Show Images',
             style: TextStyle(
               color: Colors.white, // White text color
               fontWeight: FontWeight.w700, // Bold text
@@ -488,41 +625,30 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                           ),
                         ),
                       ),
-                      isUploading
-                          ? const CircularProgressIndicator()
-                          : ElevatedButton(
-                              onPressed: () async {
-                                setState(() {
-                                  isUploading = true;
-                                });
+                      ElevatedButton(
+                        onPressed: () async {
+                          _uploadImages();
 
-                                await Future.delayed(const Duration(
-                                    seconds: 3)); // Simulate upload process
-
-                                setState(() {
-                                  isUploading = false;
-                                });
-
-                                print('uploading images');
-                                // Call your Firebase Storage upload function here
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF020B40),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                elevation: 10,
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 15.0, horizontal: 30.0),
-                              ),
-                              child: const Text(
-                                'Upload To Storage',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
+                          print('uploading images');
+                          // Call your Firebase Storage upload function here
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF020B40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 10,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 15.0, horizontal: 30.0),
+                        ),
+                        child: const Text(
+                          'Upload To Storage',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -530,5 +656,138 @@ class _CreateTaskPage extends State<CreateTaskPage> {
             ],
           );
         });
+  }
+
+  void _showImageSection(BuildContext context, bool isLoading) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
+        ),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Stack(
+              children: [
+                FractionallySizedBox(
+                  heightFactor: 0.90,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: Column(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 10),
+                          width: 50,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        Expanded(
+                          child: isLoading
+                              ? const Center(
+                                  child: CircularProgressIndicator(),
+                                )
+                              : retrievedImages.isEmpty
+                                  ? const Center(
+                                      child: Text('No images found'),
+                                    )
+                                  : GridView.builder(
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 3, // 3 columns
+                                        crossAxisSpacing:
+                                            10, // Horizontal spacing
+                                        mainAxisSpacing: 10, // Vertical spacing
+                                        childAspectRatio:
+                                            1, // Square aspect ratio
+                                      ),
+                                      itemCount: retrievedImages.length,
+                                      itemBuilder: (context, index) {
+                                        return Stack(
+                                          children: [
+                                            GestureDetector(
+                                              onTap: () => _openFullScreen(
+                                                  context, index),
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                        8), // Rounded corners
+                                                child: Image.network(
+                                                  retrievedImages[index],
+                                                  fit: BoxFit
+                                                      .cover, // Cover the square area
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned(
+                                              top: 5,
+                                              right: 5,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black.withOpacity(
+                                                      0.5), // Semi-transparent bg
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: IconButton(
+                                                  icon: const Icon(
+                                                    Icons.delete_rounded,
+                                                    color: Colors.white,
+                                                    size:
+                                                        20, // Adjust icon size
+                                                  ),
+                                                  onPressed: () async {
+                                                    await deleteImage(index);
+                                                    setModalState(() {});
+                                                    // Handle delete functionality
+                                                    print(
+                                                        'Photo at index $index deleted');
+                                                  },
+                                                ),
+                                              ),
+                                            )
+                                          ],
+                                        );
+                                      },
+                                    ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _openFullScreen(BuildContext context, int index) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          body: PhotoViewGallery.builder(
+            itemCount: retrievedImages.length,
+            builder: (context, pageIndex) => PhotoViewGalleryPageOptions(
+              imageProvider: NetworkImage(retrievedImages[pageIndex]),
+              minScale: PhotoViewComputedScale.contained,
+              maxScale: PhotoViewComputedScale.covered * 2,
+            ),
+            scrollPhysics: const BouncingScrollPhysics(),
+            backgroundDecoration: const BoxDecoration(color: Colors.black),
+            pageController: PageController(initialPage: index),
+          ),
+        ),
+      ),
+    );
   }
 }
