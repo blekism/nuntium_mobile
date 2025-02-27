@@ -35,28 +35,18 @@ class _RegisterPageState extends State<RegisterPage> {
 
       if (user != null) {
         await user.updateDisplayName(username);
-        final DocumentSnapshot doc =
-            await db.collection('users').doc(user.uid).get();
-        if (!doc.exists) {
-          await db.collection('users').doc(user.uid).set({
-            'email': user.email,
-            'password': password,
-            'username': username,
-            'branch': _branch.text,
-            'uid': user.uid,
-            'createdAt': FieldValue.serverTimestamp(),
-            'creation': user.metadata.creationTime,
-            'lastSignIn': user.metadata.lastSignInTime,
-            'role': 'reader',
-          });
-        } else {
-          print('User already exists in Firestore');
-          return null;
-        }
-
         try {
           await user.sendEmailVerification();
           print('Verification email sent to ${user.email}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  "Email verification sent to your email. Please verify your email to continue.",
+                ),
+              ),
+            );
+          }
         } catch (e) {
           print("Error sending verification email: $e");
           // Handle the error, e.g., show a SnackBar to the user.

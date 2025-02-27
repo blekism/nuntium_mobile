@@ -284,53 +284,55 @@ class _SlideContainerState extends State<SlideContainer> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    Flexible(
-                      child: SingleChildScrollView(
+                    Expanded(
+                      child: ListView(
                         controller: scrollController,
                         padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _textContent(widget.postdata?['content']),
-                            const SizedBox(height: 15),
-                            _userActions(context),
-                            const SizedBox(height: 15),
-                            _divider(context),
-                            const SizedBox(height: 13),
-                            GestureDetector(
-                              onTap: () {
-                                _showCommentSheet(
-                                    context,
-                                    widget.commentController,
-                                    widget.isTextNotEmpty,
-                                    widget.insertComment,
-                                    widget.postComments,
-                                    widget.postCommentData,
-                                    widget.getUserName,
-                                    widget.userCache,
-                                    widget.isCommentsLoading,
-                                    widget.userFutures);
-                              },
-                              child: _commentSection(
-                                context,
-                                widget.currentComment,
-                                widget.opacity,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _textContent(widget.postdata?['content']),
+                              const SizedBox(height: 15),
+                              _userActions(context),
+                              const SizedBox(height: 15),
+                              _divider(context),
+                              const SizedBox(height: 13),
+                              GestureDetector(
+                                onTap: () {
+                                  _showCommentSheet(
+                                      context,
+                                      widget.commentController,
+                                      widget.isTextNotEmpty,
+                                      widget.insertComment,
+                                      widget.postComments,
+                                      widget.postCommentData,
+                                      widget.getUserName,
+                                      widget.userCache,
+                                      widget.isCommentsLoading,
+                                      widget.userFutures);
+                                },
+                                child: _commentSection(
+                                  context,
+                                  widget.currentComment,
+                                  widget.opacity,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 13),
-                            _divider(context),
-                            const SizedBox(height: 15),
-                            const Text(
-                              'Related Articles',
-                              style: TextStyle(
-                                color: Color(0XFF020B40),
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
+                              const SizedBox(height: 13),
+                              _divider(context),
+                              const SizedBox(height: 15),
+                              const Text(
+                                'Related Articles',
+                                style: TextStyle(
+                                  color: Color(0XFF020B40),
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                            // _relatedContent()
-                          ],
-                        ),
+                              // _relatedContent()
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],

@@ -6,7 +6,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 
 class OrganizationTasks extends StatefulWidget {
-  const OrganizationTasks({super.key});
+  final String? sectionID;
+  final String? sectionName;
+
+  const OrganizationTasks({
+    super.key,
+    this.sectionID,
+    this.sectionName,
+  });
 
   @override
   State<OrganizationTasks> createState() => _OrganizationTasksState();
@@ -59,9 +66,12 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
     if (!hasMoreTasks || isLoadingMore) return;
     setState(() => isLoadingMore = true);
 
+    print('section id is ${widget.sectionID}');
+
     Query query = FirebaseFirestore.instance
         .collection('tasks')
-        .orderBy('deadline')
+        .where('section', isEqualTo: widget.sectionID)
+        .orderBy('deadline', descending: true)
         .limit(batchSize);
 
     if (lastDocument != null) {
@@ -232,9 +242,8 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
                   padding: const EdgeInsets.all(6.0),
                   child: TaskCardTemplate(
                     taskTitle: task['title'],
-                    status: task['status'],
                     taskid: task['id'],
-                    taskType: task['section'],
+                    taskType: widget.sectionName,
                     details: task['details'],
                     isLoading: false,
                     pageType: "eb",

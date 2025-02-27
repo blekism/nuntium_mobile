@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'CardsTemplate/featuredcard.dart';
 import 'CardsTemplate/normalpost.dart';
@@ -8,12 +7,15 @@ import 'discoverpage.dart';
 import 'savedpostspage.dart';
 import 'termlypostspage.dart';
 import 'readhistory.dart';
+import 'package:nuntium_mobile/Pages/appdrawer.dart';
 
 class Homepage extends StatefulWidget {
   final VoidCallback? onLogout;
+  final String? userRole;
   const Homepage({
     super.key,
     this.onLogout,
+    this.userRole,
   });
 
   @override
@@ -21,15 +23,12 @@ class Homepage extends StatefulWidget {
 }
 
 class _HomepageState extends State<Homepage> {
-  final GoogleSignIn _googleSignInLog = GoogleSignIn();
   final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  // Stream for featured posts
-
   bool userIsNew = false;
   int _currentIndex = 0;
 
   Future<void> _checkNewUser() async {
+    print('user role is ${widget.userRole}');
     User? user = _auth.currentUser;
     if (user != null) {
       final isNewUser =
@@ -56,32 +55,6 @@ class _HomepageState extends State<Homepage> {
     _checkNewUser();
   }
 
-  Future<void> _logout() async {
-    print("Logout function called");
-    try {
-      await _auth.signOut();
-      await _googleSignInLog.signOut();
-      widget.onLogout!();
-
-      // Sign the user out of Firebase
-      // After successful logout, navigate to the login screen:
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/login',
-          (Route<dynamic> route) => false,
-        ); // Or your login route
-      }
-    } catch (e) {
-      // Handle logout errors (e.g., show a SnackBar)
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error logging out: $e")),
-        );
-      }
-    }
-  }
-
   final List<Widget> _screens = [
     HomeScreen(
       //change yung qquery na posts to most recent lang e.g. 10 most recent
@@ -104,7 +77,11 @@ class _HomepageState extends State<Homepage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
-      drawer: AppDrawer(onLogout: _logout),
+      drawer: Appdrawer(
+        onLogout: widget.onLogout!,
+        userRole: widget.userRole!,
+        pageOrigin: 'reader',
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
@@ -394,47 +371,6 @@ class _HomeScreenState extends State<HomeScreen> {
           // userIsNew
           //     ? const Text('Welcome New user!')
           //     : const Text('Welcome Back!'),
-        ],
-      ),
-    );
-  }
-}
-
-class AppDrawer extends StatelessWidget {
-  final VoidCallback onLogout;
-  const AppDrawer({super.key, required this.onLogout});
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      // shadowColor: Colors.black,
-      child: ListView(
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue),
-            child: Text(
-              'Menu',
-              style: TextStyle(color: Colors.white, fontSize: 24),
-            ),
-          ),
-          ListTile(
-            title: const Text('Profile'),
-            onTap: () {
-              Navigator.pushNamed(context, '/profile');
-            },
-          ),
-          ListTile(
-            title: const Text('Contributor Hunt!'),
-            onTap: () {
-              Navigator.pushNamed(context, '/joinus');
-            },
-          ),
-          ListTile(
-            title: const Text('Logout!'),
-            onTap: () {
-              onLogout();
-            },
-          ),
         ],
       ),
     );
