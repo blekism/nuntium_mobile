@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nuntium_mobile/Pages/Contributors/Templates/childtaskcardtemplate.dart';
 
 class TaskCardTemplate extends StatefulWidget {
-  final String? taskPercent;
   final String? taskTitle;
   final String? status;
   final String? taskid;
@@ -12,11 +11,12 @@ class TaskCardTemplate extends StatefulWidget {
   final String? details;
   final bool isLoading;
   final String? assignedId;
-  final String? pageType;
+  final String? deadline;
+  final String? isParent;
+  final String? priority;
 
   const TaskCardTemplate({
     super.key,
-    this.taskPercent,
     this.taskTitle,
     this.status,
     this.taskid,
@@ -24,7 +24,9 @@ class TaskCardTemplate extends StatefulWidget {
     this.details,
     required this.isLoading,
     this.assignedId,
-    this.pageType,
+    this.deadline,
+    this.isParent,
+    this.priority,
   });
 
   @override
@@ -32,48 +34,34 @@ class TaskCardTemplate extends StatefulWidget {
 }
 
 class _TaskCardTemplate extends State<TaskCardTemplate> {
-  Future<List<Map<String, dynamic>>> fetchTasksById(String taskId) async {
-    try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('tasks') // Change collection name if needed
-          .doc(widget.taskid)
-          .collection('assigned_tasks')
-          .get();
-
-      return querySnapshot.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList();
-    } catch (e) {
-      print("Error fetching tasks: $e");
-      return [];
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        widget.pageType == 'eb'
-            ? _showModal(context)
-            : Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => CreateTaskPage(
-                          taskId: widget.taskid,
-                          details: widget.details,
-                          title: widget.taskTitle,
-                          taskType: widget.taskType,
-                          assignedId: widget.assignedId,
-                        )),
-              );
+        _showModal(context);
       },
       child: Container(
         width: MediaQuery.of(context).size.width * .90,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
-          color: widget.status == "assigned"
-              ? const Color(0xA6E4BD3D)
-              : const Color(0xffB8CFED),
+          border: Border.all(
+            color: switch (widget.status) {
+              'created' => const Color(0xFF505050),
+              'waiting' => const Color(0xFF2A367C),
+              'started' => const Color(0xFFD4AF37),
+              'in_progress' => const Color(0xFFD4AF37),
+              'ready_post' => const Color(0xFF6A9C64),
+              _ => const Color(0xFFB8CFED), // Default color
+            },
+          ),
+          color: switch (widget.status) {
+            'created' => const Color(0xFFE4E4E4),
+            'waiting' => const Color(0xFFB8CFED),
+            'started' => const Color(0x66D4AF37),
+            'in_progress' => const Color(0x66D4AF37),
+            'ready_post' => const Color(0xFFBAD8B6),
+            _ => const Color(0xFFB8CFED), // Default color
+          },
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -96,23 +84,27 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: MediaQuery.of(context).size.width * .10,
-              height: 60,
-              decoration: BoxDecoration(
-                color: const Color(0xff020B40),
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Center(
-                child: Text(
-                  widget.taskPercent ?? '0%', // Default to '0%' if null
-                  style: const TextStyle(
+            ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: Container(
+                width: MediaQuery.of(context).size.width * .10,
+                height: MediaQuery.of(context).size.height * .05,
+                color: switch (widget.status) {
+                  'created' => const Color(0xFF505050),
+                  'waiting' => const Color(0xFF2A367C),
+                  'started' => const Color(0xFFD4AF37),
+                  'in_progress' => const Color(0xFFD4AF37),
+                  'ready_post' => const Color(0xFF6A9C64),
+                  _ => const Color(0xFFB8CFED), // Default color
+                },
+                child: const Center(
+                  child: Icon(
+                    Icons.newspaper,
                     color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                    size: 30,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -125,16 +117,93 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                   widget.taskTitle ?? 'Task Title', // Default text if null
                   style: const TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const Text(
+                  '0/10 tasks started', // Default text if null
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
                 Text(
-                  widget.taskType ?? 'Task Type', // Default text if null
+                  widget.deadline ?? 'Task deadline', // Default text if null
                   style: const TextStyle(
                     color: Colors.black,
                     fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: MediaQuery.of(context).size.width * .25,
+                      decoration: ShapeDecoration(
+                        color: const Color(0XFF020B40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          widget.isParent ?? 'Parent Task',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      width: MediaQuery.of(context).size.width * .25,
+                      decoration: ShapeDecoration(
+                        color: const Color(0XFFDA6136),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          widget.status ?? 'Waiting',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: MediaQuery.of(context).size.width * .25,
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFA31D1D),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Text(
+                      widget.priority ?? 'High Priority',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -259,7 +328,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                         return Padding(
                           padding: const EdgeInsets.only(
                               left: 16.0, right: 16.0, bottom: 16),
-                          child: TaskCardTemplate(
+                          child: ChildTaskCardTemplate(
                             taskid: widget.taskid,
                             taskTitle: widget.taskTitle,
                             taskType: tasks[index]['task_type'],
@@ -267,6 +336,8 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                             status: tasks[index]['status'],
                             assignedId: tasks[index].id,
                             isLoading: false,
+                            isParent: tasks[index]['isParent'],
+                            // deadline: tasks[index]['deadline'],
                           ),
                         );
                       },

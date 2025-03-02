@@ -246,7 +246,9 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
                     taskType: widget.sectionName,
                     details: task['details'],
                     isLoading: false,
-                    pageType: "eb",
+                    // deadline: task['deadline'],
+                    status: task['status'],
+                    isParent: task['isParent'],
                   ),
                 );
 
@@ -367,8 +369,11 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
 
 final List<Map<String, String>> orgTasks = [
   {"section": "all"},
-  {"section": "approval"},
-  {"section": "ongoing"},
-  {"section": "completed"},
-  {"section": "review"},
+  {"section": "created"},
+  {"section": "waiting"},
+  {"section": "started"},
+  {"section": "in progress"},
+  {"section": "submitted"},
+  {"section": "for posting"},
+  {"section": "for assigning"},
 ];

@@ -24,12 +24,8 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleSignInResult(User? user) async {
     if (user != null && mounted) {
-      // Use Navigator.pushReplacement to replace the LoginPage
-      // with the AuthChecker.  This ensures that the AuthChecker
-      // is the widget that determines the next screen.
       Navigator.pushReplacementNamed(context, '/initial');
     } else {
-      // Handle sign-in failure (e.g., show an error message)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Sign-in failed.')),

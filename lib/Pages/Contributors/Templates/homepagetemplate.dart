@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Contributors/Templates/taskcardtemplate.dart';
-import 'package:nuntium_mobile/Pages/Contributors/assignedtaskpage.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
