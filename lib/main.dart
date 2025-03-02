@@ -21,6 +21,7 @@ import 'Pages/Eic/eichomepage.dart';
 import 'Pages/Eic/eicorgtasks.dart';
 import 'Pages/SectionEditor/Templates/assigntaskpage.dart';
 import 'Pages/SectionEditor/assigntasklogpage.dart';
+import 'Pages/SectionWriter/swhomepage.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 
 void main() async {
@@ -66,6 +67,7 @@ class NuntiumApp extends StatelessWidget {
         '/eicorgtasks': (context) => const OrganizationTasks(),
         '/assigntaskpage': (context) => const AssignTaskPage(),
         '/assigntasklogpage': (context) => const AssignTaskLogPage(),
+        '/swhomepage': (context) => const SectionWriterHomePage(),
         '/initial': (context) => AuthChecker(
               authStream: FirebaseAuth.instance.authStateChanges(),
             ),
@@ -176,30 +178,35 @@ class _AuthCheckerState extends State<AuthChecker> {
               return const Center(child: CircularProgressIndicator());
             }
 
-            if (userRole == 'reader') {
-              print('user role is ${userRole}');
-              return Homepage(
-                onLogout: _onSignOut,
-                userRole: userRole,
-              );
-            } else if (userRole == 'contributor') {
-              return ContribHomePage(
-                onLogout: _onSignOut,
-              );
-            } else if (userRole == 'eic') {
-              print('user role is ${userRole}');
-              return EicLandingPage(
-                onLogout: _onSignOut,
-                userRole: userRole,
-              );
-            } else if (userRole == 'section_editors') {
-              return EditorsHomePage(
-                onLogout: _onSignOut,
-              );
-            } else {
-              print(
-                  'early exit sa login due to future error at ${DateTime.now()}');
-              return const LoginPage();
+            switch (userRole) {
+              case 'reader':
+                print('user role is ${userRole}');
+                return Homepage(
+                  onLogout: _onSignOut,
+                  userRole: userRole,
+                );
+              case 'contributor':
+                return ContribHomePage(
+                  onLogout: _onSignOut,
+                );
+              case 'section_writer':
+                return SectionWriterHomePage(
+                  onLogout: _onSignOut,
+                );
+              case 'eic':
+                print('user role is ${userRole}');
+                return EicLandingPage(
+                  onLogout: _onSignOut,
+                  userRole: userRole,
+                );
+              case 'section_editors':
+                return EditorsHomePage(
+                  onLogout: _onSignOut,
+                );
+              default:
+                print(
+                    'early exit sa login due to future error at ${DateTime.now()}');
+                return const LoginPage();
             }
           } else {
             print('no exit ya hehe');
