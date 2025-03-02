@@ -92,8 +92,10 @@ class _AssignTaskPage extends State<AssignTaskPage> {
 
   Future<List<Map<String, String>>> getTasksTitle() async {
     try {
-      QuerySnapshot querySnapshot =
-          await FirebaseFirestore.instance.collection('tasks').get();
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('tasks')
+          .where('section', isEqualTo: widget.section)
+          .get();
 
       List<Map<String, String>> fetchedTasks = querySnapshot.docs.map((doc) {
         return {
@@ -291,207 +293,224 @@ class _AssignTaskPage extends State<AssignTaskPage> {
         ),
       ),
       backgroundColor: Colors.white,
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(25),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-                color: const Color(0xffF5F5F5),
-              ),
-              child: Form(
-                key: _formKey,
-                child: Padding(
-                  padding: const EdgeInsets.all(15),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Align(
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Assign Task ',
-                          style: TextStyle(
-                            fontSize: 20,
-                            color: Colors.black,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
+      body: FutureBuilder(
+          future: Future.wait([_usersFuture, _tasksFuture]),
+          builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text("Error: ${snapshot.error}"));
+            } else {
+              return Center(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(25),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(15),
+                        color: const Color(0xffF5F5F5),
                       ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Task Title',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      //gawing droppydown
-                      FutureBuilder<List<Map<String, String>>>(
-                        future: _tasksFuture, // Call getUsers() and wait for it
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const CircularProgressIndicator();
-                          }
-                          if (snapshot.hasError) {
-                            return Text("Error: ${snapshot.error}");
-                          }
-                          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                            return const Text("No tasks found.");
-                          }
-                          return DropdownButtonFormField<String>(
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              filled: true,
-                              fillColor: Color(0xFFF5F5F5),
-                              labelText: "Task",
-                              labelStyle: TextStyle(color: Colors.black),
-                            ),
-                            items: snapshot.data!.map((task) {
-                              return DropdownMenuItem(
-                                value: task['taskId'],
-                                child: Text(task['title']!),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              selectedTaskTitle = value;
-                            },
-                            validator: (value) =>
-                                value == null ? 'Please select a task' : null,
-                          );
-                        },
-                      ),
-                      // const SizedBox(height: 10),
-                      // const Text(
-                      //   'Task Details',
-                      //   style: TextStyle(
-                      //     color: Colors.black,
-                      //     fontSize: 18,
-                      //     fontWeight: FontWeight.w800,
-                      //   ),
-                      // ),
-                      // const SizedBox(height: 10),
-                      // TextFormField(
-                      //   controller: _taskDeadlineController,
-                      //   readOnly: true,
-                      //   decoration: InputDecoration(
-                      //     filled: true,
-                      //     fillColor: const Color(0xFfffffff),
-                      //     labelText: "Deadline",
-                      //     border: OutlineInputBorder(
-                      //       borderRadius: BorderRadius.circular(10),
-                      //     ),
-                      //     focusedBorder: const OutlineInputBorder(
-                      //       borderSide: BorderSide(
-                      //         color: Color(0XFF020B40),
-                      //       ),
-                      //     ),
-                      //     suffixIcon: IconButton(
-                      //       icon: const Icon(Icons.calendar_today),
-                      //       onPressed: _pickDate, // Opens the date picker
-                      //     ),
-                      //   ),
-                      //   validator: (value) {
-                      //     if (value == null || value.isEmpty) {
-                      //       return "Please set a deadline";
-                      //     }
-                      //     return null;
-                      //   },
-                      // ),
-                      // const SizedBox(height: 10),
-                      // TextFormField(
-                      //   controller: _taskDetailsController,
-                      //   decoration: InputDecoration(
-                      //     labelText: 'Details',
-                      //     labelStyle: const TextStyle(
-                      //       color: Color(0xFF020B40),
-                      //       fontSize: 16,
-                      //     ),
-                      //     alignLabelWithHint: true,
-                      //     filled: true,
-                      //     fillColor: const Color(0xFfffffff),
-                      //     border: OutlineInputBorder(
-                      //       borderRadius: BorderRadius.circular(10),
-                      //     ),
-                      //     focusedBorder: const OutlineInputBorder(
-                      //       borderSide: BorderSide(
-                      //         color: Color(0XFF020B40),
-                      //       ),
-                      //     ),
-                      //   ),
-                      //   keyboardType: TextInputType.multiline,
-                      //   maxLines: 7,
-                      //   style: const TextStyle(
-                      //     color: Colors.black,
-                      //   ),
-                      //   validator: (value) {
-                      //     if (value == null || value.isEmpty) {
-                      //       return 'Please enter task details';
-                      //     }
-                      //     return null;
-                      //   },
-                      // ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Assign To:',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.add_circle_outline,
-                                color: Color(0xffD4AF37)),
-                            onPressed:
-                                _addTaskAssignmentContainer, // Adds a new container
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Column(
-                        children:
-                            _taskContainers, // Display all added task assignment containers
-                      ),
-                      const SizedBox(height: 20),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: _isLoading
-                            ? const CircularProgressIndicator()
-                            : ElevatedButton(
-                                onPressed: assignTask,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF020B40),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  elevation: 10,
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 15.0, horizontal: 30.0),
-                                ),
-                                child: const Text(
-                                  'Assign Task',
+                      child: Form(
+                        key: _formKey,
+                        child: Padding(
+                          padding: const EdgeInsets.all(15),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Align(
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Assign Task ',
                                   style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
+                                    fontSize: 20,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                               ),
-                      )
-                    ],
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Task Title',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              //gawing droppydown
+                              FutureBuilder<List<Map<String, String>>>(
+                                future:
+                                    _tasksFuture, // Call getUsers() and wait for it
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const CircularProgressIndicator();
+                                  }
+                                  if (snapshot.hasError) {
+                                    return Text("Error: ${snapshot.error}");
+                                  }
+                                  if (!snapshot.hasData ||
+                                      snapshot.data!.isEmpty) {
+                                    return const Text("No tasks found.");
+                                  }
+                                  return DropdownButtonFormField<String>(
+                                    decoration: const InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      filled: true,
+                                      fillColor: Color(0xFFF5F5F5),
+                                      labelText: "Task",
+                                      labelStyle:
+                                          TextStyle(color: Colors.black),
+                                    ),
+                                    items: snapshot.data!.map((task) {
+                                      return DropdownMenuItem(
+                                        value: task['taskId'],
+                                        child: Text(task['title']!),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      selectedTaskTitle = value;
+                                    },
+                                    validator: (value) => value == null
+                                        ? 'Please select a task'
+                                        : null,
+                                  );
+                                },
+                              ),
+                              // const SizedBox(height: 10),
+                              // const Text(
+                              //   'Task Details',
+                              //   style: TextStyle(
+                              //     color: Colors.black,
+                              //     fontSize: 18,
+                              //     fontWeight: FontWeight.w800,
+                              //   ),
+                              // ),
+                              // const SizedBox(height: 10),
+                              // TextFormField(
+                              //   controller: _taskDeadlineController,
+                              //   readOnly: true,
+                              //   decoration: InputDecoration(
+                              //     filled: true,
+                              //     fillColor: const Color(0xFfffffff),
+                              //     labelText: "Deadline",
+                              //     border: OutlineInputBorder(
+                              //       borderRadius: BorderRadius.circular(10),
+                              //     ),
+                              //     focusedBorder: const OutlineInputBorder(
+                              //       borderSide: BorderSide(
+                              //         color: Color(0XFF020B40),
+                              //       ),
+                              //     ),
+                              //     suffixIcon: IconButton(
+                              //       icon: const Icon(Icons.calendar_today),
+                              //       onPressed: _pickDate, // Opens the date picker
+                              //     ),
+                              //   ),
+                              //   validator: (value) {
+                              //     if (value == null || value.isEmpty) {
+                              //       return "Please set a deadline";
+                              //     }
+                              //     return null;
+                              //   },
+                              // ),
+                              // const SizedBox(height: 10),
+                              // TextFormField(
+                              //   controller: _taskDetailsController,
+                              //   decoration: InputDecoration(
+                              //     labelText: 'Details',
+                              //     labelStyle: const TextStyle(
+                              //       color: Color(0xFF020B40),
+                              //       fontSize: 16,
+                              //     ),
+                              //     alignLabelWithHint: true,
+                              //     filled: true,
+                              //     fillColor: const Color(0xFfffffff),
+                              //     border: OutlineInputBorder(
+                              //       borderRadius: BorderRadius.circular(10),
+                              //     ),
+                              //     focusedBorder: const OutlineInputBorder(
+                              //       borderSide: BorderSide(
+                              //         color: Color(0XFF020B40),
+                              //       ),
+                              //     ),
+                              //   ),
+                              //   keyboardType: TextInputType.multiline,
+                              //   maxLines: 7,
+                              //   style: const TextStyle(
+                              //     color: Colors.black,
+                              //   ),
+                              //   validator: (value) {
+                              //     if (value == null || value.isEmpty) {
+                              //       return 'Please enter task details';
+                              //     }
+                              //     return null;
+                              //   },
+                              // ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'Assign To:',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.add_circle_outline,
+                                        color: Color(0xffD4AF37)),
+                                    onPressed:
+                                        _addTaskAssignmentContainer, // Adds a new container
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Column(
+                                children:
+                                    _taskContainers, // Display all added task assignment containers
+                              ),
+                              const SizedBox(height: 20),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: _isLoading
+                                    ? const CircularProgressIndicator()
+                                    : ElevatedButton(
+                                        onPressed: assignTask,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFF020B40),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          elevation: 10,
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 15.0, horizontal: 30.0),
+                                        ),
+                                        child: const Text(
+                                          'Assign Task',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                              )
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
-        ),
-      ),
+              );
+            }
+          }),
     );
   }
 }

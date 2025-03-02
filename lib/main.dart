@@ -21,6 +21,7 @@ import 'Pages/Eic/eichomepage.dart';
 import 'Pages/Eic/eicorgtasks.dart';
 import 'Pages/SectionEditor/Templates/assigntaskpage.dart';
 import 'Pages/SectionEditor/assigntasklogpage.dart';
+import 'Pages/SectionWriter/swhomepage.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 
 void main() async {
@@ -66,6 +67,7 @@ class NuntiumApp extends StatelessWidget {
         '/eicorgtasks': (context) => const OrganizationTasks(),
         '/assigntaskpage': (context) => const AssignTaskPage(),
         '/assigntasklogpage': (context) => const AssignTaskLogPage(),
+        '/swhomepage': (context) => const SectionWriterHomePage(),
         '/initial': (context) => AuthChecker(
               authStream: FirebaseAuth.instance.authStateChanges(),
             ),
@@ -185,6 +187,10 @@ class _AuthCheckerState extends State<AuthChecker> {
                 );
               case 'contributor':
                 return ContribHomePage(
+                  onLogout: _onSignOut,
+                );
+              case 'section_writer':
+                return SectionWriterHomePage(
                   onLogout: _onSignOut,
                 );
               case 'eic':
