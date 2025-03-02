@@ -10,6 +10,7 @@ class FeaturedPostCard extends StatelessWidget {
   final String? timePosted;
   final String? postID;
   final bool isLoading;
+  final bool? isAuthenticated;
 
   const FeaturedPostCard({
     super.key,
@@ -19,6 +20,7 @@ class FeaturedPostCard extends StatelessWidget {
     this.timePosted,
     this.postID,
     this.isLoading = false,
+    this.isAuthenticated,
   });
 
   Future<void> _handlePostClick(BuildContext context) async {
@@ -68,7 +70,7 @@ class FeaturedPostCard extends StatelessWidget {
           ? null
           : () {
               print('Navigating to content page from featured');
-              _handlePostClick(context);
+              isAuthenticated == true ? _handlePostClick(context) : null;
               Navigator.pushNamed(context, '/contentpage', arguments: {
                 'postID': postID,
               });

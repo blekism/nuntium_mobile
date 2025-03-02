@@ -175,11 +175,13 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController(viewportFraction: 0.9);
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   Widget build(BuildContext context) {
     List<Map<String, dynamic>> featuredPostData;
     List<Map<String, dynamic>> normalPostData;
+    User? currentUser = _auth.currentUser;
 
     return Center(
       child: Column(
@@ -257,6 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 featuredPostData[index]['time'] ?? "unknown",
                             postID: featuredPostData[index]['id'],
                             isLoading: true,
+                            isAuthenticated: currentUser != null,
                           ),
                         );
                       }
@@ -273,6 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               featuredPostData[index]['time'] ?? "2 hours ago",
                           postID: featuredPostData[index]['id'],
                           isLoading: false,
+                          isAuthenticated: currentUser != null,
                         ),
                       );
                     },

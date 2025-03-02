@@ -34,6 +34,7 @@ class _HistoryPageState extends State<HistoryPage> {
               .collection('savedPosts')
               .where('isRead', isEqualTo: true)
               .where('postId', isNotEqualTo: null)
+              .orderBy('time', descending: true)
               .snapshots();
           _isLoading = false;
         });
