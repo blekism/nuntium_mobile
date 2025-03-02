@@ -63,7 +63,7 @@ class _ContentPageState extends State<ContentPage> {
   }
 
   void _startCommentAnimation() {
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       setState(() {
         _opacity = 0.0; // Start fade-out animation
       });
@@ -145,7 +145,7 @@ class _ContentPageState extends State<ContentPage> {
           .collection('comments')
           .where('postID', isEqualTo: postID)
           .orderBy('time', descending: true)
-          .limit(5)
+          .limit(3)
           .get();
 
       List<String> fetchedComments = snapshot.docs
@@ -564,7 +564,7 @@ class _SlideContainerState extends State<SlideContainer> {
                           ),
                           const SizedBox(width: 13),
                           AnimatedOpacity(
-                            duration: const Duration(milliseconds: 500),
+                            duration: const Duration(milliseconds: 4000),
                             opacity: opacity,
                             child: SizedBox(
                               width: MediaQuery.of(context).size.width * .5,
