@@ -11,8 +11,11 @@ class ParentTaskCardTemplate extends StatefulWidget {
   final String? taskDeadline;
   final String? taskid;
   final String? details;
+  final String? deadline;
   final String? status;
   final String? section;
+  final String? isParent;
+  final String? priority;
 
   const ParentTaskCardTemplate({
     super.key,
@@ -21,8 +24,11 @@ class ParentTaskCardTemplate extends StatefulWidget {
     this.taskDeadline,
     this.taskid,
     this.details,
+    this.deadline,
     this.status,
     this.section,
+    this.isParent,
+    this.priority,
   });
 
   @override
@@ -58,7 +64,24 @@ class _ParentTaskCardTemplateState extends State<ParentTaskCardTemplate> {
         width: MediaQuery.of(context).size.width * .90,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
-          color: const Color(0xffD9D9D9),
+          border: Border.all(
+            color: switch (widget.status) {
+              'created' => const Color(0xFF505050),
+              'assigned' => const Color(0xFF2A367C),
+              'started' => const Color(0xFFD4AF37),
+              'in_progress' => const Color(0xFFD4AF37),
+              'ready_post' => const Color(0xFF6A9C64),
+              _ => const Color(0xFFB8CFED), // Default color
+            },
+          ),
+          color: switch (widget.status) {
+            'created' => const Color(0xFFE4E4E4),
+            'assigned' => const Color(0xFFB8CFED),
+            'started' => const Color(0x66D4AF37),
+            'in_progress' => const Color(0x66D4AF37),
+            'ready_post' => const Color(0xFFBAD8B6),
+            _ => const Color(0xFFB8CFED), // Default color
+          },
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -80,34 +103,130 @@ class _ParentTaskCardTemplateState extends State<ParentTaskCardTemplate> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.taskTitle ?? 'Task Title', // Default text if null
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 5),
-            Container(
-              padding:
-                  const EdgeInsets.only(top: 5, bottom: 5, right: 10, left: 10),
-              decoration: BoxDecoration(
-                color: const Color(0xffA31D1D),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Text(
-                widget.taskDeadline ?? 'Dealine', // Default text if null
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: Container(
+                width: MediaQuery.of(context).size.width * .10,
+                height: MediaQuery.of(context).size.height * .05,
+                color: switch (widget.status) {
+                  'created' => const Color(0xFF505050),
+                  'waiting' => const Color(0xFF2A367C),
+                  'started' => const Color(0xFFD4AF37),
+                  'in_progress' => const Color(0xFFD4AF37),
+                  'ready_post' => const Color(0xFF6A9C64),
+                  _ => const Color(0xFFB8CFED), // Default color
+                },
+                child: const Center(
+                  child: Icon(
+                    Icons.newspaper,
+                    color: Colors.white,
+                    size: 30,
+                  ),
                 ),
               ),
+            ),
+            const SizedBox(width: 15),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.taskTitle ?? 'Task Title', // Default text if null
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Text(
+                  '0/10 tasks started', // Default text if null
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                Text(
+                  widget.deadline ?? 'Task deadline', // Default text if null
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: MediaQuery.of(context).size.width * .25,
+                      decoration: ShapeDecoration(
+                        color: const Color(0XFF020B40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          widget.isParent ?? 'Parent Task',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      width: MediaQuery.of(context).size.width * .25,
+                      decoration: ShapeDecoration(
+                        color: const Color(0XFFDA6136),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          widget.status ?? 'Waiting',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: MediaQuery.of(context).size.width * .25,
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFA31D1D),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Text(
+                      widget.priority ?? 'High Priority',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -159,6 +278,7 @@ class _ParentTaskCardTemplateState extends State<ParentTaskCardTemplate> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
       ),
@@ -191,8 +311,10 @@ class _ParentTaskCardTemplateState extends State<ParentTaskCardTemplate> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              AssignTaskPage(section: widget.section),
+                          builder: (context) => AssignTaskPage(
+                            section: widget.section,
+                            taskid: widget.taskid,
+                          ),
                         ),
                       );
                     },
@@ -271,6 +393,9 @@ class _ParentTaskCardTemplateState extends State<ParentTaskCardTemplate> {
                               details: widget.details,
                               status: widget.status,
                               assignedId: tasks[index].id,
+                              isParent: widget.isParent,
+                              priority: widget.priority,
+                              deadline: widget.taskDeadline,
                               isLoading: false,
                             ),
                           );
