@@ -6,7 +6,6 @@ import 'package:nuntium_mobile/Pages/Homepage/homepage.dart';
 
 class Appdrawer extends StatefulWidget {
   final VoidCallback onLogout;
-  final bool? canUsersRead;
   final VoidCallback? logoutInReader;
   final String userRole;
   final String? pageOrigin;
@@ -14,7 +13,6 @@ class Appdrawer extends StatefulWidget {
   const Appdrawer({
     super.key,
     required this.onLogout,
-    this.canUsersRead,
     this.logoutInReader,
     required this.userRole,
     this.pageOrigin,
@@ -27,6 +25,36 @@ class Appdrawer extends StatefulWidget {
 class _AppdrawerState extends State<Appdrawer> {
   final GoogleSignIn _googleSignInLog = GoogleSignIn();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool canUsersRead = false;
+
+  Future<bool> _canUserRead() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      return userDoc.get('canUserRead') ?? false;
+    } catch (e) {
+      print("Error fetching canUserRead: $e");
+      return false; // Return false in case of an error
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    _canUserRead().then((value) {
+      setState(() {
+        canUsersRead = value;
+      });
+    });
+  }
+
   Future<void> _logout() async {
     try {
       await _auth.signOut();
@@ -104,7 +132,7 @@ class _AppdrawerState extends State<Appdrawer> {
           onTap: () {
             Navigator.pop(context);
 
-            widget.canUsersRead == true
+            canUsersRead == true
                 ? Navigator.push(context, MaterialPageRoute(builder: (context) {
                     return Homepage(
                       onLogout: widget.onLogout,

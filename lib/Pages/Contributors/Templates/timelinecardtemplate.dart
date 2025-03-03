@@ -1,6 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 class TimelineCard extends StatefulWidget {
   final String? timelinestatus;
@@ -8,6 +6,7 @@ class TimelineCard extends StatefulWidget {
   final String? revision;
   final String? content;
   final String? comments;
+  final String? author;
 
   const TimelineCard({
     super.key,
@@ -16,6 +15,7 @@ class TimelineCard extends StatefulWidget {
     this.revision,
     this.content,
     this.comments,
+    this.author,
   });
 
   @override
@@ -166,6 +166,13 @@ class _TimelineCardState extends State<TimelineCard> {
                   fillColor: Colors.white,
                   border: OutlineInputBorder(),
                   hintText: 'Enter comments...',
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'By ${widget.author ?? 'No Author'}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 10),
