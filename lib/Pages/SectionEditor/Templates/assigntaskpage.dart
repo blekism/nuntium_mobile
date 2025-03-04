@@ -4,8 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class AssignTaskPage extends StatefulWidget {
   final String? section;
+  final String? taskid;
 
-  const AssignTaskPage({super.key, this.section});
+  const AssignTaskPage({super.key, this.section, this.taskid});
 
   @override
   State<AssignTaskPage> createState() => _AssignTaskPage();
@@ -15,25 +16,8 @@ class _AssignTaskPage extends State<AssignTaskPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _taskDeadlineController = TextEditingController();
   final TextEditingController _taskDetailsController = TextEditingController();
+  final TextEditingController _taskTitleController = TextEditingController();
   bool _isLoading = false;
-  // For the deadline
-  DateTime? _selectedDate;
-  Future<void> _pickDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime(2100),
-    );
-
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-        _taskDeadlineController.text =
-            "${picked.day}/${picked.month}/${picked.year}";
-      });
-    }
-  }
 
   // List to hold task assignment containers
   List<Widget> _taskContainers = [];
@@ -92,28 +76,39 @@ class _AssignTaskPage extends State<AssignTaskPage> {
 
   Future<List<Map<String, String>>> getTasksTitle() async {
     try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+      if (widget.taskid == null || widget.taskid!.isEmpty) {
+        debugPrint("Error: Task ID is null or empty");
+        return [];
+      }
+
+      print("Fetching task with ID: ${widget.taskid}"); // Debugging
+
+      DocumentSnapshot taskSnapshot = await FirebaseFirestore.instance
           .collection('tasks')
-          .where('section', isEqualTo: widget.section)
+          .doc(widget.taskid)
           .get();
 
-      List<Map<String, String>> fetchedTasks = querySnapshot.docs.map((doc) {
-        return {
-          'taskId': doc.id, // Document ID
-          'title': doc['title'] as String,
-        };
-      }).toList();
-
-      print("Fetched tasks: $fetchedTasks");
-      return fetchedTasks;
+      if (taskSnapshot.exists) {
+        String taskTitle = taskSnapshot.get('title') as String? ?? '';
+        _taskTitleController.text = taskTitle;
+        print("Task Found: $taskTitle"); // Debugging
+        return [
+          {
+            'taskId': taskSnapshot.id,
+            'title': taskTitle,
+          }
+        ];
+      } else {
+        debugPrint("Task not found with ID: ${widget.taskid}");
+        return [];
+      }
     } catch (e) {
-      print("Error fetching tasks: $e");
+      debugPrint("Error fetching task: $e");
       return [];
     }
   }
 
   Future<void> assignTask() async {
-    // final user = FirebaseAuth.instance.currentUser;
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
@@ -125,48 +120,47 @@ class _AssignTaskPage extends State<AssignTaskPage> {
           print("Error: No members selected");
           return;
         }
-        String userId = selectedMembers[0]!;
-        // String taskDetails = _taskDetailsController.text;
-        // String taskDeadline = _taskDeadlineController.text;
 
         for (var member in selectedMembers) {
           print("Assigning to: $member");
+          print("task id to  : ${widget.taskid}");
 
           DocumentReference taskRef = await FirebaseFirestore.instance
               .collection('tasks')
-              .doc(taskId)
+              .doc(widget.taskid)
               .collection('assigned_tasks')
               .add({
-            'assignee_id': userId,
+            'assignee_id': member,
             'status': 'assigned',
-            'submitted_at': FieldValue.serverTimestamp(),
-            'task_id': taskId,
+            'created_at': FieldValue.serverTimestamp(),
+            'task_id': widget.taskid,
             'task_type': selectedTask,
-            // 'details': taskDetails,
-            // 'deadline': taskDeadline,
+            'isParent': 'Child Task',
+            'priority': selectedPriority,
           });
 
-          // Retrieve the newly added task and print it
           DocumentSnapshot newTask = await taskRef.get();
           print("Newly assigned task: ${newTask.data()}");
         }
-
-        _formKey.currentState!.reset();
-        _taskContainers = [_buildTaskAssignmentContainer(0)];
-        // _taskDetailsController.clear();
-        // _taskDeadlineController.clear();
-        _selectedDate = null;
-        selectedMembers = [''];
 
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Task assigned successfully')),
         );
+
+        // Only reset fields after loading is done
+        setState(() {
+          _isLoading = false;
+          _formKey.currentState!.reset();
+          _taskContainers = [_buildTaskAssignmentContainer(0)];
+          // _taskTitleController.clear();
+          selectedMembers = [''];
+          selectedPriority = null;
+        });
       } catch (e) {
         print("Error submitting task: $e");
 
-        // Check if the widget is still mounted before using context
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -196,9 +190,10 @@ class _AssignTaskPage extends State<AssignTaskPage> {
           children: [
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(10))),
                 filled: true,
-                fillColor: Color(0xFff5f5f5),
+                fillColor: Color(0xFffFfFfF),
                 labelText: "Task",
                 labelStyle: TextStyle(color: Colors.black),
               ),
@@ -229,9 +224,10 @@ class _AssignTaskPage extends State<AssignTaskPage> {
                 }
                 return DropdownButtonFormField<String>(
                   decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(10))),
                     filled: true,
-                    fillColor: Color(0xFFF5F5F5),
+                    fillColor: Color(0xFFFFFFFF),
                     labelText: "Assign To",
                     labelStyle: TextStyle(color: Colors.black),
                   ),
@@ -271,6 +267,7 @@ class _AssignTaskPage extends State<AssignTaskPage> {
   String? selectedTaskTitle;
   String? selectedTask;
   List<String?> selectedMembers = [];
+  String? selectedPriority;
 
   @override
   Widget build(BuildContext context) {
@@ -339,115 +336,119 @@ class _AssignTaskPage extends State<AssignTaskPage> {
                               ),
                               const SizedBox(height: 10),
                               //gawing droppydown
-                              FutureBuilder<List<Map<String, String>>>(
-                                future:
-                                    _tasksFuture, // Call getUsers() and wait for it
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const CircularProgressIndicator();
-                                  }
-                                  if (snapshot.hasError) {
-                                    return Text("Error: ${snapshot.error}");
-                                  }
-                                  if (!snapshot.hasData ||
-                                      snapshot.data!.isEmpty) {
-                                    return const Text("No tasks found.");
-                                  }
-                                  return DropdownButtonFormField<String>(
-                                    decoration: const InputDecoration(
-                                      border: OutlineInputBorder(),
-                                      filled: true,
-                                      fillColor: Color(0xFFF5F5F5),
-                                      labelText: "Task",
-                                      labelStyle:
-                                          TextStyle(color: Colors.black),
+                              // FutureBuilder<List<Map<String, String>>>(
+                              //   future:
+                              //       _tasksFuture, // Call getUsers() and wait for it
+                              //   builder: (context, snapshot) {
+                              //     if (snapshot.connectionState ==
+                              //         ConnectionState.waiting) {
+                              //       return const CircularProgressIndicator();
+                              //     }
+                              //     if (snapshot.hasError) {
+                              //       return Text("Error: ${snapshot.error}");
+                              //     }
+                              //     if (!snapshot.hasData ||
+                              //         snapshot.data!.isEmpty) {
+                              //       return const Text("No tasks found.");
+                              //     }
+                              //     return DropdownButtonFormField<String>(
+                              //       decoration: const InputDecoration(
+                              //         border: OutlineInputBorder(
+                              //             borderRadius: BorderRadius.all(
+                              //                 Radius.circular(10))),
+                              //         filled: true,
+                              //         fillColor: Color(0xFFFFFFFF),
+                              //         labelText: "Task",
+                              //         labelStyle:
+                              //             TextStyle(color: Colors.black),
+                              //       ),
+                              //       items: snapshot.data!.map((task) {
+                              //         return DropdownMenuItem(
+                              //           value: task['taskId'],
+                              //           child: Text(task['title']!),
+                              //         );
+                              //       }).toList(),
+                              //       onChanged: (value) {
+                              //         selectedTaskTitle = value;
+                              //       },
+                              //       validator: (value) => value == null
+                              //           ? 'Please select a task'
+                              //           : null,
+                              //     );
+                              //   },
+                              // ),
+
+                              TextFormField(
+                                controller: _taskTitleController,
+                                readOnly: true,
+                                decoration: InputDecoration(
+                                  labelText: 'Task Title',
+                                  labelStyle: const TextStyle(
+                                    color: Color(0xFF020B40),
+                                    fontSize: 16,
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFfffffff),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  focusedBorder: const OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0XFF020B40),
                                     ),
-                                    items: snapshot.data!.map((task) {
-                                      return DropdownMenuItem(
-                                        value: task['taskId'],
-                                        child: Text(task['title']!),
-                                      );
-                                    }).toList(),
-                                    onChanged: (value) {
-                                      selectedTaskTitle = value;
-                                    },
-                                    validator: (value) => value == null
-                                        ? 'Please select a task'
-                                        : null,
-                                  );
+                                  ),
+                                ),
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter task title';
+                                  }
+                                  return null;
                                 },
                               ),
-                              // const SizedBox(height: 10),
-                              // const Text(
-                              //   'Task Details',
-                              //   style: TextStyle(
-                              //     color: Colors.black,
-                              //     fontSize: 18,
-                              //     fontWeight: FontWeight.w800,
-                              //   ),
-                              // ),
-                              // const SizedBox(height: 10),
-                              // TextFormField(
-                              //   controller: _taskDeadlineController,
-                              //   readOnly: true,
-                              //   decoration: InputDecoration(
-                              //     filled: true,
-                              //     fillColor: const Color(0xFfffffff),
-                              //     labelText: "Deadline",
-                              //     border: OutlineInputBorder(
-                              //       borderRadius: BorderRadius.circular(10),
-                              //     ),
-                              //     focusedBorder: const OutlineInputBorder(
-                              //       borderSide: BorderSide(
-                              //         color: Color(0XFF020B40),
-                              //       ),
-                              //     ),
-                              //     suffixIcon: IconButton(
-                              //       icon: const Icon(Icons.calendar_today),
-                              //       onPressed: _pickDate, // Opens the date picker
-                              //     ),
-                              //   ),
-                              //   validator: (value) {
-                              //     if (value == null || value.isEmpty) {
-                              //       return "Please set a deadline";
-                              //     }
-                              //     return null;
-                              //   },
-                              // ),
-                              // const SizedBox(height: 10),
-                              // TextFormField(
-                              //   controller: _taskDetailsController,
-                              //   decoration: InputDecoration(
-                              //     labelText: 'Details',
-                              //     labelStyle: const TextStyle(
-                              //       color: Color(0xFF020B40),
-                              //       fontSize: 16,
-                              //     ),
-                              //     alignLabelWithHint: true,
-                              //     filled: true,
-                              //     fillColor: const Color(0xFfffffff),
-                              //     border: OutlineInputBorder(
-                              //       borderRadius: BorderRadius.circular(10),
-                              //     ),
-                              //     focusedBorder: const OutlineInputBorder(
-                              //       borderSide: BorderSide(
-                              //         color: Color(0XFF020B40),
-                              //       ),
-                              //     ),
-                              //   ),
-                              //   keyboardType: TextInputType.multiline,
-                              //   maxLines: 7,
-                              //   style: const TextStyle(
-                              //     color: Colors.black,
-                              //   ),
-                              //   validator: (value) {
-                              //     if (value == null || value.isEmpty) {
-                              //       return 'Please enter task details';
-                              //     }
-                              //     return null;
-                              //   },
-                              // ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Task Details',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              DropdownButtonFormField<String>(
+                                onTap: () {
+                                  FocusScope.of(context).unfocus();
+                                },
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  filled: true,
+                                  fillColor: Color(0xFfffffff),
+                                  labelText: "Priority",
+                                  labelStyle: TextStyle(color: Colors.black),
+                                ),
+                                value: selectedPriority,
+                                items: [
+                                  'Low Priority',
+                                  'Medium Priority',
+                                  'High Priority'
+                                ].map((priority) {
+                                  return DropdownMenuItem(
+                                    value: priority,
+                                    child: Text(priority),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  selectedPriority = value;
+                                },
+                                validator: (value) => value == null
+                                    ? 'Please set a priority'
+                                    : null,
+                              ),
                               const SizedBox(height: 10),
                               Row(
                                 mainAxisAlignment:

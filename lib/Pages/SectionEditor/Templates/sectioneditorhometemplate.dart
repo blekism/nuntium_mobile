@@ -6,20 +6,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 
 class SectionEditorHomePage extends StatefulWidget {
-  const SectionEditorHomePage({super.key});
+  final String? sectionID;
+  final String? sectionName;
+  const SectionEditorHomePage({super.key, this.sectionID, this.sectionName});
 
   @override
   State<SectionEditorHomePage> createState() => _SectionEditorHomePage();
 }
 
 class _SectionEditorHomePage extends State<SectionEditorHomePage> {
-  String selectedTask = 'All';
-  List<Map<String, dynamic>> yourTasksData = [];
+  String selectedTask = 'all';
   final ScrollController _scrollController = ScrollController();
   DocumentSnapshot? lastDocument; // Stores last fetched document for pagination
+  List<Map<String, dynamic>> yourTasksData = [];
+  List<String> yourTaskIds = [];
   bool isLoadingMore = false;
   bool hasMoreTasks = true;
-  static const int initialBatchSize = 2; // Start with a small batch size
+  static const int initialBatchSize = 5; // Start with a small batch size
   int batchSize = initialBatchSize; // Dynamic batch size
 
   @override
@@ -58,9 +61,16 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
     if (!hasMoreTasks || isLoadingMore) return;
     setState(() => isLoadingMore = true);
 
+    print('section id is ${widget.sectionID}');
+
     Query query = FirebaseFirestore.instance
         .collection('tasks')
-        .orderBy('deadline')
+        .where('section', isEqualTo: widget.sectionID)
+        .where('assigned_by',
+            isEqualTo: FirebaseFirestore.instance
+                .collection('users')
+                .doc(FirebaseAuth.instance.currentUser!.uid))
+        .orderBy('deadline', descending: true)
         .limit(batchSize);
 
     if (lastDocument != null) {
@@ -75,44 +85,22 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
           taskSnapshot.docs.last; // Save last document for pagination
     }
 
-    List<Map<String, dynamic>> newTasks = [];
+    List<Map<String, dynamic>> combinedTasks = [];
 
-    for (var taskDoc in taskSnapshot.docs) {
-      String taskId = taskDoc.id;
+    for (final doc in taskSnapshot.docs) {
+      String documentId = doc.id;
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
-      QuerySnapshot assignedTasksSnapshot = await FirebaseFirestore.instance
-          .collection('tasks')
-          .doc(taskId)
-          .collection('assigned_tasks')
-          .where('assignee_id',
-              isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-          .get();
+      Map<String, dynamic> combinedData = {
+        'id': documentId,
+        ...data,
+      };
 
-      for (var assignedTaskDoc in assignedTasksSnapshot.docs) {
-        Map<String, dynamic> combinedTask = {
-          'taskId': taskId,
-          'title': taskDoc['title'],
-          'assignedTaskId': assignedTaskDoc.id,
-          'details': taskDoc['details'],
-          'deadline': taskDoc['deadline'],
-          'priority': taskDoc['priority'],
-          'assignee_id': assignedTaskDoc['assignee_id'],
-          'assigned_by': taskDoc['assigned_by'],
-          'status': assignedTaskDoc['status'],
-          'section': taskDoc['section'],
-          'task_type': assignedTaskDoc['task_type'],
-        };
-        newTasks.add(combinedTask);
-      }
-    }
-
-    if (yourTasksData.length < 5) {
-      batchSize =
-          5; // Load more tasks if there's not enough content on the screen
+      combinedTasks.add(combinedData);
     }
 
     setState(() {
-      yourTasksData.addAll(newTasks);
+      yourTasksData.addAll(combinedTasks);
       isLoadingMore = false;
     });
   }
@@ -235,24 +223,18 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
                   return const TaskCardTemplate(isLoading: true);
                 }
                 final task = filteredTasks[index];
+                Widget taskCard = Padding(
+                  padding: const EdgeInsets.all(6.0),
+                  child: TaskCardTemplate(
+                    taskTitle: task['title'],
+                    taskid: task['id'],
+                    taskType: widget.sectionName,
+                    details: task['details'],
+                    isLoading: false,
+                    // deadline: task['deadline'],
+                    status: task['status'],
+                    isParent: task['isParent'],
 
-                Widget taskCard = Container(
-                  width: MediaQuery.of(context).size.width * .90,
-                  height: MediaQuery.of(context).size.height * .10,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(6.0),
-                    child: TaskCardTemplate(
-                      taskTitle: task['title'],
-                      status: task['status'],
-                      taskid: task['taskId'],
-                      taskType: task['task_type'],
-                      details: task['details'],
-                      isLoading: false,
-                      // assignedId: task['assignedTaskId'],
-                    ),
                   ),
                 );
 
@@ -267,11 +249,10 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => CreateTaskPage(
-                                    taskId: task['taskId'],
+                                    taskId: task['id'],
                                     details: task['details'],
                                     title: task['title'],
                                     taskType: task['task_type'],
-                                    assignedId: task['assignedTaskId'],
                                   ),
                                 ),
                               );
@@ -390,9 +371,12 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
 
 final List<Map<String, String>> pubTasks = [
   {"section": "all"},
-  {"section": "your assigned"},
-  {"section": "your ongoing"},
-  {"section": "review"},
-  {"section": "ongoing"},
-  {"section": "approval"},
+  // {"section": "assigned to you"},
+  {"section": "created"},
+  {"section": "waiting"},
+  {"section": "started"},
+  {"section": "in progress"},
+  {"section": "submitted"},
+  {"section": "for posting"},
+  {"section": "for assigning"},
 ];

@@ -34,6 +34,7 @@ class CreateTaskPage extends StatefulWidget {
 class _CreateTaskPage extends State<CreateTaskPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _taskTitleController = TextEditingController();
+  final TextEditingController _taskTypeController = TextEditingController();
   final TextEditingController _taskDetailsController = TextEditingController();
   final TextEditingController _taskContentController = TextEditingController();
   final TextEditingController _taksCommentsController = TextEditingController();
@@ -340,6 +341,7 @@ class _CreateTaskPage extends State<CreateTaskPage> {
   void initState() {
     super.initState();
     _taskTitleController.text = widget.title!;
+    _taskTypeController.text = widget.taskType!;
     _taskDetailsController.text = widget.details!;
 
     if (widget.taskId != null) {
@@ -485,6 +487,46 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                     controller: _taskTitleController,
                     decoration: InputDecoration(
                       labelText: 'Title',
+                      labelStyle: const TextStyle(
+                        color: Color(0xFF020B40),
+                        fontSize: 16,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFff5f5f5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: Color(0XFF020B40),
+                        ),
+                      ),
+                    ),
+                    readOnly: true,
+                    style: const TextStyle(
+                      color: Colors.black,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter task title';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Task Type',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _taskTypeController,
+                    decoration: InputDecoration(
+                      labelText: 'Task Type',
                       labelStyle: const TextStyle(
                         color: Color(0xFF020B40),
                         fontSize: 16,

@@ -16,7 +16,7 @@ class _AssignTaskLogPage extends State<AssignTaskLogPage> {
   final ScrollController _scrollController = ScrollController();
   bool isLoadingMore = false;
   bool hasMoreTasks = true;
-  static const int initialBatchSize = 4;
+  static const int initialBatchSize = 10;
   int batchSize = initialBatchSize;
   DocumentSnapshot? lastDocument;
   List<Map<String, dynamic>> yourTasksData = [];

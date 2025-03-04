@@ -52,6 +52,9 @@ class _CreateParentTask extends State<CreateParentTask> {
           'details': _taskDetailsController.text,
           'deadline': _selectedDate,
           'section': widget.section,
+          'priority': selectedPriority,
+          'isParent': 'Parent Task',
+          'status': 'for approval',
         });
 
         DocumentSnapshot newTask = await taskRef.get();
@@ -61,6 +64,7 @@ class _CreateParentTask extends State<CreateParentTask> {
         _taskTitleController.clear();
         _taskDetailsController.clear();
         _taskDeadlineController.clear();
+        selectedPriority = null;
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -79,6 +83,7 @@ class _CreateParentTask extends State<CreateParentTask> {
   String? taskTitle;
   String? taskDetails;
   String? taskDeadline;
+  String? selectedPriority;
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +102,7 @@ class _CreateParentTask extends State<CreateParentTask> {
           icon:
               const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
           onPressed: () {
-            Navigator.pop(context); // Navigate back to the previous screen
+            Navigator.pop(context);
           },
         ),
       ),
@@ -117,7 +122,6 @@ class _CreateParentTask extends State<CreateParentTask> {
                     child: Padding(
                       padding: const EdgeInsets.all(15),
                       child: Column(
-                        // crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Align(
                             alignment: Alignment.center,
@@ -131,12 +135,15 @@ class _CreateParentTask extends State<CreateParentTask> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          const Text(
-                            'Task Title',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Task Title',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -163,12 +170,15 @@ class _CreateParentTask extends State<CreateParentTask> {
                             },
                           ),
                           const SizedBox(height: 10),
-                          const Text(
-                            'Task Details',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Task Details',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -197,6 +207,34 @@ class _CreateParentTask extends State<CreateParentTask> {
                               }
                               return null;
                             },
+                          ),
+                          const SizedBox(height: 10),
+                          DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(10))),
+                              filled: true,
+                              fillColor: Color(0xFfffffff),
+                              labelText: "Priority",
+                              labelStyle: TextStyle(color: Colors.black),
+                            ),
+                            value: selectedPriority,
+                            items: [
+                              'Low Priority',
+                              'Medium Priority',
+                              'High Priority'
+                            ].map((priority) {
+                              return DropdownMenuItem(
+                                value: priority,
+                                child: Text(priority),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              selectedPriority = value;
+                            },
+                            validator: (value) =>
+                                value == null ? 'Please set a priority' : null,
                           ),
                           const SizedBox(height: 10),
                           TextFormField(
