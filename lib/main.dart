@@ -57,7 +57,6 @@ class NuntiumApp extends StatelessWidget {
         '/termly': (context) => const TermlyPage(),
         '/contentpage': (context) => const ContentPage(),
         '/sectioneditorhome': (context) => const EditorsHomePage(),
-        // '/comments': (context) => const CommentsPage(),
         // '/profile': (context) => const ProfilePage(),
         // '/joinus': (context) => const JoinUsPage(),
         '/contribhomepage': (context) => const ContribHomePage(),
@@ -180,7 +179,6 @@ class _AuthCheckerState extends State<AuthChecker> {
 
             switch (userRole) {
               case 'reader':
-                print('user role is ${userRole}');
                 return Homepage(
                   onLogout: _onSignOut,
                   userRole: userRole,
@@ -188,13 +186,13 @@ class _AuthCheckerState extends State<AuthChecker> {
               case 'contributor':
                 return ContribHomePage(
                   onLogout: _onSignOut,
+                  userRole: userRole,
                 );
               case 'section_writer':
                 return SectionWriterHomePage(
                   onLogout: _onSignOut,
                 );
               case 'eic':
-                print('user role is ${userRole}');
                 return EicLandingPage(
                   onLogout: _onSignOut,
                   userRole: userRole,
@@ -202,6 +200,7 @@ class _AuthCheckerState extends State<AuthChecker> {
               case 'section_editors':
                 return EditorsHomePage(
                   onLogout: _onSignOut,
+                  userRole: userRole,
                 );
               default:
                 print(
@@ -210,15 +209,18 @@ class _AuthCheckerState extends State<AuthChecker> {
             }
           } else {
             print('no exit ya hehe');
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
                     builder: (context) => VerifyPage(
-                          onLogout: _onSignOut,
-                        )),
-              );
-            });
+                      onLogout: _onSignOut,
+                    ),
+                  ),
+                );
+              },
+            );
           }
         } else {
           print('User logged out. Resetting role.');

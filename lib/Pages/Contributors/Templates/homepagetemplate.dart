@@ -4,6 +4,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nuntium_mobile/Pages/Contributors/Templates/childtaskcardtemplate.dart';
 
 class HomePageTemplate extends StatefulWidget {
   const HomePageTemplate({super.key});
@@ -19,7 +20,7 @@ class _HomePageTemplate extends State<HomePageTemplate> {
   DocumentSnapshot? lastDocument; // Stores last fetched document for pagination
   bool isLoadingMore = false;
   bool hasMoreTasks = true;
-  static const int initialBatchSize = 2; // Start with a small batch size
+  static const int initialBatchSize = 10; // Start with a small batch size
   int batchSize = initialBatchSize; // Dynamic batch size
 
   @override
@@ -71,8 +72,10 @@ class _HomePageTemplate extends State<HomePageTemplate> {
     if (taskSnapshot.docs.isEmpty) {
       setState(() => hasMoreTasks = false);
     } else {
-      lastDocument =
-          taskSnapshot.docs.last; // Save last document for pagination
+      lastDocument = taskSnapshot.docs.last;
+      if (taskSnapshot.docs.length < batchSize) {
+        setState(() => hasMoreTasks = false);
+      }
     }
 
     List<Map<String, dynamic>> newTasks = [];
@@ -101,20 +104,21 @@ class _HomePageTemplate extends State<HomePageTemplate> {
           'status': assignedTaskDoc['status'],
           'section': taskDoc['section'],
           'task_type': assignedTaskDoc['task_type'],
+          'isParent': assignedTaskDoc['isParent'],
         };
         newTasks.add(combinedTask);
       }
-    }
-
-    if (yourTasksData.length < 5) {
-      batchSize =
-          5; // Load more tasks if there's not enough content on the screen
     }
 
     setState(() {
       yourTasksData.addAll(newTasks);
       isLoadingMore = false;
     });
+
+    if (yourTasksData.length < 20 && hasMoreTasks) {
+      batchSize = 20;
+      fetchNextBatch();
+    }
   }
 
   Future<void> filteredSection(String section) async {
@@ -237,71 +241,20 @@ class _HomePageTemplate extends State<HomePageTemplate> {
                 }
                 final task = filteredTasks[index];
 
-                Widget taskCard = Container(
-                  width: MediaQuery.of(context).size.width * .90,
-                  height: MediaQuery.of(context).size.height * .10,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(6.0),
-                    child: TaskCardTemplate(
-                      taskTitle: task['title'],
-                      status: task['status'],
-                      taskid: task['taskId'],
-                      taskType: task['task_type'],
-                      details: task['details'],
-                      isLoading: false,
-                      assignedId: task['assignedTaskId'],
-                    ),
+                return Padding(
+                  padding: const EdgeInsets.all(6.0),
+                  child: ChildTaskCardTemplate(
+                    taskid: task['taskId'],
+                    taskTitle: task['title'],
+                    taskType: task['task_type'],
+                    details: task['details'],
+                    status: task['status'],
+                    assignedId: task['assignedTaskId'],
+                    isLoading: false,
+                    isParent: task['isParent'],
+                    // deadline: task['deadline'],
                   ),
                 );
-
-                return task['status'] == "assigned"
-                    ? Slidable(
-                        key: ValueKey(task['title']),
-                        endActionPane: ActionPane(
-                          motion: const StretchMotion(),
-                          dismissible: DismissiblePane(
-                            onDismissed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CreateTaskPage(
-                                    taskId: task['taskId'],
-                                    details: task['details'],
-                                    title: task['title'],
-                                    taskType: task['task_type'],
-                                    assignedId: task['assignedTaskId'],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          children: [
-                            CustomSlidableAction(
-                              onPressed: (context) {},
-                              backgroundColor: const Color(0XFFD4AF37),
-                              foregroundColor: const Color(0xff020B40),
-                              borderRadius: BorderRadius.circular(12),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 8),
-                                child: Text(
-                                  'Start',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xff020B40),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        child: taskCard,
-                      )
-                    : taskCard;
               },
             ),
     );
@@ -378,6 +331,9 @@ class _HomePageTemplate extends State<HomePageTemplate> {
 
 final List<Map<String, String>> pubSections = [
   {"section": "all"},
-  {"section": "assigned"},
-  {"section": "ongoing"},
+  {"section": "created"},
+  {"section": "waiting"},
+  {"section": "started"},
+  {"section": "in progress"},
+  {"section": "submitted"},
 ];

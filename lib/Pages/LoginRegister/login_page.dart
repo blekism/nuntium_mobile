@@ -335,8 +335,7 @@ class _LoginPageState extends State<LoginPage> {
                             const SizedBox(height: 20),
                             ElevatedButton(
                               onPressed: () async {
-                                User? user = await signInWithGoogle();
-                                // _handleSignInResult(user);
+                                await signInWithGoogle();
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
@@ -378,7 +377,20 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ],
                               ),
-                            )
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pushReplacementNamed(
+                                    context, '/initial');
+                              },
+                              child: const Text(
+                                'Read Now!',
+                                style: TextStyle(
+                                  color: Color(0XFF020B40),
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -388,25 +400,25 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
           ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).size.height * 0.12),
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width * 0.4,
-                height: MediaQuery.of(context).size.height * 0.2,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(
-                      80), // Half of the width/height to make it fully rounded
-                  child: Image.asset(
-                    'assets/images/nuntium.jpg',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // Align(
+          //   alignment: Alignment.topCenter,
+          //   child: Padding(
+          //     padding: EdgeInsets.only(
+          //         top: MediaQuery.of(context).size.height * 0.12),
+          //     child: SizedBox(
+          //       width: MediaQuery.of(context).size.width * 0.4,
+          //       height: MediaQuery.of(context).size.height * 0.2,
+          //       child: ClipRRect(
+          //         borderRadius: BorderRadius.circular(
+          //             80), // Half of the width/height to make it fully rounded
+          //         child: Image.asset(
+          //           'assets/images/nuntium.jpg',
+          //           fit: BoxFit.cover,
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );

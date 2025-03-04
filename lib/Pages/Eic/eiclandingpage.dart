@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nuntium_mobile/Pages/Eic/eichomepage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 
@@ -19,38 +17,7 @@ class EicLandingPage extends StatefulWidget {
 }
 
 class _EicLandingPage extends State<EicLandingPage> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
   int _currentIndex = 0;
-  bool canUsersRead = false;
-
-  Future<bool> _canUserRead() async {
-    final user = _auth.currentUser;
-    if (user == null) return false;
-
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      return userDoc.get('canUserRead') ?? false;
-    } catch (e) {
-      print("Error fetching canUserRead: $e");
-      return false; // Return false in case of an error
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    _canUserRead().then((value) {
-      setState(() {
-        canUsersRead = value;
-      });
-    });
-  }
 
   final List<Widget> _screens = [
     const EicHomepage(),
@@ -64,7 +31,6 @@ class _EicLandingPage extends State<EicLandingPage> {
       appBar: _appBar(context),
       drawer: Appdrawer(
         onLogout: widget.onLogout!,
-        canUsersRead: canUsersRead,
         userRole: widget.userRole!,
         pageOrigin: 'eiclanding',
       ),

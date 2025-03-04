@@ -17,24 +17,6 @@ class TimelinePage extends StatefulWidget {
 }
 
 class _TimelinePage extends State<TimelinePage> {
-  final List<Map<String, String>> timelineData = [
-    {
-      "timelinestatus": "Reviewing",
-      "date": "Sep 10, 2002 10:00",
-      "revision": "awaiting revision",
-    },
-    {
-      "timelinestatus": "Reviewed",
-      "date": "Aug 27, 2002 13:04",
-      "revision": "Revision 2",
-    },
-    {
-      "timelinestatus": "Reviewed",
-      "date": "Aug 4, 2002 13:04",
-      "revision": "Revision 1",
-    },
-  ];
-
   List<Map<String, dynamic>> timelineHistory = [];
 
   late final Stream<QuerySnapshot> _timelineStream;
@@ -120,6 +102,7 @@ class _TimelinePage extends State<TimelinePage> {
                       revision: item["revision"],
                       comments: item["comment"],
                       content: item["content"],
+                      author: item["author"],
                     ),
                   ),
                 );

@@ -58,20 +58,18 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
           borderRadius: BorderRadius.circular(15),
           border: Border.all(
             color: switch (widget.status) {
-              'created' => const Color(0xFF505050),
-              'waiting' => const Color(0xFF2A367C),
+              'assigned' => const Color(0xFF2A367C),
               'started' => const Color(0xFFD4AF37),
-              'in_progress' => const Color(0xFFD4AF37),
-              'submitted' => const Color(0xFF6A9C64),
+              'approved' => const Color(0xFF6A9C64),
+              'for approval' => const Color.fromARGB(255, 255, 135, 135),
               _ => const Color(0xFFB8CFED), // Default color
             },
           ),
           color: switch (widget.status) {
-            'created' => const Color(0xFFE4E4E4),
-            'waiting' => const Color(0xFFB8CFED),
+            'assigned' => const Color(0xFFB8CFED),
             'started' => const Color(0x66D4AF37),
-            'in_progress' => const Color(0x66D4AF37),
-            'submitted' => const Color(0xFFBAD8B6),
+            'approved' => const Color(0xFFBAD8B6),
+            'for approval' => const Color.fromARGB(255, 255, 135, 135),
             _ => const Color(0xFFB8CFED), // Default color
           },
           boxShadow: [
@@ -104,12 +102,11 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
                 width: MediaQuery.of(context).size.width * .10,
                 height: MediaQuery.of(context).size.height * .05,
                 color: switch (widget.status) {
-                  'created' => const Color(0xFF505050),
-                  'waiting' => const Color(0xFF2A367C),
+                  'assigned' => const Color(0xFF2A367C),
                   'started' => const Color(0xFFD4AF37),
-                  'in_progress' => const Color(0xFFD4AF37),
-                  'submitted' => const Color(0xFF6A9C64),
-                  _ => const Color(0xFFB8CFED), // Default color
+                  'approved' => const Color(0xFF6A9C64),
+                  'for approval' => const Color.fromARGB(255, 255, 65, 65),
+                  _ => const Color(0xFFB8CFED),
                 },
                 child: const Center(
                   child: Icon(

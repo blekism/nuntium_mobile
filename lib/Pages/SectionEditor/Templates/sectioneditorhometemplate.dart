@@ -251,7 +251,7 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
                       taskType: task['task_type'],
                       details: task['details'],
                       isLoading: false,
-                      assignedId: task['assignedTaskId'],
+                      // assignedId: task['assignedTaskId'],
                     ),
                   ),
                 );

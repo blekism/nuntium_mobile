@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../Contributors/Templates/taskcardtemplate.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 
 class OrganizationTasks extends StatefulWidget {
   final String? sectionID;
@@ -27,7 +24,7 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
   List<String> yourTaskIds = [];
   bool isLoadingMore = false;
   bool hasMoreTasks = true;
-  static const int initialBatchSize = 2; // Start with a small batch size
+  static const int initialBatchSize = 10;
   int batchSize = initialBatchSize; // Dynamic batch size
 
   @override
@@ -84,7 +81,13 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
       setState(() => hasMoreTasks = false);
     } else {
       lastDocument = taskSnapshot.docs.last;
+      if (taskSnapshot.docs.length < batchSize) {
+        setState(() => hasMoreTasks = false);
+      }
       print('Last Document: $lastDocument');
+      // Inside fetchNextBatch after processing results
+      print('Number of items in this batch: ${taskSnapshot.docs.length}');
+      print('has more  tasks: ${hasMoreTasks}');
     }
 
     List<Map<String, dynamic>> combinedTasks = [];
@@ -105,6 +108,12 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
       yourTasksData.addAll(combinedTasks);
       isLoadingMore = false;
     });
+
+    if (yourTasksData.length < 20 && hasMoreTasks) {
+      print('your task data length is ${batchSize}');
+      batchSize = 20;
+      fetchNextBatch();
+    }
   }
 
   Future<void> filteredSection(String section) async {
@@ -238,7 +247,7 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
                 }
 
                 final task = filteredTasks[index];
-                Widget taskCard = Padding(
+                return Padding(
                   padding: const EdgeInsets.all(6.0),
                   child: TaskCardTemplate(
                     taskTitle: task['title'],
@@ -251,48 +260,6 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
                     isParent: task['isParent'],
                   ),
                 );
-
-                return task['status'] == "assigned"
-                    ? Slidable(
-                        key: ValueKey(task['title']),
-                        endActionPane: ActionPane(
-                          motion: const StretchMotion(),
-                          children: [
-                            CustomSlidableAction(
-                              onPressed: (context) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => CreateTaskPage(
-                                      taskId: task['id'],
-                                      details: task['details'],
-                                      title: task['title'],
-                                      taskType: task['task_type'],
-                                    ),
-                                  ),
-                                );
-                              },
-                              backgroundColor: const Color(0XFFD4AF37),
-                              foregroundColor: const Color(0xff020B40),
-                              borderRadius: BorderRadius.circular(12),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 8),
-                                child: Text(
-                                  'Start',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xff020B40),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        child: taskCard,
-                      )
-                    : taskCard;
               },
             ),
     );
@@ -376,4 +343,5 @@ final List<Map<String, String>> orgTasks = [
   {"section": "submitted"},
   {"section": "for posting"},
   {"section": "for assigning"},
+  {"section": "for approval"},
 ];

@@ -10,7 +10,6 @@ class TaskCardTemplate extends StatefulWidget {
   final String? taskType;
   final String? details;
   final bool isLoading;
-  final String? assignedId;
   final String? deadline;
   final String? isParent;
   final String? priority;
@@ -23,7 +22,6 @@ class TaskCardTemplate extends StatefulWidget {
     this.taskType,
     this.details,
     required this.isLoading,
-    this.assignedId,
     this.deadline,
     this.isParent,
     this.priority,
@@ -51,6 +49,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
               'started' => const Color(0xFFD4AF37),
               'in_progress' => const Color(0xFFD4AF37),
               'ready_post' => const Color(0xFF6A9C64),
+              'for approval' => const Color.fromARGB(255, 255, 135, 135),
               _ => const Color(0xFFB8CFED), // Default color
             },
           ),
@@ -60,6 +59,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
             'started' => const Color(0x66D4AF37),
             'in_progress' => const Color(0x66D4AF37),
             'ready_post' => const Color(0xFFBAD8B6),
+            'for approval' => const Color.fromARGB(255, 255, 135, 135),
             _ => const Color(0xFFB8CFED), // Default color
           },
           boxShadow: [
@@ -97,6 +97,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                   'started' => const Color(0xFFD4AF37),
                   'in_progress' => const Color(0xFFD4AF37),
                   'ready_post' => const Color(0xFF6A9C64),
+                  'for approval' => const Color.fromARGB(255, 255, 65, 65),
                   _ => const Color(0xFFB8CFED), // Default color
                 },
                 child: const Center(
