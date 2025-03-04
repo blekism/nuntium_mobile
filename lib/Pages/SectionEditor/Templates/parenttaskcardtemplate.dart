@@ -396,6 +396,7 @@ class _ParentTaskCardTemplateState extends State<ParentTaskCardTemplate> {
                               isParent: widget.isParent,
                               priority: widget.priority,
                               deadline: widget.taskDeadline,
+
                               isLoading: false,
                             ),
                           );

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nuntium_mobile/Pages/Contributors/Templates/homepagetemplate.dart';
 import 'package:nuntium_mobile/Pages/Contributors/calendarpage.dart';
+import 'package:nuntium_mobile/Pages/appdrawer.dart';
 
 class SectionWriterHomePage extends StatefulWidget {
   final VoidCallback? onLogout;
+  final String? userRole;
 
   const SectionWriterHomePage({
     super.key,
     this.onLogout,
+    this.userRole,
   });
 
   @override
@@ -18,35 +18,7 @@ class SectionWriterHomePage extends StatefulWidget {
 }
 
 class _SectionWriterHomePage extends State<SectionWriterHomePage> {
-  final GoogleSignIn _googleSignInLog = GoogleSignIn();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
   int _currentIndex = 0;
-
-  Future<void> _logout() async {
-    try {
-      await _auth.signOut();
-      await _googleSignInLog.signOut();
-      widget.onLogout!();
-
-      // Sign the user out of Firebase
-      // After successful logout, navigate to the login screen:
-      if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/login',
-          (Route<dynamic> route) => false,
-        ); // Or your login route
-      }
-    } catch (e) {
-      // Handle logout errors (e.g., show a SnackBar)
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error logging out: $e")),
-        );
-      }
-    }
-  }
 
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -56,7 +28,11 @@ class _SectionWriterHomePage extends State<SectionWriterHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _appBar(context),
-      drawer: AppDrawer(onLogout: _logout),
+      drawer: Appdrawer(
+        onLogout: widget.onLogout!,
+        userRole: widget.userRole!,
+        pageOrigin: 'section_writer',
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
@@ -131,46 +107,5 @@ class _HomeScreen extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return const HomePageTemplate();
-  }
-}
-
-class AppDrawer extends StatelessWidget {
-  final VoidCallback onLogout;
-
-  const AppDrawer({super.key, required this.onLogout});
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      // shadowColor: Colors.black,
-      child: ListView(
-        children: [
-          const DrawerHeader(
-            decoration: BoxDecoration(color: Color(0xffD9D9D9)),
-            child: Text(
-              'Menu',
-              style: TextStyle(color: Colors.black, fontSize: 24),
-            ),
-          ),
-          ListTile(
-            title: const Text('Profile'),
-            onTap: () {
-              // Navigator.pushNamed(context, '/profile');
-            },
-          ),
-          ListTile(
-            title: const Text('Change to Reader Mode!'),
-            onTap: () {
-              // Navigator.pushNamed(context, '/joinus');
-            },
-          ),
-          ListTile(
-              title: const Text('Logout!'),
-              onTap: () {
-                onLogout();
-              }),
-        ],
-      ),
-    );
   }
 }

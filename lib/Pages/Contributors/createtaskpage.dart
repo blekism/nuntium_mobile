@@ -7,6 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CreateTaskPage extends StatefulWidget {
   final String? taskId;
@@ -36,8 +37,12 @@ class _CreateTaskPage extends State<CreateTaskPage> {
   final TextEditingController _taskTypeController = TextEditingController();
   final TextEditingController _taskDetailsController = TextEditingController();
   final TextEditingController _taskContentController = TextEditingController();
+  final TextEditingController _taksCommentsController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   bool showImageIsLoading = true;
   List<String> retrievedImages = [];
+  bool isStarted = true;
+  String? userRole;
 
   final controller = MultiImagePickerController(
     maxImages: 200,
@@ -63,12 +68,21 @@ class _CreateTaskPage extends State<CreateTaskPage> {
     },
   );
 
-  Future<void> _uploadImages() async {
+  Future<void> _uploadImages(
+    StateSetter setModalState,
+    Map<String, double> uploadProgress,
+    List<String> uploadingImagePaths,
+  ) async {
     List<String> imageUrls = [];
 
     for (final fileWrapper in controller.images) {
       if (fileWrapper.hasPath) {
         File file = File(fileWrapper.path!);
+
+        var timelineRef = FirebaseFirestore.instance
+            .collection('tasks')
+            .doc(widget.taskId)
+            .collection('timeline');
 
         String fileExtension = file.path.split('.').last;
         String fileName =
@@ -79,10 +93,23 @@ class _CreateTaskPage extends State<CreateTaskPage> {
 
         UploadTask uploadTask = storageRef.putFile(file);
 
+        // Add the image path to the list of uploading images
+        uploadingImagePaths.add(fileWrapper.path!);
+
         try {
           // 1. Listen for upload progress (Stream)
           uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-            double progress = snapshot.bytesTransferred / snapshot.totalBytes;
+            double progress = snapshot.bytesTransferred.toDouble() /
+                snapshot.totalBytes.toDouble();
+
+            // Update the progress in the map
+            setModalState(() {
+              uploadProgress[fileWrapper.path!] = progress;
+            });
+
+            // Update the UI using setModalState
+            setModalState(() {});
+
             print("Upload Progress: $progress");
             // Update your UI with the progress (e.g., a progress bar)
           }, onError: (error) {
@@ -90,6 +117,13 @@ class _CreateTaskPage extends State<CreateTaskPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text("Error monitoring upload: $error")),
             );
+            // Remove the image path from the list of uploading images in case of error
+            uploadingImagePaths.remove(fileWrapper.path!);
+            setModalState(() {}); // Update UI to remove progress indicator
+          }, onDone: () {
+            // Remove the image path from the list of uploading images when done
+            uploadingImagePaths.remove(fileWrapper.path!);
+            setModalState(() {}); // Update UI to remove progress indicator
           });
 
           // 2. Await the upload to complete (Future)
@@ -99,11 +133,23 @@ class _CreateTaskPage extends State<CreateTaskPage> {
           // 3. Get the download URL (after upload is complete)
           String downloadURL = await snapshot.ref.getDownloadURL();
           imageUrls.add(downloadURL);
+
+          await timelineRef.add({
+            'author': _auth.currentUser!.displayName,
+            'comment': 'None',
+            'content': 'Image uploaded',
+            'date': FieldValue.serverTimestamp(),
+            'revision': 'Upload',
+            'timelinestatus': 'submitted',
+          });
         } catch (e) {
           print("Error uploading image: $e");
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("Image upload failed: $e")),
           );
+          // Remove the image path from the list of uploading images in case of error
+          uploadingImagePaths.remove(fileWrapper.path!);
+          setModalState(() {}); // Update UI to remove progress indicator
           return; // Or continue; if you want to try other images
         }
       }
@@ -119,6 +165,8 @@ class _CreateTaskPage extends State<CreateTaskPage> {
         .update({
       'submitted_at': FieldValue.serverTimestamp(),
       'images': FieldValue.arrayUnion(imageUrls),
+      'content': 'Images uploaded',
+      'status': 'for approval',
     });
     print("Images uploaded successfully!");
   }
@@ -145,6 +193,150 @@ class _CreateTaskPage extends State<CreateTaskPage> {
     }
   }
 
+  Future<void> _startTask() async {
+    setState(() {
+      isStarted = true;
+    });
+    try {
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('assigned_tasks')
+          .doc(widget.assignedId)
+          .update({
+        'started_at': FieldValue.serverTimestamp(),
+        'status': 'started',
+      });
+
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('timeline')
+          .add({
+        'author': _auth.currentUser!.displayName,
+        'comment': 'None',
+        'content': 'Task Started',
+        'date': FieldValue.serverTimestamp(),
+        'revision': 'Task Start',
+        'timelinestatus': 'started',
+      });
+      print("Task started successfully!");
+    } catch (e) {
+      print("Error starting task: $e");
+    }
+  }
+
+  Future<void> _checkIfStarted() async {
+    try {
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('assigned_tasks')
+          .doc(widget.assignedId)
+          .get();
+
+      if (snapshot.exists) {
+        if (snapshot['started_at'] != null) {
+          print('Task already started');
+          setState(() {
+            isStarted = true;
+          });
+        } else {
+          print('Task not yet started');
+          setState(() {
+            isStarted = false;
+          });
+        }
+      } else {
+        print('Assigned task not found');
+        setState(() {
+          isStarted = false;
+        });
+      }
+    } catch (e) {
+      print("Error checking if task started: $e");
+      setState(() {
+        isStarted = false;
+      });
+    }
+  }
+
+  Future<void> _leaveComment() async {
+    if (widget.taskId != null) {
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('assigned_tasks')
+          .doc(widget.assignedId)
+          .update({
+        'comment': _taksCommentsController.text,
+      });
+
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('timeline')
+          .add({
+        'author': _auth.currentUser!.displayName,
+        'comment': _taksCommentsController.text,
+        'content': 'Reviewed task',
+        'date': FieldValue.serverTimestamp(),
+        'revision': 'Comment',
+        'timelinestatus': 'commented',
+      });
+      print("Comment added successfully!");
+    } else {
+      print("Error: taskId is null");
+    }
+  }
+
+  Future<void> _approveTaskContent() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('assigned_tasks')
+          .doc(widget.assignedId)
+          .update({
+        'approved_at': FieldValue.serverTimestamp(),
+        'status': 'approved',
+      });
+
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('timeline')
+          .add({
+        'author': _auth.currentUser!.displayName,
+        'comment': 'None',
+        'content': 'Task Approved',
+        'date': FieldValue.serverTimestamp(),
+        'revision': 'Task Approval',
+        'timelinestatus': 'approved',
+      });
+      print("Task approved successfully!");
+    } catch (e) {
+      print("Error approving task: $e");
+    }
+  }
+
+  Future<void> _getRole() async {
+    try {
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_auth.currentUser!.uid)
+          .get();
+
+      if (snapshot.exists) {
+        setState(() {
+          userRole = snapshot['role'];
+        });
+      }
+    } catch (e) {
+      print("Error getting user role: $e");
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -154,6 +346,8 @@ class _CreateTaskPage extends State<CreateTaskPage> {
 
     if (widget.taskId != null) {
       fetchLatestContent(widget.taskId!);
+      _checkIfStarted();
+      _getRole();
     }
   }
 
@@ -183,10 +377,12 @@ class _CreateTaskPage extends State<CreateTaskPage> {
       await assignedTasksRef.update({
         'content': content,
         'submitted_at': FieldValue.serverTimestamp(),
+        'status': 'for approval'
       });
 
       // Add to the timeline_history subcollection
       await timelineRef.add({
+        'author': _auth.currentUser!.displayName,
         'comment': isRevised ? 'No comments yet' : 'Content submitted',
         'content': content,
         'date': FieldValue.serverTimestamp(),
@@ -214,7 +410,9 @@ class _CreateTaskPage extends State<CreateTaskPage> {
       if (snapshot.docs.isNotEmpty) {
         setState(() {
           _taskContentController.text = snapshot.docs.first['content'];
+          _taksCommentsController.text = snapshot.docs.first['comment'];
         });
+        print(snapshot.docs.first['comment']);
       }
     } catch (e) {
       print("Error fetching content: $e");
@@ -237,6 +435,19 @@ class _CreateTaskPage extends State<CreateTaskPage> {
           .doc(widget.assignedId)
           .update({
         'images': FieldValue.arrayRemove([retrievedImages[index]]),
+      });
+
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .collection('timeline')
+          .add({
+        'author': _auth.currentUser!.displayName,
+        'comment': 'None',
+        'content': 'Deleted image ',
+        'date': FieldValue.serverTimestamp(),
+        'revision': 'Image Deletion',
+        'timelinestatus': 'Deleted',
       });
       print('image deleted successfully');
 
@@ -445,7 +656,7 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
-                    // controller: _fname,
+                    controller: _taksCommentsController,
                     decoration: InputDecoration(
                       labelText: 'Comments',
                       labelStyle: const TextStyle(
@@ -471,11 +682,110 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter task title';
+                        return 'Please enter comments';
                       }
                       return null;
                     },
                   ),
+
+                  const SizedBox(height: 15),
+
+                  userRole != 'contributor' ||
+                          userRole != 'reader' ||
+                          userRole != 'section_writer'
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  _leaveComment();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFA31D1D),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        10), // Rounded corners
+                                  ),
+                                  elevation: 10, // Add elevation for shadow
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 15.0,
+                                      horizontal:
+                                          30.0), // Padding for the button
+                                ),
+                                child: const Text(
+                                  'Return for Revision',
+                                  style: TextStyle(
+                                    color: Colors.white, // White text color
+                                    fontWeight: FontWeight.w700, // Bold text
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  _approveTaskContent();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF6A9C64),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        10), // Rounded corners
+                                  ),
+                                  elevation: 10, // Add elevation for shadow
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 15.0,
+                                      horizontal:
+                                          30.0), // Padding for the button
+                                ),
+                                child: const Text(
+                                  'Approve',
+                                  style: TextStyle(
+                                    color: Colors.white, // White text color
+                                    fontWeight: FontWeight.w700, // Bold text
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : const SizedBox.shrink(),
+
+                  const SizedBox(height: 15),
+
+                  isStarted
+                      ? const SizedBox.shrink()
+                      : Align(
+                          alignment: Alignment.center,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _startTask();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD4AF37),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                    10), // Rounded corners
+                              ),
+                              elevation: 10, // Add elevation for shadow
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 15.0,
+                                  horizontal: 30.0), // Padding for the button
+                            ),
+                            child: const Text(
+                              'Start Task',
+                              style: TextStyle(
+                                color: Colors.white, // White text color
+                                fontWeight: FontWeight.w700, // Bold text
+                              ),
+                            ),
+                          ),
+                        ),
                 ],
               ),
             ),
@@ -597,8 +907,9 @@ class _CreateTaskPage extends State<CreateTaskPage> {
   }
 
   void _showUploadSection(BuildContext context) {
+    Map<String, double> uploadProgress = {};
+    List<String> uploadingImagePaths = [];
     bool isUploading = false;
-
     showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -610,92 +921,126 @@ class _CreateTaskPage extends State<CreateTaskPage> {
           ),
         ),
         builder: (context) {
-          return Stack(
-            children: [
-              FractionallySizedBox(
-                heightFactor: 0.90,
-                child: Padding(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Column(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        width: 50,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[400],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            children: [
-                              MultiImagePickerView(
-                                controller: controller,
-                                builder: (context, imageFile) {
-                                  return DefaultDraggableItemWidget(
-                                    imageFile: imageFile,
-                                    boxDecoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(10),
+          return StatefulBuilder(
+            builder: (BuildContext context, StateSetter setModalState) {
+              return Stack(
+                children: [
+                  FractionallySizedBox(
+                    heightFactor: 0.90,
+                    child: Padding(
+                      padding: const EdgeInsets.all(10.0),
+                      child: Column(
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.symmetric(vertical: 10),
+                            width: 50,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[400],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  MultiImagePickerView(
+                                    controller: controller,
+                                    builder: (context, imageFile) {
+                                      return Stack(
+                                        children: [
+                                          DefaultDraggableItemWidget(
+                                            imageFile: imageFile,
+                                            boxDecoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            closeButtonAlignment:
+                                                Alignment.topLeft,
+                                            fit: BoxFit.cover,
+                                            closeButtonIcon: const Icon(
+                                              Icons.delete_rounded,
+                                              color: Colors.red,
+                                            ),
+                                            closeButtonBoxDecoration: null,
+                                            closeButtonMargin:
+                                                const EdgeInsets.all(3),
+                                            closeButtonPadding:
+                                                const EdgeInsets.all(3),
+                                          ),
+                                          uploadProgress.containsKey(
+                                                      imageFile.path) &&
+                                                  isUploading
+                                              ? Positioned.fill(
+                                                  child: Align(
+                                                    alignment: Alignment.center,
+                                                    child: uploadProgress[
+                                                                imageFile
+                                                                    .path] ==
+                                                            1.0
+                                                        ? const Icon(
+                                                            Icons.check_circle,
+                                                            color: Colors.green,
+                                                            size: 30)
+                                                        : const CircularProgressIndicator(),
+                                                  ),
+                                                )
+                                              : const SizedBox(), // Instead of showing the progress bar early, show nothing.
+                                        ],
+                                      );
+                                    },
+                                    initialWidget: const DefaultInitialWidget(
+                                      centerWidget:
+                                          Icon(Icons.image_search_outlined),
+                                      backgroundColor: Colors.grey,
+                                      margin: EdgeInsets.all(0),
                                     ),
-                                    closeButtonAlignment: Alignment.topLeft,
-                                    fit: BoxFit.cover,
-                                    closeButtonIcon: const Icon(
-                                      Icons.delete_rounded,
-                                      color: Colors.red,
+                                    addMoreButton: const DefaultAddMoreWidget(
+                                      icon: Icon(Icons.image_search_outlined),
+                                      backgroundColor: Colors.grey,
                                     ),
-                                    closeButtonBoxDecoration: null,
-                                    closeButtonMargin: const EdgeInsets.all(3),
-                                    closeButtonPadding: const EdgeInsets.all(3),
-                                  );
-                                },
-                                initialWidget: const DefaultInitialWidget(
-                                  centerWidget:
-                                      Icon(Icons.image_search_outlined),
-                                  backgroundColor: Colors.grey,
-                                  margin: EdgeInsets.all(0),
-                                ),
-                                addMoreButton: const DefaultAddMoreWidget(
-                                  icon: Icon(Icons.image_search_outlined),
-                                  backgroundColor: Colors.grey,
-                                ),
-                                padding: const EdgeInsets.all(10),
-                                shrinkWrap: true,
+                                    padding: const EdgeInsets.all(10),
+                                    shrinkWrap: true,
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () async {
-                          _uploadImages();
+                          ElevatedButton(
+                            onPressed: () async {
+                              setState(() {
+                                isUploading = true;
+                              });
+                              _uploadImages(setModalState, uploadProgress,
+                                  uploadingImagePaths);
 
-                          print('uploading images');
-                          // Call your Firebase Storage upload function here
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF020B40),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                              print('uploading images');
+                              // Call your Firebase Storage upload function here
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF020B40),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 10,
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 15.0, horizontal: 30.0),
+                            ),
+                            child: const Text(
+                              'Upload To Storage',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
-                          elevation: 10,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 15.0, horizontal: 30.0),
-                        ),
-                        child: const Text(
-                          'Upload To Storage',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           );
         });
   }

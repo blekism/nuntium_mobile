@@ -234,6 +234,7 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
                     // deadline: task['deadline'],
                     status: task['status'],
                     isParent: task['isParent'],
+
                   ),
                 );
 
