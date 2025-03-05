@@ -392,7 +392,7 @@ class _ParentTaskCardTemplateState extends State<ParentTaskCardTemplate> {
                               taskType: tasks[index]['task_type'],
                               details: widget.details,
                               status: widget.status,
-                              assignedId: tasks[index].id,
+                              // assignedId: tasks[index].id,
                               isParent: widget.isParent,
                               priority: widget.priority,
                               deadline: widget.taskDeadline,

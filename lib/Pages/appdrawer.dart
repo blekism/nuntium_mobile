@@ -98,6 +98,14 @@ class _AppdrawerState extends State<Appdrawer> {
               // Navigator.pushNamed(context, '/profile');
             },
           ),
+          widget.userRole == 'reader'
+              ? ListTile(
+                  title: const Text('Contributors Hunt'),
+                  onTap: () {
+                    Navigator.pushNamed(context, '/contribhuntpage');
+                  },
+                )
+              : const SizedBox.shrink(),
           widget.userRole != 'reader'
               ? _changeButtonPerRole(widget.pageOrigin!)
               : const SizedBox.shrink(),
@@ -127,6 +135,7 @@ class _AppdrawerState extends State<Appdrawer> {
       case 'section_editors':
       case 'contributor':
       case 'section_writer':
+      case 'committee':
         return ListTile(
           title: const Text('Change to Reader Mode!'),
           onTap: () {

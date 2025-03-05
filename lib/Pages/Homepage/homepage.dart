@@ -81,6 +81,7 @@ class _HomepageState extends State<Homepage> {
   @override //this is whats rendered when homepage is called
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFFF2F2F2),
       appBar: _appBar(context),
       drawer: Appdrawer(
         onLogout: widget.onLogout!,
@@ -103,7 +104,7 @@ class _HomepageState extends State<Homepage> {
           _currentIndex = index;
         });
       },
-      selectedItemColor: Colors.blue,
+      selectedItemColor: const Color(0xFF020B40),
       items: [
         BottomNavigationBarItem(
           icon: Image.asset('assets/images/home.png', width: 35, height: 35),
@@ -133,7 +134,7 @@ class _HomepageState extends State<Homepage> {
 
   AppBar _appBar(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Color(0xFFF2F2F2),
       actions: [
         GestureDetector(
           onTap: () {
@@ -201,14 +202,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                Text(
-                  'ViewAll',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0XFF020B40),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                // Text(
+                //   'ViewAll',
+                //   style: TextStyle(
+                //     fontSize: 12,
+                //     color: Color(0XFF020B40),
+                //     fontWeight: FontWeight.w500,
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -299,14 +300,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                Text(
-                  'ViewAll',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0XFF020B40),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                // Text(
+                //   'ViewAll',
+                //   style: TextStyle(
+                //     fontSize: 12,
+                //     color: Color(0XFF020B40),
+                //     fontWeight: FontWeight.w500,
+                //   ),
+                // ),
               ],
             ),
           ),

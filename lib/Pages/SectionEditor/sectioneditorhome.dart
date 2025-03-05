@@ -1,7 +1,7 @@
 import "package:flutter/material.dart";
 import 'package:nuntium_mobile/Pages/SectionEditor/assigntasklogpage.dart';
 import 'package:nuntium_mobile/Pages/SectionEditor/Templates/sectioneditorhometemplate.dart';
-import 'package:nuntium_mobile/Pages/Contributors/calendarpage.dart';
+import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 
 class EditorsHomePage extends StatefulWidget {

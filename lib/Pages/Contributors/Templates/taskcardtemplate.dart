@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nuntium_mobile/Pages/Contributors/Templates/childtaskcardtemplate.dart';
+import 'package:nuntium_mobile/Pages/Committee/taskcontentpage.dart';
 
 class TaskCardTemplate extends StatefulWidget {
   final String? taskTitle;
@@ -36,7 +37,16 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        _showModal(context);
+        if (widget.status == 'ready_post') {
+          print('Task ID being passed: ${widget.taskid}');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => TaskContentPage(taskid: widget.taskid)),
+          );
+        } else {
+          _showModal(context);
+        }
       },
       child: Container(
         width: MediaQuery.of(context).size.width * .90,
