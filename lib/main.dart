@@ -11,8 +11,10 @@ import 'Pages/Homepage/discoverpage.dart';
 import 'Pages/Homepage/savedpostspage.dart';
 import 'Pages/Homepage/termlypostspage.dart';
 import 'Pages/Homepage/readhistory.dart';
+import 'Pages/Homepage/contribhuntpage.dart';
 import 'Pages/Contributors/contribhomepage.dart';
-import 'Pages/Contributors/calendarpage.dart';
+import 'Pages/Calendar/calendarpage.dart';
+import 'Pages/Calendar/createeventpage.dart';
 import 'Pages/ContentPage/articlecontent.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -22,6 +24,9 @@ import 'Pages/Eic/eicorgtasks.dart';
 import 'Pages/SectionEditor/Templates/assigntaskpage.dart';
 import 'Pages/SectionEditor/assigntasklogpage.dart';
 import 'Pages/SectionWriter/swhomepage.dart';
+import 'Pages/Committee/committeehomepage.dart';
+import 'Pages/Committee/committeehometemplate.dart';
+import 'Pages/Committee/taskcontentpage.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 
 void main() async {
@@ -62,11 +67,17 @@ class NuntiumApp extends StatelessWidget {
         '/contribhomepage': (context) => const ContribHomePage(),
         '/eiclandingpage': (context) => const EicLandingPage(),
         '/calendarpage': (context) => const CalendarPage(),
+        '/createeventpage': (context) => const CreateEventPage(),
         '/eichomepage': (context) => const EicHomepage(),
         '/eicorgtasks': (context) => const OrganizationTasks(),
         '/assigntaskpage': (context) => const AssignTaskPage(),
         '/assigntasklogpage': (context) => const AssignTaskLogPage(),
         '/swhomepage': (context) => const SectionWriterHomePage(),
+        '/contribhuntpage': (context) => const ContribHuntPage(),
+        '/commmitteehomepage': (context) => const CommitteeHomePage(),
+        '/commmitteehometemplate': (context) =>
+            const CommitteeHomePageTemplate(),
+        '/taskcontentpage': (context) => const TaskContentPage(),
         '/initial': (context) => AuthChecker(
               authStream: FirebaseAuth.instance.authStateChanges(),
             ),
@@ -200,6 +211,11 @@ class _AuthCheckerState extends State<AuthChecker> {
                 );
               case 'section_editors':
                 return EditorsHomePage(
+                  onLogout: _onSignOut,
+                  userRole: userRole,
+                );
+              case 'committee':
+                return CommitteeHomePage(
                   onLogout: _onSignOut,
                   userRole: userRole,
                 );

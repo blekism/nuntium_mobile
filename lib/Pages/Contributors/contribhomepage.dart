@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Contributors/Templates/homepagetemplate.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
-import 'calendarpage.dart';
+import '../Calendar/calendarpage.dart';
 
 class ContribHomePage extends StatefulWidget {
   final VoidCallback? onLogout;
