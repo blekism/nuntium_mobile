@@ -202,6 +202,7 @@ class _AuthCheckerState extends State<AuthChecker> {
               case 'section_writer':
                 return SectionWriterHomePage(
                   onLogout: _onSignOut,
+                  userRole: userRole,
                 );
               case 'eic':
                 return EicLandingPage(

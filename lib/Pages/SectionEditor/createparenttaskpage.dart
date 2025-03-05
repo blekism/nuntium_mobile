@@ -2,6 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+Future<List<Map<String, dynamic>>> fetchSectionList() async {
+  try {
+    final QuerySnapshot sectionList =
+        await FirebaseFirestore.instance.collection('sections').get();
+
+    List<Map<String, dynamic>> sections = [];
+
+    for (QueryDocumentSnapshot doc in sectionList.docs) {
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      data['documentId'] = doc.id; // Add the document ID
+      sections.add(data);
+    }
+
+    return sections;
+  } catch (e) {
+    print('Error fetching section list: $e');
+    return [];
+  }
+}
+
 class CreateParentTask extends StatefulWidget {
   final String? section;
   const CreateParentTask({super.key, this.section});
@@ -16,6 +36,13 @@ class _CreateParentTask extends State<CreateParentTask> {
   final _taskDetailsController = TextEditingController();
   final _taskDeadlineController = TextEditingController();
   bool _isLoading = false;
+  String? taskTitle;
+  String? taskDetails;
+  String? taskDeadline;
+  String? selectedPriority;
+  String? _selectedValue;
+  List<Map<String, dynamic>> _sectionData = [];
+
   // For the deadline
   DateTime? _selectedDate;
   Future<void> _pickDate() async {
@@ -35,6 +62,24 @@ class _CreateParentTask extends State<CreateParentTask> {
     }
   }
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.section == 'all') {
+      _loadSectionData();
+    } else {
+      _selectedValue = widget.section;
+    }
+  }
+
+  Future<void> _loadSectionData() async {
+    List<Map<String, dynamic>> sections = await fetchSectionList();
+
+    setState(() {
+      _sectionData = sections;
+    });
+  }
+
   Future<void> createParentTask() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -44,17 +89,17 @@ class _CreateParentTask extends State<CreateParentTask> {
       try {
         DocumentReference taskRef =
             await FirebaseFirestore.instance.collection('tasks').add({
-          'assigned_by': FirebaseFirestore.instance
-              .collection('users')
-              .doc(FirebaseAuth.instance.currentUser!.uid),
+          'assigned_by': FirebaseAuth.instance.currentUser!.uid,
           'created_at': FieldValue.serverTimestamp(),
           'title': _taskTitleController.text,
           'details': _taskDetailsController.text,
           'deadline': _selectedDate,
-          'section': widget.section,
+          'section': _selectedValue,
           'priority': selectedPriority,
           'isParent': 'Parent Task',
-          'status': 'for approval',
+          'status': 'pendingAPR',
+          'total_subtasks': 0,
+          'completed_subtasks': 0,
         });
 
         DocumentSnapshot newTask = await taskRef.get();
@@ -79,11 +124,6 @@ class _CreateParentTask extends State<CreateParentTask> {
       }
     }
   }
-
-  String? taskTitle;
-  String? taskDetails;
-  String? taskDeadline;
-  String? selectedPriority;
 
   @override
   Widget build(BuildContext context) {
@@ -184,6 +224,7 @@ class _CreateParentTask extends State<CreateParentTask> {
                           const SizedBox(height: 10),
                           TextFormField(
                             controller: _taskDeadlineController,
+                            readOnly: true,
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: const Color(0xFfffffff),
@@ -236,6 +277,34 @@ class _CreateParentTask extends State<CreateParentTask> {
                             validator: (value) =>
                                 value == null ? 'Please set a priority' : null,
                           ),
+                          const SizedBox(height: 10),
+                          widget.section == 'all'
+                              ? DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(
+                                    border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(10))),
+                                    filled: true,
+                                    fillColor: Color(0xFfffffff),
+                                    labelText: "Task Section",
+                                    labelStyle: TextStyle(color: Colors.black),
+                                  ),
+                                  value: _selectedValue,
+                                  items: _sectionData.map((section) {
+                                    return DropdownMenuItem<String>(
+                                      value: section['documentId'],
+                                      child: Text(
+                                          section['sectionType'] ?? 'unknown'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    _selectedValue = value;
+                                  },
+                                  validator: (value) => value == null
+                                      ? 'Please select a section'
+                                      : null,
+                                )
+                              : const SizedBox.shrink(),
                           const SizedBox(height: 10),
                           TextFormField(
                             controller: _taskDetailsController,

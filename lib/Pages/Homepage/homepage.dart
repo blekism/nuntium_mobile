@@ -247,6 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: featuredPostData.length,
                     itemBuilder: (context, index) {
                       if (!featuredPostData[index].containsKey('isFeatured')) {
+                        print('url is ${featuredPostData[index]['image']}');
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: FeaturedPostCard(
