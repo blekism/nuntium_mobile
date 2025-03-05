@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:nuntium_mobile/Pages/Contributors/Templates/taskcardtemplate.dart';
 import 'package:nuntium_mobile/Pages/SectionEditor/createparenttaskpage.dart';
-import 'package:nuntium_mobile/Pages/SectionEditor/Templates/parenttaskcardtemplate.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
