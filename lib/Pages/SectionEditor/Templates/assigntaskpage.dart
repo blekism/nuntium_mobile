@@ -12,6 +12,8 @@ class AssignTaskPage extends StatefulWidget {
   State<AssignTaskPage> createState() => _AssignTaskPage();
 }
 
+// TODO: implement datetime picker
+
 class _AssignTaskPage extends State<AssignTaskPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _taskDeadlineController = TextEditingController();
@@ -26,6 +28,24 @@ class _AssignTaskPage extends State<AssignTaskPage> {
 
   late Future<List<Map<String, String>>> _usersFuture;
   late Future<List<Map<String, String>>> _tasksFuture;
+
+  DateTime? _selectedDate;
+  Future<void> _pickDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _taskDeadlineController.text =
+            "${picked.day}/${picked.month}/${picked.year}";
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -53,11 +73,16 @@ class _AssignTaskPage extends State<AssignTaskPage> {
   //PARA SA PAG FETCH NG USERS FOR THE DROPDWOWN
   Future<List<Map<String, String>>> getUsers() async {
     try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('role', whereIn: ['contributor', 'section_writer'])
-          .where('section', isEqualTo: widget.section)
-          .get();
+      QuerySnapshot querySnapshot = widget.section != 'all'
+          ? await FirebaseFirestore.instance
+              .collection('users')
+              .where('role', whereIn: ['contributor', 'section_writer'])
+              .where('section', isEqualTo: widget.section)
+              .get()
+          : await FirebaseFirestore.instance
+              .collection('users')
+              .where('role', isNotEqualTo: 'reader')
+              .get();
 
       List<Map<String, String>> fetchedUsers = querySnapshot.docs.map((doc) {
         return {
@@ -108,6 +133,38 @@ class _AssignTaskPage extends State<AssignTaskPage> {
     }
   }
 
+  Future<void> conditionalUpdate(String documentId) async {
+    try {
+      final DocumentReference docRef =
+          FirebaseFirestore.instance.collection('tasks').doc(documentId);
+
+      // Get the current document data.
+      final DocumentSnapshot docSnapshot = await docRef.get();
+
+      if (docSnapshot.exists) {
+        final Map<String, dynamic> data =
+            docSnapshot.data() as Map<String, dynamic>;
+        final int totalSubtasks =
+            data['total_subtasks'] ?? 0; // Handle null cases
+        final int completedSubtasks =
+            data['completed_subtasks'] ?? 0; // Handle null cases
+
+        if (totalSubtasks == completedSubtasks) {
+          // Condition met: Update the field.
+          await docRef.update({'status': 'ready_post'});
+          print('Document updated successfully.');
+        } else {
+          await docRef.update({'status': 'assigned'});
+          print('Condition not met. Document not updated.');
+        }
+      } else {
+        print('Document does not exist.');
+      }
+    } catch (e) {
+      print('Error performing conditional update: $e');
+    }
+  }
+
   Future<void> assignTask() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -137,7 +194,17 @@ class _AssignTaskPage extends State<AssignTaskPage> {
             'task_type': selectedTask,
             'isParent': 'Child Task',
             'priority': selectedPriority,
+            'deadline': _selectedDate,
           });
+
+          await FirebaseFirestore.instance
+              .collection('tasks')
+              .doc(widget.taskid)
+              .update({
+            'total_subtasks': FieldValue.increment(1),
+          });
+
+          await conditionalUpdate(widget.taskid!);
 
           DocumentSnapshot newTask = await taskRef.get();
           print("Newly assigned task: ${newTask.data()}");
@@ -249,6 +316,34 @@ class _AssignTaskPage extends State<AssignTaskPage> {
                 );
               },
             ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _taskDeadlineController,
+              readOnly: true,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFfffffff),
+                labelText: "Deadline",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                focusedBorder: const OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color: Color(0XFF020B40),
+                  ),
+                ),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.calendar_today),
+                  onPressed: _pickDate, // Opens the date picker
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return "Please set a deadline";
+                }
+                return null;
+              },
+            ),
             const SizedBox(height: 5),
             if (index != 0)
               Align(
@@ -335,49 +430,7 @@ class _AssignTaskPage extends State<AssignTaskPage> {
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              //gawing droppydown
-                              // FutureBuilder<List<Map<String, String>>>(
-                              //   future:
-                              //       _tasksFuture, // Call getUsers() and wait for it
-                              //   builder: (context, snapshot) {
-                              //     if (snapshot.connectionState ==
-                              //         ConnectionState.waiting) {
-                              //       return const CircularProgressIndicator();
-                              //     }
-                              //     if (snapshot.hasError) {
-                              //       return Text("Error: ${snapshot.error}");
-                              //     }
-                              //     if (!snapshot.hasData ||
-                              //         snapshot.data!.isEmpty) {
-                              //       return const Text("No tasks found.");
-                              //     }
-                              //     return DropdownButtonFormField<String>(
-                              //       decoration: const InputDecoration(
-                              //         border: OutlineInputBorder(
-                              //             borderRadius: BorderRadius.all(
-                              //                 Radius.circular(10))),
-                              //         filled: true,
-                              //         fillColor: Color(0xFFFFFFFF),
-                              //         labelText: "Task",
-                              //         labelStyle:
-                              //             TextStyle(color: Colors.black),
-                              //       ),
-                              //       items: snapshot.data!.map((task) {
-                              //         return DropdownMenuItem(
-                              //           value: task['taskId'],
-                              //           child: Text(task['title']!),
-                              //         );
-                              //       }).toList(),
-                              //       onChanged: (value) {
-                              //         selectedTaskTitle = value;
-                              //       },
-                              //       validator: (value) => value == null
-                              //           ? 'Please select a task'
-                              //           : null,
-                              //     );
-                              //   },
-                              // ),
-
+                              //TODO: i love boger baby hihi
                               TextFormField(
                                 controller: _taskTitleController,
                                 readOnly: true,

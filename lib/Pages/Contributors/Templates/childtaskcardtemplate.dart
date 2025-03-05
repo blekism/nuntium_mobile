@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ChildTaskCardTemplate extends StatefulWidget {
   final String? taskTitle;
@@ -14,6 +15,7 @@ class ChildTaskCardTemplate extends StatefulWidget {
   final String? deadline;
   final String? isParent;
   final String? priority;
+  final String? childTaskId;
 
   const ChildTaskCardTemplate({
     super.key,
@@ -28,6 +30,7 @@ class ChildTaskCardTemplate extends StatefulWidget {
     this.deadline,
     this.isParent,
     this.priority,
+    this.childTaskId,
   });
 
   @override
@@ -35,6 +38,26 @@ class ChildTaskCardTemplate extends StatefulWidget {
 }
 
 class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
+  String? taskTitle;
+
+  Future<String> _getTitle() async {
+    final taskDoc = await FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(widget.taskid)
+        .get();
+    return taskDoc['title'];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getTitle().then((value) {
+      setState(() {
+        taskTitle = value;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -44,10 +67,9 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
           MaterialPageRoute(
             builder: (context) => CreateTaskPage(
               taskId: widget.taskid,
-              details: widget.details,
-              title: widget.taskTitle,
               taskType: widget.taskType,
-              assignedId: widget.assignedId,
+              assignedId: widget.childTaskId,
+              status: widget.status,
             ),
           ),
         );
@@ -62,6 +84,7 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
               'started' => const Color(0xFFD4AF37),
               'approved' => const Color(0xFF6A9C64),
               'for approval' => const Color.fromARGB(255, 255, 135, 135),
+              'returned' => const Color.fromARGB(255, 250, 150, 114),
               _ => const Color(0xFFB8CFED), // Default color
             },
           ),
@@ -70,6 +93,7 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
             'started' => const Color(0x66D4AF37),
             'approved' => const Color(0xFFBAD8B6),
             'for approval' => const Color.fromARGB(255, 255, 135, 135),
+            'returned' => const Color.fromARGB(255, 250, 150, 114),
             _ => const Color(0xFFB8CFED), // Default color
           },
           boxShadow: [
@@ -106,6 +130,7 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
                   'started' => const Color(0xFFD4AF37),
                   'approved' => const Color(0xFF6A9C64),
                   'for approval' => const Color.fromARGB(255, 255, 65, 65),
+                  'returned' => const Color.fromARGB(255, 255, 128, 81),
                   _ => const Color(0xFFB8CFED),
                 },
                 child: const Center(
@@ -123,16 +148,16 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.taskTitle ?? 'Task Title', // Default text if null
+                  taskTitle ?? 'Task Title', // Default text if null
                   style: const TextStyle(
                     color: Colors.black,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Text(
-                  '0/10 tasks started', // Default text if null
-                  style: TextStyle(
+                Text(
+                  widget.taskType ?? 'Task Type', // Default text if null
+                  style: const TextStyle(
                     color: Colors.black,
                     fontSize: 16,
                     fontWeight: FontWeight.w400,
@@ -196,7 +221,8 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
                 ),
                 const SizedBox(height: 10),
                 Container(
-                  width: MediaQuery.of(context).size.width * .25,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  width: MediaQuery.of(context).size.width * .30,
                   decoration: ShapeDecoration(
                     color: const Color(0xFFA31D1D),
                     shape: RoundedRectangleBorder(
