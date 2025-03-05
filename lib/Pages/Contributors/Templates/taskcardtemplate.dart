@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nuntium_mobile/Pages/Contributors/Templates/childtaskcardtemplate.dart';
+import 'package:dotted_border/dotted_border.dart';
+import 'package:nuntium_mobile/Pages/SectionEditor/Templates/assigntaskpage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class TaskCardTemplate extends StatefulWidget {
   final String? taskTitle;
@@ -13,6 +16,9 @@ class TaskCardTemplate extends StatefulWidget {
   final String? deadline;
   final String? isParent;
   final String? priority;
+  final String? section;
+  final int? completedTask;
+  final int? totalTask;
 
   const TaskCardTemplate({
     super.key,
@@ -25,6 +31,9 @@ class TaskCardTemplate extends StatefulWidget {
     this.deadline,
     this.isParent,
     this.priority,
+    this.section,
+    this.completedTask,
+    this.totalTask,
   });
 
   @override
@@ -32,6 +41,50 @@ class TaskCardTemplate extends StatefulWidget {
 }
 
 class _TaskCardTemplate extends State<TaskCardTemplate> {
+  bool isManagement = false;
+  late Stream<QuerySnapshot> assignedTasksStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUser();
+
+    assignedTasksStream = FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(widget.taskid)
+        .collection('assigned_tasks')
+        .snapshots();
+  }
+
+  Future<void> _readyPostTask() {
+    print('Task is ready for posting pasok committee');
+    return FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(widget.taskid)
+        .update({'status': 'ready_post'});
+  }
+
+  Future<void> _checkUser() async {
+    var user = FirebaseAuth.instance.currentUser;
+    var userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user!.uid)
+        .get();
+
+    if (userDoc['role'] == 'eic') {
+      setState(() {
+        isManagement = true;
+      });
+    }
+  }
+
+  Future<void> _approveTask() async {
+    await FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(widget.taskid)
+        .update({'status': 'created'});
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -45,21 +98,25 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
           border: Border.all(
             color: switch (widget.status) {
               'created' => const Color(0xFF505050),
-              'waiting' => const Color(0xFF2A367C),
+              'assigned' => const Color(0xFF2A367C),
               'started' => const Color(0xFFD4AF37),
-              'in_progress' => const Color(0xFFD4AF37),
+              'in_progress' => const Color.fromARGB(255, 250, 150, 114),
               'ready_post' => const Color(0xFF6A9C64),
               'for approval' => const Color.fromARGB(255, 255, 135, 135),
+              'pendingAPR' => const Color(0XFFE8D9F3),
+              'pendingPST' => const Color(0XFFFFD19C),
               _ => const Color(0xFFB8CFED), // Default color
             },
           ),
           color: switch (widget.status) {
             'created' => const Color(0xFFE4E4E4),
-            'waiting' => const Color(0xFFB8CFED),
+            'assigned' => const Color(0xFFB8CFED),
             'started' => const Color(0x66D4AF37),
-            'in_progress' => const Color(0x66D4AF37),
+            'in_progress' => const Color.fromARGB(255, 250, 150, 114),
             'ready_post' => const Color(0xFFBAD8B6),
             'for approval' => const Color.fromARGB(255, 255, 135, 135),
+            'pendingAPR' => const Color(0XFFE8D9F3),
+            'pendingPST' => const Color(0XFFFFD19C),
             _ => const Color(0xFFB8CFED), // Default color
           },
           boxShadow: [
@@ -93,11 +150,13 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                 height: MediaQuery.of(context).size.height * .05,
                 color: switch (widget.status) {
                   'created' => const Color(0xFF505050),
-                  'waiting' => const Color(0xFF2A367C),
+                  'assigned' => const Color(0xFF2A367C),
                   'started' => const Color(0xFFD4AF37),
-                  'in_progress' => const Color(0xFFD4AF37),
+                  'in_progress' => const Color.fromARGB(255, 255, 128, 81),
                   'ready_post' => const Color(0xFF6A9C64),
                   'for approval' => const Color.fromARGB(255, 255, 65, 65),
+                  'pendingAPR' => const Color(0XFF735ECA),
+                  'pendingPST' => const Color(0XFFE78F2F),
                   _ => const Color(0xFFB8CFED), // Default color
                 },
                 child: const Center(
@@ -131,7 +190,8 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                   ),
                 ),
                 Text(
-                  widget.deadline ?? 'Task deadline', // Default text if null
+                  widget.deadline ??
+                      'Task deadline test', // Default text if null
                   style: const TextStyle(
                     color: Colors.black,
                     fontSize: 16,
@@ -188,7 +248,8 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                 ),
                 const SizedBox(height: 10),
                 Container(
-                  width: MediaQuery.of(context).size.width * .25,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  width: MediaQuery.of(context).size.width * .30,
                   decoration: ShapeDecoration(
                     color: const Color(0xFFA31D1D),
                     shape: RoundedRectangleBorder(
@@ -289,8 +350,174 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: DottedBorder(
+                  color: const Color.fromARGB(255, 116, 116, 116),
+                  borderType: BorderType.RRect,
+                  radius: const Radius.circular(10),
+                  strokeWidth: 1,
+                  child: widget.status == 'pendingAPR'
+                      ? Center(
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.taskTitle ?? 'No Title',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2A367C),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF5F5F5),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    widget.details ?? 'No details provided',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Deadline:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.deadline ?? 'Not set',
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Priority:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.priority ?? 'Not set',
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Section:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.section ?? 'Not set',
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Text(
+                                      'Status:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.status ?? 'Not set',
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                isManagement
+                                    ? ElevatedButton(
+                                        onPressed: () {
+                                          _approveTask();
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFF735ECA),
+                                        ),
+                                        child: const Text(
+                                          'Approve Task',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
+                              ],
+                            ),
+                          ),
+                        )
+                      : GestureDetector(
+                          onTap: () async {
+                            print("Fetching user section...");
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AssignTaskPage(
+                                  section: widget.section,
+                                  taskid: widget.taskid,
+                                ),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xfff5f5f5),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(20),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Assign New Task',
+                                      style: TextStyle(
+                                        color: Colors.blueGrey,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    SizedBox(width: 5),
+                                    Icon(Icons.add, color: Colors.blueGrey),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
               const Text(
-                'Assigned Tasks',
+                'Assign New Tasks',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
@@ -300,11 +527,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
               const SizedBox(height: 10),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('tasks')
-                      .doc(widget.taskid)
-                      .collection('assigned_tasks')
-                      .snapshots(),
+                  stream: assignedTasksStream,
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
@@ -322,23 +545,25 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                     }
 
                     var tasks = snapshot.data!.docs;
+                    print('task deadline is: ${widget.deadline}');
 
                     return ListView.builder(
                       itemCount: tasks.length,
                       itemBuilder: (context, index) {
+                        print('assigned task id is: ${tasks[index].id}');
                         return Padding(
                           padding: const EdgeInsets.only(
                               left: 16.0, right: 16.0, bottom: 16),
                           child: ChildTaskCardTemplate(
                             taskid: widget.taskid,
-                            taskTitle: widget.taskTitle,
-                            taskType: tasks[index]['task_type'],
-                            details: widget.details,
                             status: tasks[index]['status'],
-                            assignedId: tasks[index].id,
+                            assignedId: tasks[index]['assignee_id'],
                             isLoading: false,
                             isParent: tasks[index]['isParent'],
-                            // deadline: tasks[index]['deadline'],
+                            taskType: tasks[index]['task_type'],
+                            priority: tasks[index]['priority'],
+                            childTaskId: tasks[index].id,
+                            // deadline: widget.deadline,
                           ),
                         );
                       },
@@ -346,6 +571,21 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                   },
                 ),
               ),
+              widget.completedTask == widget.totalTask
+                  ? ElevatedButton(
+                      onPressed: () {
+                        _readyPostTask();
+                        print('Task completed');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF735ECA),
+                      ),
+                      child: const Text(
+                        'Mark Task as Completed',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ],
           ),
         );

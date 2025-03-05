@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:nuntium_mobile/Pages/Contributors/Templates/taskcardtemplate.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:nuntium_mobile/Pages/Contributors/createtaskpage.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/Pages/Contributors/Templates/childtaskcardtemplate.dart';
@@ -16,109 +13,18 @@ class HomePageTemplate extends StatefulWidget {
 class _HomePageTemplate extends State<HomePageTemplate> {
   String selectedSection = 'all';
   List<Map<String, dynamic>> yourTasksData = [];
-  final ScrollController _scrollController = ScrollController();
-  DocumentSnapshot? lastDocument; // Stores last fetched document for pagination
-  bool isLoadingMore = false;
-  bool hasMoreTasks = true;
-  static const int initialBatchSize = 10; // Start with a small batch size
-  int batchSize = initialBatchSize; // Dynamic batch size
+  late Stream<QuerySnapshot> yourTasksStream;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_scrollListener);
-    fetchInitialTasks(); // Load the first batch
-  }
+    final userId = FirebaseAuth.instance.currentUser!.uid;
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _scrollListener() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent * 0.9 &&
-        !isLoadingMore &&
-        hasMoreTasks) {
-      fetchNextBatch();
-    }
-  }
-
-  Future<void> fetchInitialTasks() async {
-    setState(() {
-      yourTasksData.clear();
-      lastDocument = null;
-      hasMoreTasks = true;
-      batchSize = initialBatchSize;
-    });
-    await fetchNextBatch();
-  }
-
-  Future<void> fetchNextBatch() async {
-    if (!hasMoreTasks || isLoadingMore) return;
-    setState(() => isLoadingMore = true);
-
-    Query query = FirebaseFirestore.instance
-        .collection('tasks')
-        .orderBy('deadline')
-        .limit(batchSize);
-
-    if (lastDocument != null) {
-      query = query.startAfterDocument(lastDocument!);
-    }
-
-    QuerySnapshot taskSnapshot = await query.get();
-    if (taskSnapshot.docs.isEmpty) {
-      setState(() => hasMoreTasks = false);
-    } else {
-      lastDocument = taskSnapshot.docs.last;
-      if (taskSnapshot.docs.length < batchSize) {
-        setState(() => hasMoreTasks = false);
-      }
-    }
-
-    List<Map<String, dynamic>> newTasks = [];
-
-    for (var taskDoc in taskSnapshot.docs) {
-      String taskId = taskDoc.id;
-
-      QuerySnapshot assignedTasksSnapshot = await FirebaseFirestore.instance
-          .collection('tasks')
-          .doc(taskId)
-          .collection('assigned_tasks')
-          .where('assignee_id',
-              isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-          .get();
-
-      for (var assignedTaskDoc in assignedTasksSnapshot.docs) {
-        Map<String, dynamic> combinedTask = {
-          'taskId': taskId,
-          'title': taskDoc['title'],
-          'assignedTaskId': assignedTaskDoc.id,
-          'details': taskDoc['details'],
-          'deadline': taskDoc['deadline'],
-          'priority': taskDoc['priority'],
-          'assignee_id': assignedTaskDoc['assignee_id'],
-          'assigned_by': taskDoc['assigned_by'],
-          'status': assignedTaskDoc['status'],
-          'section': taskDoc['section'],
-          'task_type': assignedTaskDoc['task_type'],
-          'isParent': assignedTaskDoc['isParent'],
-        };
-        newTasks.add(combinedTask);
-      }
-    }
-
-    setState(() {
-      yourTasksData.addAll(newTasks);
-      isLoadingMore = false;
-    });
-
-    if (yourTasksData.length < 20 && hasMoreTasks) {
-      batchSize = 20;
-      fetchNextBatch();
-    }
+    yourTasksStream = FirebaseFirestore.instance
+        .collectionGroup('assigned_tasks')
+        .where('assignee_id', isEqualTo: userId)
+        .orderBy('deadline', descending: true)
+        .snapshots();
   }
 
   Future<void> filteredSection(String section) async {
@@ -223,40 +129,55 @@ class _HomePageTemplate extends State<HomePageTemplate> {
   }
 
   Widget _cardList() {
-    List<Map<String, dynamic>> filteredTasks = selectedSection == 'all'
-        ? yourTasksData
-        : yourTasksData
-            .where((task) => task['status'] == selectedSection)
-            .toList();
-
     return Expanded(
-      child: yourTasksData.isEmpty && !isLoadingMore
-          ? const Center(child: Text('No tasks found, good job!'))
-          : ListView.builder(
-              controller: _scrollController,
-              itemCount: filteredTasks.length + (isLoadingMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == filteredTasks.length) {
-                  return const TaskCardTemplate(isLoading: true);
-                }
-                final task = filteredTasks[index];
+      child: StreamBuilder<QuerySnapshot>(
+        stream: yourTasksStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
 
-                return Padding(
-                  padding: const EdgeInsets.all(6.0),
-                  child: ChildTaskCardTemplate(
-                    taskid: task['taskId'],
-                    taskTitle: task['title'],
-                    taskType: task['task_type'],
-                    details: task['details'],
-                    status: task['status'],
-                    assignedId: task['assignedTaskId'],
-                    isLoading: false,
-                    isParent: task['isParent'],
-                    // deadline: task['deadline'],
-                  ),
-                );
-              },
-            ),
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No tasks found, good job!'));
+          }
+
+          yourTasksData = snapshot.data!.docs.map((DocumentSnapshot document) {
+            var data = document.data() as Map<String, dynamic>;
+            data['id'] = document.id;
+            return data;
+          }).toList();
+
+          List<Map<String, dynamic>> filteredTasks = yourTasksData;
+          if (selectedSection != 'all') {
+            filteredTasks = yourTasksData
+                .where((task) => task['status'] == selectedSection)
+                .toList();
+          }
+          return ListView.builder(
+            itemCount: filteredTasks.length,
+            itemBuilder: (context, index) {
+              final task = filteredTasks[index];
+              return Padding(
+                padding: const EdgeInsets.all(6.0),
+                child: ChildTaskCardTemplate(
+                  taskid: task['task_id'],
+                  status: task['status'],
+                  assignedId: task['assignee_id'],
+                  isLoading: false,
+                  isParent: task['isParent'],
+                  taskType: task['task_type'],
+                  priority: task['priority'],
+                  childTaskId: task['id'],
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -332,8 +253,9 @@ class _HomePageTemplate extends State<HomePageTemplate> {
 final List<Map<String, String>> pubSections = [
   {"section": "all"},
   {"section": "created"},
-  {"section": "waiting"},
+  {"section": "assigned"},
   {"section": "started"},
   {"section": "in progress"},
+  {"section": "approved"},
   {"section": "submitted"},
 ];

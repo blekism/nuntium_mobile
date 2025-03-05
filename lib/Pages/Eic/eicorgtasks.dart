@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import '../Contributors/Templates/taskcardtemplate.dart';
 
 class OrganizationTasks extends StatefulWidget {
@@ -18,102 +19,17 @@ class OrganizationTasks extends StatefulWidget {
 
 class _OrganizationTasksState extends State<OrganizationTasks> {
   String selectedSection = 'all';
-  final ScrollController _scrollController = ScrollController();
-  DocumentSnapshot? lastDocument; // Stores last fetched document for pagination
-  List<Map<String, dynamic>> yourTasksData = [];
-  List<String> yourTaskIds = [];
-  bool isLoadingMore = false;
-  bool hasMoreTasks = true;
-  static const int initialBatchSize = 10;
-  int batchSize = initialBatchSize; // Dynamic batch size
+  List<Map<String, dynamic>> sectionTaskData = [];
+  late Stream<QuerySnapshot> sectionTaskStream;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_scrollListener);
-    fetchInitialTasks(); // Load the first batch
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _scrollListener() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent * 0.9 &&
-        !isLoadingMore &&
-        hasMoreTasks) {
-      fetchNextBatch();
-    }
-  }
-
-  Future<void> fetchInitialTasks() async {
-    setState(() {
-      yourTasksData.clear();
-      lastDocument = null;
-      hasMoreTasks = true;
-      batchSize = initialBatchSize;
-    });
-    await fetchNextBatch();
-  }
-
-  Future<void> fetchNextBatch() async {
-    if (!hasMoreTasks || isLoadingMore) return;
-    setState(() => isLoadingMore = true);
-
-    print('section id is ${widget.sectionID}');
-
-    Query query = FirebaseFirestore.instance
+    sectionTaskStream = FirebaseFirestore.instance
         .collection('tasks')
         .where('section', isEqualTo: widget.sectionID)
         .orderBy('deadline', descending: true)
-        .limit(batchSize);
-
-    if (lastDocument != null) {
-      query = query.startAfterDocument(lastDocument!);
-    }
-
-    QuerySnapshot taskSnapshot = await query.get();
-
-    if (taskSnapshot.docs.isEmpty) {
-      setState(() => hasMoreTasks = false);
-    } else {
-      lastDocument = taskSnapshot.docs.last;
-      if (taskSnapshot.docs.length < batchSize) {
-        setState(() => hasMoreTasks = false);
-      }
-      print('Last Document: $lastDocument');
-      // Inside fetchNextBatch after processing results
-      print('Number of items in this batch: ${taskSnapshot.docs.length}');
-      print('has more  tasks: ${hasMoreTasks}');
-    }
-
-    List<Map<String, dynamic>> combinedTasks = [];
-
-    for (final doc in taskSnapshot.docs) {
-      String documentId = doc.id;
-      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-      Map<String, dynamic> combinedData = {
-        'id': documentId,
-        ...data,
-      };
-
-      combinedTasks.add(combinedData);
-    }
-
-    setState(() {
-      yourTasksData.addAll(combinedTasks);
-      isLoadingMore = false;
-    });
-
-    if (yourTasksData.length < 20 && hasMoreTasks) {
-      print('your task data length is ${batchSize}');
-      batchSize = 20;
-      fetchNextBatch();
-    }
+        .snapshots();
   }
 
   Future<void> filteredSection(String section) async {
@@ -229,39 +145,71 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
   }
 
   Widget _cardList() {
-    List<Map<String, dynamic>> filteredTasks = selectedSection == 'all'
-        ? yourTasksData
-        : yourTasksData
-            .where((task) => task['status'] == selectedSection)
-            .toList();
-
     return Expanded(
-      child: yourTasksData.isEmpty && !isLoadingMore
-          ? const Center(child: Text('No tasks found, Start Creating Now!'))
-          : ListView.builder(
-              controller: _scrollController,
-              itemCount: filteredTasks.length + (isLoadingMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == filteredTasks.length) {
-                  return const TaskCardTemplate(isLoading: true);
-                }
+      child: StreamBuilder<QuerySnapshot>(
+        stream: sectionTaskStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
 
-                final task = filteredTasks[index];
-                return Padding(
-                  padding: const EdgeInsets.all(6.0),
-                  child: TaskCardTemplate(
-                    taskTitle: task['title'],
-                    taskid: task['id'],
-                    taskType: widget.sectionName,
-                    details: task['details'],
-                    isLoading: false,
-                    // deadline: task['deadline'],
-                    status: task['status'],
-                    isParent: task['isParent'],
-                  ),
-                );
-              },
-            ),
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(
+                child: Text('No tasks found, Start Creating Now!'));
+          }
+
+          sectionTaskData =
+              snapshot.data!.docs.map((DocumentSnapshot document) {
+            var data = document.data() as Map<String, dynamic>;
+            data['id'] = document.id;
+            return data;
+          }).toList();
+          List<Map<String, dynamic>> filteredTasks = sectionTaskData;
+
+          if (selectedSection != 'all') {
+            filteredTasks = sectionTaskData
+                .where((task) => task['status'] == selectedSection)
+                .toList();
+          }
+
+          return ListView.builder(
+            itemCount: filteredTasks.length,
+            itemBuilder: (context, index) {
+              final tasks = filteredTasks[index];
+              String? deadlineString;
+
+              if (tasks['deadline'] != null) {
+                Timestamp deadlineTimestamp = tasks['deadline'] as Timestamp;
+                DateTime deadlineDateTime = deadlineTimestamp.toDate();
+                deadlineString =
+                    DateFormat('yyyy-MM-dd HH:mm').format(deadlineDateTime);
+              }
+
+              return Padding(
+                padding: const EdgeInsets.all(6.0),
+                child: TaskCardTemplate(
+                  taskTitle: tasks['title'],
+                  taskid: tasks['id'],
+                  taskType: widget.sectionName,
+                  details: tasks['details'],
+                  isLoading: false,
+                  deadline: deadlineString,
+                  status: tasks['status'],
+                  isParent: tasks['isParent'],
+                  section: tasks['section'],
+                  priority: tasks['priority'],
+                  completedTask: tasks['completed_subtasks'],
+                  totalTask: tasks['total_subtasks'],
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -341,7 +289,7 @@ final List<Map<String, String>> orgTasks = [
   {"section": "started"},
   {"section": "in progress"},
   {"section": "submitted"},
-  {"section": "for posting"},
-  {"section": "for assigning"},
+  {"section": "pendingPST"},
+  {"section": "pendingAPR"},
   {"section": "for approval"},
 ];

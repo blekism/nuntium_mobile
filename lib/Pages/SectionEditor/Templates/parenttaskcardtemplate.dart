@@ -36,23 +36,6 @@ class ParentTaskCardTemplate extends StatefulWidget {
 }
 
 class _ParentTaskCardTemplateState extends State<ParentTaskCardTemplate> {
-  Future<List<Map<String, dynamic>>> fetchTasksById(String taskId) async {
-    try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('tasks')
-          .doc(widget.taskid)
-          .collection('assigned_tasks')
-          .get();
-
-      return querySnapshot.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
-          .toList();
-    } catch (e) {
-      print("Error fetching tasks: $e");
-      return [];
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -392,7 +375,7 @@ class _ParentTaskCardTemplateState extends State<ParentTaskCardTemplate> {
                               taskType: tasks[index]['task_type'],
                               details: widget.details,
                               status: widget.status,
-                              assignedId: tasks[index].id,
+                              // assignedId: tasks[index].id,
                               isParent: widget.isParent,
                               priority: widget.priority,
                               deadline: widget.taskDeadline,

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:dotted_border/dotted_border.dart';
+import 'package:nuntium_mobile/Pages/Contributors/Templates/taskcardtemplate.dart';
 import 'package:nuntium_mobile/Pages/SectionEditor/createparenttaskpage.dart';
 import 'package:nuntium_mobile/Pages/SectionEditor/Templates/parenttaskcardtemplate.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AssignTaskLogPage extends StatefulWidget {
-  const AssignTaskLogPage({super.key});
+  final String? section;
+  const AssignTaskLogPage({super.key, this.section});
 
   @override
   State<AssignTaskLogPage> createState() => _AssignTaskLogPage();
@@ -20,113 +22,44 @@ class _AssignTaskLogPage extends State<AssignTaskLogPage> {
   int batchSize = initialBatchSize;
   DocumentSnapshot? lastDocument;
   List<Map<String, dynamic>> yourTasksData = [];
+  String? userSection;
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_scrollListener);
-    fetchInitialTasks();
     fetchUserSection();
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _scrollListener() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent * 0.9 &&
-        !isLoadingMore &&
-        hasMoreTasks) {
-      fetchNextBatch();
-    }
-  }
-
-  Future<void> fetchInitialTasks() async {
-    setState(() {
-      yourTasksData.clear();
-      lastDocument = null;
-      hasMoreTasks = true;
-      batchSize = initialBatchSize;
-    });
-    await fetchNextBatch();
-  }
-
-  Future<void> fetchNextBatch() async {
-    if (!hasMoreTasks || isLoadingMore) return;
-    setState(() => isLoadingMore = true);
-
-    Query query = FirebaseFirestore.instance
-        .collection('tasks')
-        .where('assigned_by',
-            isEqualTo: FirebaseFirestore.instance
-                .collection('users')
-                .doc(FirebaseAuth.instance.currentUser!.uid))
-        .orderBy('deadline', descending: true)
-        .limit(batchSize);
-
-    if (lastDocument != null) {
-      query = query.startAfterDocument(lastDocument!);
-    }
-
-    QuerySnapshot taskSnapshot = await query.get();
-
-    if (taskSnapshot.docs.isEmpty) {
-      setState(() => hasMoreTasks = false);
-    } else {
-      lastDocument = taskSnapshot.docs.last;
-      print('Last Document: $lastDocument');
-    }
-
-    List<Map<String, dynamic>> combinedTasks = [];
-
-    for (final doc in taskSnapshot.docs) {
-      String documentId = doc.id;
-      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-      Map<String, dynamic> combinedData = {
-        'id': documentId,
-        ...data,
-      };
-
-      combinedTasks.add(combinedData);
-    }
-
-    setState(() {
-      yourTasksData.addAll(combinedTasks);
-      isLoadingMore = false;
-    });
-  }
-
-//fetch sec
-  String? userSection;
-
   Future<void> fetchUserSection() async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        print("Fetching data for user: ${user.uid}");
+    if (widget.section != null) {
+      // if section is passed from eic page
+      userSection = widget.section;
+    } else {
+      // if user is a section editor
+      try {
+        User? user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          debugPrint("Fetching data for user: ${user.uid}");
 
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+          DocumentSnapshot userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
 
-        if (userDoc.exists) {
-          setState(() {
-            userSection = userDoc['section'];
-          });
-          print("Fetched section: $userSection");
+          if (userDoc.exists) {
+            setState(() {
+              userSection = userDoc['section'];
+            });
+            debugPrint("Fetched section: $userSection");
+          } else {
+            debugPrint("User document does not exist in Firestore.");
+          }
         } else {
-          print("User document does not exist in Firestore.");
+          debugPrint("No logged-in user found.");
         }
-      } else {
-        print("No logged-in user found.");
+      } catch (e) {
+        debugPrint("Error fetching user section: $e");
       }
-    } catch (e) {
-      print("Error fetching user section: $e");
     }
   }
 
@@ -161,9 +94,9 @@ class _AssignTaskLogPage extends State<AssignTaskLogPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CreateParentTask(
-                          section:
-                              userSection), //pupunta na to sa createparenttaskpage
+                      builder: (context) =>
+                          CreateParentTask(section: userSection),
+                      //pupunta na to sa createparenttaskpage
                     ),
                   );
                 },
@@ -204,36 +137,66 @@ class _AssignTaskLogPage extends State<AssignTaskLogPage> {
 
   Widget _cardList() {
     return Expanded(
-      child: yourTasksData.isEmpty && !isLoadingMore
-          ? const Center(child: Text('No tasks found, Start Creating Now!'))
-          : ListView.builder(
-              controller: _scrollController,
-              itemCount: yourTasksData.length + (isLoadingMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == yourTasksData.length) {
-                  return const ParentTaskCardTemplate(isLoading: true);
-                }
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('tasks')
+            .where('assigned_by',
+                isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+            .orderBy('deadline', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
 
-                final task = yourTasksData[index];
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                return Padding(
-                  padding: const EdgeInsets.only(top: 6.0, bottom: 6.0),
-                  child: ParentTaskCardTemplate(
-                    taskTitle: task['title'],
-                    taskDeadline: task['deadline'] is Timestamp
-                        ? (task['deadline'] as Timestamp)
-                            .toDate()
-                            .toLocal()
-                            .toString()
-                            .split(' ')[0]
-                        : task['deadline'],
-                    taskid: task['id'],
-                    isLoading: false,
-                    section: userSection,
-                  ),
-                );
-              },
-            ),
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(
+                child: Text('No tasks found, Start Creating Now!'));
+          }
+
+          List<Map<String, dynamic>> yourTasksData =
+              snapshot.data!.docs.map((doc) {
+            String documentId = doc.id;
+            Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+            return {
+              'id': documentId,
+              ...data,
+            };
+          }).toList();
+
+          return ListView.builder(
+            itemCount: yourTasksData.length,
+            itemBuilder: (context, index) {
+              final task = yourTasksData[index];
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 6.0, bottom: 6.0),
+                child: TaskCardTemplate(
+                  taskTitle: task['title'],
+                  status: task['status'],
+                  isParent: task['isParent'],
+                  priority: task['priority'],
+                  deadline: task['deadline'] is Timestamp
+                      ? (task['deadline'] as Timestamp)
+                          .toDate()
+                          .toLocal()
+                          .toString()
+                          .split(' ')[0]
+                      : task['deadline'],
+                  taskid: task['id'],
+                  isLoading: false,
+                  section: userSection,
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

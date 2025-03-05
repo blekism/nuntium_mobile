@@ -11,20 +11,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class CreateTaskPage extends StatefulWidget {
   final String? taskId;
-  final String? details;
-  final String? title;
   final String? taskType;
   final String? assignedId;
   final String? clickOrigin;
+  final String? status;
 
   const CreateTaskPage({
     super.key,
     required this.taskId,
-    required this.details,
-    required this.title,
     required this.taskType,
     this.assignedId,
     this.clickOrigin,
+    this.status,
   });
 
   @override
@@ -41,8 +39,11 @@ class _CreateTaskPage extends State<CreateTaskPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool showImageIsLoading = true;
   List<String> retrievedImages = [];
-  bool isStarted = true;
+  bool isStarted = false;
   String? userRole;
+  bool isLoading = true;
+  String? taskTitle;
+  String? taskDetails;
 
   final controller = MultiImagePickerController(
     maxImages: 200,
@@ -227,6 +228,8 @@ class _CreateTaskPage extends State<CreateTaskPage> {
   }
 
   Future<void> _checkIfStarted() async {
+    print('assigned id is ${widget.assignedId}');
+    print('task id is ${widget.taskId}');
     try {
       DocumentSnapshot snapshot = await FirebaseFirestore.instance
           .collection('tasks')
@@ -240,23 +243,27 @@ class _CreateTaskPage extends State<CreateTaskPage> {
           print('Task already started');
           setState(() {
             isStarted = true;
+            isLoading = false;
           });
         } else {
           print('Task not yet started');
           setState(() {
             isStarted = false;
+            isLoading = false;
           });
         }
       } else {
         print('Assigned task not found');
         setState(() {
           isStarted = false;
+          isLoading = false;
         });
       }
     } catch (e) {
       print("Error checking if task started: $e");
       setState(() {
         isStarted = false;
+        isLoading = false;
       });
     }
   }
@@ -270,6 +277,14 @@ class _CreateTaskPage extends State<CreateTaskPage> {
           .doc(widget.assignedId)
           .update({
         'comment': _taksCommentsController.text,
+        'status': 'returned',
+      });
+
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .update({
+        'status': 'in_progress',
       });
 
       await FirebaseFirestore.instance
@@ -279,14 +294,46 @@ class _CreateTaskPage extends State<CreateTaskPage> {
           .add({
         'author': _auth.currentUser!.displayName,
         'comment': _taksCommentsController.text,
-        'content': 'Reviewed task',
+        'content': _taskContentController.text,
         'date': FieldValue.serverTimestamp(),
         'revision': 'Comment',
-        'timelinestatus': 'commented',
+        'timelinestatus': 'Revoewed task',
       });
       print("Comment added successfully!");
     } else {
       print("Error: taskId is null");
+    }
+  }
+
+  Future<void> conditionalUpdate(String documentId) async {
+    try {
+      final DocumentReference docRef =
+          FirebaseFirestore.instance.collection('tasks').doc(documentId);
+
+      // Get the current document data.
+      final DocumentSnapshot docSnapshot = await docRef.get();
+
+      if (docSnapshot.exists) {
+        final Map<String, dynamic> data =
+            docSnapshot.data() as Map<String, dynamic>;
+        final int totalSubtasks =
+            data['total_subtasks'] ?? 0; // Handle null cases
+        final int completedSubtasks =
+            data['completed_subtasks'] ?? 0; // Handle null cases
+
+        if (totalSubtasks == completedSubtasks) {
+          // Condition met: Update the field.
+          await docRef.update({'status': 'pendingPST'});
+          print('Document updated successfully.');
+        } else {
+          await docRef.update({'status': 'in_progress'});
+          print('Condition not met. Document not updated.');
+        }
+      } else {
+        print('Document does not exist.');
+      }
+    } catch (e) {
+      print('Error performing conditional update: $e');
     }
   }
 
@@ -301,6 +348,15 @@ class _CreateTaskPage extends State<CreateTaskPage> {
         'approved_at': FieldValue.serverTimestamp(),
         'status': 'approved',
       });
+
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(widget.taskId)
+          .update({
+        'completed_subtasks': FieldValue.increment(1),
+      });
+
+      await conditionalUpdate(widget.taskId!);
 
       await FirebaseFirestore.instance
           .collection('tasks')
@@ -337,20 +393,6 @@ class _CreateTaskPage extends State<CreateTaskPage> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _taskTitleController.text = widget.title!;
-    _taskTypeController.text = widget.taskType!;
-    _taskDetailsController.text = widget.details!;
-
-    if (widget.taskId != null) {
-      fetchLatestContent(widget.taskId!);
-      _checkIfStarted();
-      _getRole();
-    }
-  }
-
   Future<void> submitContent(
       String taskId, String content, String userId) async {
     try {
@@ -366,6 +408,8 @@ class _CreateTaskPage extends State<CreateTaskPage> {
           .doc(taskId)
           .collection('timeline');
 
+      var taskref = FirebaseFirestore.instance.collection('tasks').doc(taskId);
+
       var assignedTaskSnapshot = await assignedTasksRef.get();
       bool isRevised =
           assignedTaskSnapshot.exists; //uf existing, its a revision
@@ -378,6 +422,10 @@ class _CreateTaskPage extends State<CreateTaskPage> {
         'content': content,
         'submitted_at': FieldValue.serverTimestamp(),
         'status': 'for approval'
+      });
+
+      await taskref.update({
+        'status': 'for approval',
       });
 
       // Add to the timeline_history subcollection
@@ -399,20 +447,19 @@ class _CreateTaskPage extends State<CreateTaskPage> {
 
   Future<void> fetchLatestContent(String taskId) async {
     try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('tasks')
-          .doc(taskId)
-          .collection('assigned_tasks')
-          .orderBy('submitted_at', descending: true) // Get latest content
-          .limit(1) // Fetch only the latest entry
-          .get();
+      DocumentSnapshot<Map<String, dynamic>> snapshot =
+          await FirebaseFirestore.instance
+              .collection('tasks')
+              .doc(taskId)
+              .collection('assigned_tasks')
+              .doc(widget.assignedId) // Get latest content
+              .get();
 
-      if (snapshot.docs.isNotEmpty) {
+      if (snapshot.exists && snapshot.data() != null) {
         setState(() {
-          _taskContentController.text = snapshot.docs.first['content'];
-          _taksCommentsController.text = snapshot.docs.first['comment'];
+          _taskContentController.text = snapshot.data()!['content'] ?? '';
+          _taksCommentsController.text = snapshot.data()!['comment'] ?? 'none';
         });
-        print(snapshot.docs.first['comment']);
       }
     } catch (e) {
       print("Error fetching content: $e");
@@ -456,6 +503,39 @@ class _CreateTaskPage extends State<CreateTaskPage> {
       });
     } catch (e) {
       print("Error deleting image: $e");
+    }
+  }
+
+  Future<void> _fetchTaskData() async {
+    final taskDoc = await FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(widget.taskId)
+        .get();
+
+    if (taskDoc.exists) {
+      setState(() {
+        taskTitle = taskDoc['title'];
+        taskDetails = taskDoc['details'];
+        print('Task title: $taskTitle');
+        print('Task details: $taskDetails');
+
+        _taskTitleController.text = taskTitle!;
+        _taskTypeController.text = widget.taskType!;
+        _taskDetailsController.text = taskDetails!;
+      });
+    } else {
+      print('Task not found');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.taskId != null) {
+      fetchLatestContent(widget.taskId!);
+      _fetchTaskData();
+      _checkIfStarted();
+      _getRole();
     }
   }
 
@@ -600,52 +680,15 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                   widget.taskType == 'writing'
                       ? _writeTaskType()
                       : _buildImageInput(),
-
                   const SizedBox(height: 15),
-                  widget.taskType == 'writing'
-                      ? Align(
-                          alignment: Alignment.centerRight,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              if (widget.taskId != null) {
-                                submitContent(widget.taskId!,
-                                    _taskContentController.text, 'userId');
-                              } else {
-                                print("Error: taskId is null");
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF020B40),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                    10), // Rounded corners
-                              ),
-                              elevation: 10, // Add elevation for shadow
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 15.0,
-                                  horizontal: 30.0), // Padding for the button
-                            ),
-                            child: const Text(
-                              'Submit',
-                              style: TextStyle(
-                                color: Colors.white, // White text color
-                                fontWeight: FontWeight.w700, // Bold text
-                              ),
-                            ),
-                          ),
+                  taskTitle != null
+                      ? TimelineTab(
+                          taskId: widget.taskId,
+                          taskTitle: taskTitle,
+                          taskDescription: taskDetails,
                         )
-                      : const SizedBox.shrink(),
-
-                  // dito yung button for timeline
+                      : const Center(child: CircularProgressIndicator()),
                   const SizedBox(height: 15),
-
-                  TimelineTab(
-                    taskId: widget.taskId,
-                    taskTitle: widget.title,
-                    taskDescription: widget.details,
-                  ),
-                  const SizedBox(height: 15),
-
                   const Text(
                     'Comments',
                     style: TextStyle(
@@ -657,6 +700,9 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _taksCommentsController,
+                    readOnly: userRole == 'contributor' ||
+                        userRole == 'reader' ||
+                        userRole == 'section_writer',
                     decoration: InputDecoration(
                       labelText: 'Comments',
                       labelStyle: const TextStyle(
@@ -687,105 +733,41 @@ class _CreateTaskPage extends State<CreateTaskPage> {
                       return null;
                     },
                   ),
-
                   const SizedBox(height: 15),
-
-                  userRole != 'contributor' ||
-                          userRole != 'reader' ||
-                          userRole != 'section_writer'
-                      ? Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  _leaveComment();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFA31D1D),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        10), // Rounded corners
-                                  ),
-                                  elevation: 10, // Add elevation for shadow
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 15.0,
-                                      horizontal:
-                                          30.0), // Padding for the button
-                                ),
-                                child: const Text(
-                                  'Return for Revision',
-                                  style: TextStyle(
-                                    color: Colors.white, // White text color
-                                    fontWeight: FontWeight.w700, // Bold text
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  _approveTaskContent();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF6A9C64),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        10), // Rounded corners
-                                  ),
-                                  elevation: 10, // Add elevation for shadow
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 15.0,
-                                      horizontal:
-                                          30.0), // Padding for the button
-                                ),
-                                child: const Text(
-                                  'Approve',
-                                  style: TextStyle(
-                                    color: Colors.white, // White text color
-                                    fontWeight: FontWeight.w700, // Bold text
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
-
+                  if (userRole != null && widget.status != 'approved')
+                    buildApprovalButtons(userRole!),
                   const SizedBox(height: 15),
-
-                  isStarted
-                      ? const SizedBox.shrink()
-                      : Align(
-                          alignment: Alignment.center,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              _startTask();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD4AF37),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                    10), // Rounded corners
+                  if (isLoading)
+                    const Center(child: CircularProgressIndicator()),
+                  if (!isLoading)
+                    isStarted
+                        ? const SizedBox.shrink()
+                        : Align(
+                            alignment: Alignment.center,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                _startTask();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFD4AF37),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      10), // Rounded corners
+                                ),
+                                elevation: 10, // Add elevation for shadow
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 15.0,
+                                    horizontal: 30.0), // Padding for the button
                               ),
-                              elevation: 10, // Add elevation for shadow
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 15.0,
-                                  horizontal: 30.0), // Padding for the button
-                            ),
-                            child: const Text(
-                              'Start Task',
-                              style: TextStyle(
-                                color: Colors.white, // White text color
-                                fontWeight: FontWeight.w700, // Bold text
+                              child: const Text(
+                                'Start Task',
+                                style: TextStyle(
+                                  color: Colors.white, // White text color
+                                  fontWeight: FontWeight.w700, // Bold text
+                                ),
                               ),
                             ),
                           ),
-                        ),
                 ],
               ),
             ),
@@ -793,6 +775,75 @@ class _CreateTaskPage extends State<CreateTaskPage> {
         ),
       ),
     );
+  }
+
+  Widget buildApprovalButtons(String userRole) {
+    switch (userRole) {
+      case 'contributor':
+      case 'reader':
+      case 'section_writer':
+        return const SizedBox.shrink();
+      default:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: () async {
+                  _leaveComment();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFA31D1D),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 10,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 15.0,
+                    horizontal: 30.0,
+                  ),
+                ),
+                child: const Text(
+                  'Return for Revision',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: () async {
+                  _approveTaskContent();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6A9C64),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 10,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 15.0,
+                    horizontal: 30.0,
+                  ),
+                ),
+                child: const Text(
+                  'Approve',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+    }
   }
 
   AppBar _appBar(BuildContext context) {
@@ -816,94 +867,136 @@ class _CreateTaskPage extends State<CreateTaskPage> {
     );
   }
 
-  TextFormField _writeTaskType() {
-    return TextFormField(
-      controller: _taskContentController,
-      decoration: InputDecoration(
-        labelText: 'Content',
-        labelStyle: const TextStyle(
-          color: Color(0xFF020B40),
-          fontSize: 16,
-        ),
-        filled: true,
-        fillColor: const Color(0xFff5f5f5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        focusedBorder: const OutlineInputBorder(
-          borderSide: BorderSide(
-            color: Color(0XFF020B40),
+  Widget _writeTaskType() {
+    return Column(
+      children: [
+        TextFormField(
+          controller: _taskContentController,
+          decoration: InputDecoration(
+            labelText: 'Content',
+            labelStyle: const TextStyle(
+              color: Color(0xFF020B40),
+              fontSize: 16,
+            ),
+            filled: true,
+            fillColor: const Color(0xFff5f5f5),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            focusedBorder: const OutlineInputBorder(
+              borderSide: BorderSide(
+                color: Color(0XFF020B40),
+              ),
+            ),
           ),
+          keyboardType: TextInputType.multiline,
+          maxLines: null,
+          style: const TextStyle(
+            color: Colors.black,
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter task title';
+            }
+            return null;
+          },
         ),
-      ),
-      keyboardType: TextInputType.multiline,
-      maxLines: null,
-      style: const TextStyle(
-        color: Colors.black,
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter task title';
-        }
-        return null;
-      },
+        const SizedBox(height: 10),
+        isStarted
+            ? Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (widget.taskId != null) {
+                      submitContent(widget.taskId!, _taskContentController.text,
+                          'userId');
+                    } else {
+                      print("Error: taskId is null");
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF020B40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(10), // Rounded corners
+                    ),
+                    elevation: 10, // Add elevation for shadow
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 15.0,
+                        horizontal: 30.0), // Padding for the button
+                  ),
+                  child: const Text(
+                    'Submit',
+                    style: TextStyle(
+                      color: Colors.white, // White text color
+                      fontWeight: FontWeight.w700, // Bold text
+                    ),
+                  ),
+                ),
+              )
+            : const SizedBox.shrink(),
+      ],
     );
   }
 
   Widget _buildImageInput() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        ElevatedButton(
-          onPressed: () {
-            print('image selected');
-            _showUploadSection(context);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF020B40),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10), // Rounded corners
-            ),
-            elevation: 10, // Add elevation for shadow
-            padding: const EdgeInsets.symmetric(
-                vertical: 15.0, horizontal: 20.0), // Padding for the button
-          ),
-          child: const Text(
-            'Add Photos',
-            style: TextStyle(
-              color: Colors.white, // White text color
-              fontWeight: FontWeight.w700, // Bold text
-            ),
-          ),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            print('images shown');
-            await _retrieveImages();
-            if (mounted) {
-              _showImageSection(context, showImageIsLoading);
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF020B40),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10), // Rounded corners
-            ),
-            elevation: 10, // Add elevation for shadow
-            padding: const EdgeInsets.symmetric(
-                vertical: 15.0, horizontal: 20.0), // Padding for the button
-          ),
-          child: const Text(
-            'Show Images',
-            style: TextStyle(
-              color: Colors.white, // White text color
-              fontWeight: FontWeight.w700, // Bold text
-            ),
-          ),
-        ),
-      ],
-    );
+    return isStarted
+        ? Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  print('image selected');
+                  _showUploadSection(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF020B40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10), // Rounded corners
+                  ),
+                  elevation: 10, // Add elevation for shadow
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 15.0,
+                      horizontal: 20.0), // Padding for the button
+                ),
+                child: const Text(
+                  'Add Photos',
+                  style: TextStyle(
+                    color: Colors.white, // White text color
+                    fontWeight: FontWeight.w700, // Bold text
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  print('images shown');
+                  await _retrieveImages();
+                  if (mounted) {
+                    _showImageSection(context, showImageIsLoading);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF020B40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10), // Rounded corners
+                  ),
+                  elevation: 10, // Add elevation for shadow
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 15.0,
+                      horizontal: 20.0), // Padding for the button
+                ),
+                child: const Text(
+                  'Show Images',
+                  style: TextStyle(
+                    color: Colors.white, // White text color
+                    fontWeight: FontWeight.w700, // Bold text
+                  ),
+                ),
+              ),
+            ],
+          )
+        : const SizedBox.shrink();
   }
 
   void _showUploadSection(BuildContext context) {

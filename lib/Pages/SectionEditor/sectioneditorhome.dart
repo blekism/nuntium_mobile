@@ -23,8 +23,8 @@ class _EditorsHomePageState extends State<EditorsHomePage> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const CalendarPage(),
     const AssignTaskLogPage(),
+    const CalendarPage(),
   ];
 
   @override
@@ -46,6 +46,10 @@ class _EditorsHomePageState extends State<EditorsHomePage> {
   }
 
   BottomNavigationBar _bottomNavbar() {
+    // Calculate responsive icon size based on screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final iconSize = (screenWidth * 0.08).clamp(24.0, 40.0);
+
     return BottomNavigationBar(
       currentIndex: _currentIndex,
       onTap: (index) {
@@ -54,26 +58,31 @@ class _EditorsHomePageState extends State<EditorsHomePage> {
         });
       },
       selectedItemColor: Colors.blue,
-      backgroundColor: Colors.white,
       items: [
         BottomNavigationBarItem(
-          icon: Image.asset('assets/images/home.png', width: 35, height: 35),
+          icon: Image.asset(
+            'assets/images/home.png',
+            width: iconSize,
+            height: iconSize,
+          ),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon:
-              Image.asset('assets/images/bookmarks.png', width: 35, height: 35),
-          label: 'Calendar',
-        ),
-        BottomNavigationBarItem(
-          icon: Image.asset('assets/images/assigntask.png',
-              width: 35, height: 35),
+          icon: Image.asset(
+            'assets/images/assigntask.png',
+            width: iconSize,
+            height: iconSize,
+          ),
           label: 'Assign Task',
         ),
-        // BottomNavigationBarItem(
-        //   icon: Image.asset('assets/images/history.png', width: 35, height: 35),
-        //   label: 'Chat',
-        // ),
+        BottomNavigationBarItem(
+          icon: Image.asset(
+            'assets/images/calendar.png',
+            width: iconSize,
+            height: iconSize,
+          ),
+          label: 'Calendar',
+        ),
       ],
     );
   }

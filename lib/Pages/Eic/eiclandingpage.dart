@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Eic/eichomepage.dart';
+import 'package:nuntium_mobile/Pages/SectionEditor/assigntasklogpage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 
 class EicLandingPage extends StatefulWidget {
@@ -21,6 +22,9 @@ class _EicLandingPage extends State<EicLandingPage> {
 
   final List<Widget> _screens = [
     const EicHomepage(),
+    const AssignTaskLogPage(
+      section: 'all',
+    ),
     // const HomeScreen(),
     // const CalendarPage(),
     // const CreateTaskPage(),
@@ -43,6 +47,10 @@ class _EicLandingPage extends State<EicLandingPage> {
   }
 
   BottomNavigationBar _bottomNavbar() {
+    // Calculate responsive icon size based on screen width
+    final screenWidth = MediaQuery.of(context).size.width;
+    final iconSize = (screenWidth * 0.08).clamp(24.0, 40.0);
+
     return BottomNavigationBar(
       currentIndex: _currentIndex,
       onTap: (index) {
@@ -53,12 +61,27 @@ class _EicLandingPage extends State<EicLandingPage> {
       selectedItemColor: Colors.blue,
       items: [
         BottomNavigationBarItem(
-          icon: Image.asset('assets/images/home.png', width: 35, height: 35),
+          icon: Image.asset(
+            'assets/images/home.png',
+            width: iconSize,
+            height: iconSize,
+          ),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon:
-              Image.asset('assets/images/bookmarks.png', width: 35, height: 35),
+          icon: Image.asset(
+            'assets/images/assigntask.png',
+            width: iconSize,
+            height: iconSize,
+          ),
+          label: 'Assign Task',
+        ),
+        BottomNavigationBarItem(
+          icon: Image.asset(
+            'assets/images/calendar.png',
+            width: iconSize,
+            height: iconSize,
+          ),
           label: 'Calendar',
         ),
       ],
