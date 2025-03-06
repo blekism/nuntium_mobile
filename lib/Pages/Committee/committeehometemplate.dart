@@ -12,7 +12,7 @@ class CommitteeHomePageTemplate extends StatefulWidget {
 }
 
 class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
-  String selectedTask = 'all';
+  String selectedTask = 'Ready to post Tasks';
 
   @override
   Widget build(BuildContext context) {
@@ -41,66 +41,9 @@ class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
             const SizedBox(height: 15),
             _searchbar(),
             const SizedBox(height: 10),
-            _genreFilter(),
-            const SizedBox(height: 10),
             _cardList(),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _genreFilter() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * .05,
-      width: double.infinity,
-      child: ListView.separated(
-        itemCount: pubSections.length,
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.only(left: 10, right: 10),
-        separatorBuilder: (context, index) => const SizedBox(width: 13),
-        itemBuilder: (context, index) {
-          String sectionName = pubSections[index]['section'] ?? 'all';
-          bool isSelected = selectedTask == sectionName;
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Container(
-              alignment: Alignment.center,
-              height: 30,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: isSelected
-                    ? const Color(0XFFD4AF37)
-                    : const Color(0xFF020B40),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: GestureDetector(
-                onTap: () {
-                  filteredSection(sectionName);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                      bottom: 4, top: 2, left: 8, right: 8),
-                  child: Text(
-                    pubSections[index]['section'] ?? 'Null',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color:
-                          isSelected ? const Color(0XFF020B40) : Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -127,6 +70,7 @@ class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
           }
 
           List<Map<String, dynamic>> updatedTasks = [];
+          print('Selected Task: $selectedTask'); // ADDED
           for (var doc in snapshot.data!.docs) {
             var data = doc.data() as Map<String, dynamic>;
             data['id'] = doc.id;
@@ -134,9 +78,10 @@ class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
           }
 
           List<Map<String, dynamic>> filteredTasks = updatedTasks;
-          if (selectedTask != 'all') {
+          if (selectedTask != 'Ready to post Tasks') {
             filteredTasks = updatedTasks
-                .where((task) => task['status'] == selectedTask)
+                .where((task) =>
+                    task['section'].toLowerCase() == selectedTask.toLowerCase())
                 .toList();
           }
 
@@ -230,27 +175,4 @@ class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
       ),
     );
   }
-
-  Future<void> filteredSection(String section) async {
-    if (section != 'all') {
-      setState(() {
-        selectedTask = section;
-      });
-    } else {
-      setState(() {
-        selectedTask = 'all';
-      });
-    }
-  }
 }
-
-final List<Map<String, String>> pubSections = [
-  {"section": "all"},
-  {"section": "News"},
-  {"section": "Sports"},
-  {"section": "Opinion"},
-  {"section": "Layout"},
-  {"section": "Feature"},
-  {"section": "Literary"},
-  {"section": "Photojournalism"},
-];
