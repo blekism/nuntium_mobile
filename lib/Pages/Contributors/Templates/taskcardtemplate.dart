@@ -53,6 +53,9 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
 
   Future<void> _readyPostTask() {
     print('Task is ready for posting pasok committee');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Task is ready for posting')),
+    );
     return FirebaseFirestore.instance
         .collection('tasks')
         .doc(widget.taskid)
@@ -78,6 +81,11 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
         .collection('tasks')
         .doc(widget.taskid)
         .update({'status': 'created'});
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Task is approved')),
+      );
+    }
   }
 
   @override
@@ -142,6 +150,10 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
   }
 
   Widget _content(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final titleFontSize = (screenWidth * 0.06).clamp(15.0, 17.0);
+    final titleFontSmall = (screenWidth * 0.06).clamp(11.0, 13.0);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -181,26 +193,26 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
               children: [
                 Text(
                   widget.taskTitle ?? 'Task Title', // Default text if null
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 18,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Text(
+                Text(
                   '0/10 tasks started', // Default text if null
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
                 Text(
                   widget.deadline ??
                       'Task deadline test', // Default text if null
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -221,9 +233,9 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                         alignment: Alignment.center,
                         child: Text(
                           widget.isParent ?? 'Parent Task',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 13,
+                            fontSize: titleFontSmall,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -242,9 +254,9 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                         alignment: Alignment.center,
                         child: Text(
                           widget.status ?? 'Waiting',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 13,
+                            fontSize: titleFontSmall,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -266,9 +278,9 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                     alignment: Alignment.center,
                     child: Text(
                       widget.priority ?? 'High Priority',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
+                        fontSize: titleFontSmall,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -336,6 +348,11 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
   }
 
   void _showModal(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final titleFontBig = (screenWidth * 0.06).clamp(18.0, 20.0);
+    final titleFontSize = (screenWidth * 0.06).clamp(15.0, 17.0);
+    final titleFontSmall = (screenWidth * 0.06).clamp(11.0, 13.0);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -374,10 +391,10 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                               children: [
                                 Text(
                                   widget.taskTitle ?? 'No Title',
-                                  style: const TextStyle(
-                                    fontSize: 20,
+                                  style: TextStyle(
+                                    fontSize: titleFontBig,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2A367C),
+                                    color: const Color(0xFF2A367C),
                                   ),
                                 ),
                                 const SizedBox(height: 12),
@@ -395,62 +412,62 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                                 const SizedBox(height: 16),
                                 Row(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Deadline:',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: titleFontSize,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       widget.deadline ?? 'Not set',
-                                      style: const TextStyle(fontSize: 16),
+                                      style: TextStyle(fontSize: titleFontSize),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Priority:',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: titleFontSize,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       widget.priority ?? 'Not set',
-                                      style: const TextStyle(fontSize: 16),
+                                      style: TextStyle(fontSize: titleFontSize),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Section:',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: titleFontSize,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       widget.section ?? 'Not set',
-                                      style: const TextStyle(fontSize: 16),
+                                      style: TextStyle(fontSize: titleFontSize),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Status:',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: titleFontSize,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -463,8 +480,11 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                                 const SizedBox(height: 10),
                                 isManagement
                                     ? ElevatedButton(
-                                        onPressed: () {
-                                          _approveTask();
+                                        onPressed: () async {
+                                          await _approveTask();
+                                          if (mounted) {
+                                            Navigator.pop(context);
+                                          }
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor:
@@ -499,9 +519,9 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                               color: const Color(0xfff5f5f5),
                               borderRadius: BorderRadius.circular(5),
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Padding(
-                                padding: EdgeInsets.all(20),
+                                padding: const EdgeInsets.all(20),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -509,11 +529,12 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                                       'Assign New Task',
                                       style: TextStyle(
                                         color: Colors.blueGrey,
-                                        fontSize: 16,
+                                        fontSize: titleFontSize,
                                       ),
                                     ),
-                                    SizedBox(width: 5),
-                                    Icon(Icons.add, color: Colors.blueGrey),
+                                    const SizedBox(width: 5),
+                                    const Icon(Icons.add,
+                                        color: Colors.blueGrey),
                                   ],
                                 ),
                               ),
@@ -522,10 +543,10 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                         ),
                 ),
               ),
-              const Text(
+              Text(
                 'Assign New Tasks',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: titleFontBig,
                   fontWeight: FontWeight.w700,
                   color: Colors.black,
                 ),
@@ -581,10 +602,16 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                   },
                 ),
               ),
-              widget.completedTask == widget.totalTask
+              widget.completedTask! > 0 &&
+                      widget.totalTask! > 0 &&
+                      widget.completedTask == widget.totalTask &&
+                      isManagement
                   ? ElevatedButton(
-                      onPressed: () {
-                        _readyPostTask();
+                      onPressed: () async {
+                        await _readyPostTask();
+                        if (mounted) {
+                          Navigator.pop(context);
+                        }
                         print('Task completed');
                       },
                       style: ElevatedButton.styleFrom(
