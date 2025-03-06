@@ -223,12 +223,17 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  widget.taskTitle ?? 'Task Title', // Default text if null
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: titleFontSmall,
-                    fontWeight: FontWeight.bold,
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * .50,
+                  ),
+                  child: Text(
+                    widget.taskTitle ?? 'Task Title', // Default text if null
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: titleFontSmall,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Text(

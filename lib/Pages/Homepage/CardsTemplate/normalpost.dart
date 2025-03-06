@@ -136,6 +136,10 @@ class NormalPostCard extends StatelessWidget {
 
   /// **🔹 Actual Content**
   Widget _buildContent(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final titleFontSize = (screenWidth * 0.06).clamp(15.0, 17.0);
+    final titleFontSmall = (screenWidth * 0.06).clamp(11.0, 13.0);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -156,27 +160,34 @@ class NormalPostCard extends StatelessWidget {
             children: [
               Text(
                 sectionType!,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.grey,
-                  fontSize: 14,
+                  fontSize: titleFontSmall,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 9),
-              Text(
-                articleTitle!,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * .50,
+                ),
+                child: Text(
+                  articleTitle!,
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: titleFontSmall,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  softWrap: true,
+                  // maxLines: 2,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 datePosted!,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.grey,
-                  fontSize: 12,
+                  fontSize: titleFontSmall,
                   fontWeight: FontWeight.w400,
                 ),
               ),

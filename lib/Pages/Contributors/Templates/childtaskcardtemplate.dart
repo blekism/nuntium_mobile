@@ -151,19 +151,24 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  taskTitle ?? 'Task Title', // Default text if null
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: titleFontSize,
-                    fontWeight: FontWeight.bold,
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * .50,
+                  ),
+                  child: Text(
+                    taskTitle ?? 'Task Title', // Default text if null
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: titlefontSmall,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Text(
                   widget.taskType ?? 'Task Type', // Default text if null
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: titleFontSize,
+                    fontSize: titlefontSmall,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -171,7 +176,7 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
                   widget.deadline ?? 'Task deadline', // Default text if null
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: titleFontSize,
+                    fontSize: titlefontSmall,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -215,7 +220,7 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
                           widget.status ?? 'Waiting',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: titleFontSize,
+                            fontSize: titlefontSmall,
                             fontWeight: FontWeight.w500,
                           ),
                         ),

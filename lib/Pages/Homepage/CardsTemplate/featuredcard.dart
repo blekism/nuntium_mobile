@@ -94,7 +94,7 @@ class FeaturedPostCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(15),
           child: isLoading
               ? _buildShimmerEffect() // Show shimmer when loading
-              : _buildContent(),
+              : _buildContent(context),
         ),
       ),
     );
@@ -147,7 +147,10 @@ class FeaturedPostCard extends StatelessWidget {
   }
 
   /// **🔹 Actual Content**
-  Widget _buildContent() {
+  Widget _buildContent(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final titleFontSize = (screenWidth * 0.06).clamp(15.0, 17.0);
+    final titleFontSmall = (screenWidth * 0.06).clamp(11.0, 13.0);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -199,9 +202,9 @@ class FeaturedPostCard extends StatelessWidget {
                 ),
                 child: Text(
                   sectionType!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: titleFontSmall,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -212,11 +215,12 @@ class FeaturedPostCard extends StatelessWidget {
                 children: [
                   Text(
                     articleTitle!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: titleFontSmall,
                       fontWeight: FontWeight.w600,
                     ),
+                    softWrap: true,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -225,7 +229,7 @@ class FeaturedPostCard extends StatelessWidget {
                     timePosted!,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
-                      fontSize: 14,
+                      fontSize: titleFontSmall,
                       fontWeight: FontWeight.w400,
                     ),
                   ),

@@ -381,6 +381,9 @@ class _SlideContainerState extends State<SlideContainer> {
   }
 
   Positioned _textOverlay(BuildContext context, String title, section, time) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final titleFontSize = (screenWidth * 0.06).clamp(15.0, 17.0);
+    final titleFontSmall = (screenWidth * 0.06).clamp(11.0, 13.0);
     return Positioned(
       left: 20,
       top: MediaQuery.of(context).size.height * 0.38, // Adjust to align
@@ -403,37 +406,43 @@ class _SlideContainerState extends State<SlideContainer> {
             ),
             child: Text(
               section,
-              style: const TextStyle(
+              style: TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: titleFontSize,
                   fontWeight: FontWeight.w400,
                   fontFamily: 'Roboto Slab'),
             ),
           ),
           const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * .85,
+            ),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: titleFontSize,
+                fontWeight: FontWeight.w700,
+              ),
+              softWrap: true,
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'By DuppyBaby',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 13,
+              fontSize: titleFontSmall,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 10),
           Text(
             time,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
-              fontSize: 11,
+              fontSize: titleFontSmall,
               fontWeight: FontWeight.w600,
             ),
           ),
