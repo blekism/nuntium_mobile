@@ -28,14 +28,18 @@ class _CreateEventPage extends State<CreateEventPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final titleFontSize = (screenWidth * 0.06).clamp(18.0, 24.0);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         centerTitle: true,
         backgroundColor: Colors.white,
-        title: const Text(
+        title: Text(
           'Create Event',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style:
+              TextStyle(fontSize: titleFontSize, fontWeight: FontWeight.bold),
         ),
       ),
       body: Center(
@@ -47,21 +51,21 @@ class _CreateEventPage extends State<CreateEventPage> {
                 // mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Event Details',
-                      style:
-                          TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: titleFontSize, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Event Name',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: titleFontSize, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -81,12 +85,12 @@ class _CreateEventPage extends State<CreateEventPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Description',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: titleFontSize, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 5),
@@ -106,12 +110,12 @@ class _CreateEventPage extends State<CreateEventPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Date',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: titleFontSize, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 5),
@@ -141,12 +145,12 @@ class _CreateEventPage extends State<CreateEventPage> {
                     },
                   ),
                   const SizedBox(height: 10),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Location',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: titleFontSize, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 5),
@@ -166,12 +170,12 @@ class _CreateEventPage extends State<CreateEventPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Align(
+                  Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Venue',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: titleFontSize, fontWeight: FontWeight.bold),
                     ),
                   ),
                   const SizedBox(height: 5),

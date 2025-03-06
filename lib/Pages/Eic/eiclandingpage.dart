@@ -89,13 +89,16 @@ class _EicLandingPage extends State<EicLandingPage> {
   }
 
   AppBar _appBar(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final titleFontSize = (screenWidth * 0.06).clamp(18.0, 24.0);
+
     return AppBar(
       backgroundColor: Colors.transparent,
-      title: const Text(
+      title: Text(
         'Nuntium',
         style: TextStyle(
           color: Colors.black,
-          fontSize: 24,
+          fontSize: titleFontSize,
           fontWeight: FontWeight.w600,
         ),
       ),
