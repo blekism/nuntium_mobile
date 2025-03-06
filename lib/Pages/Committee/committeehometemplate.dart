@@ -111,7 +111,7 @@ class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
         stream: FirebaseFirestore.instance
             .collection('tasks')
             .where('status', isEqualTo: 'ready_post')
-            .orderBy('deadline', descending: true)
+            .orderBy('completed_at', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {

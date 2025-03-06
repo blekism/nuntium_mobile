@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Eic/eichomepage.dart';
 import 'package:nuntium_mobile/Pages/SectionEditor/assigntasklogpage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
+import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
 
 class EicLandingPage extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -25,9 +26,7 @@ class _EicLandingPage extends State<EicLandingPage> {
     const AssignTaskLogPage(
       section: 'all',
     ),
-    // const HomeScreen(),
-    // const CalendarPage(),
-    // const CreateTaskPage(),
+    const CalendarPage(),
   ];
   @override
   Widget build(BuildContext context) {

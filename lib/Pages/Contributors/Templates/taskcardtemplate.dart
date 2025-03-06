@@ -43,23 +43,40 @@ class TaskCardTemplate extends StatefulWidget {
 
 class _TaskCardTemplate extends State<TaskCardTemplate> {
   bool isManagement = false;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
     super.initState();
     _checkUser();
-    print('shown is Task ID: ${widget.taskid}');
   }
 
-  Future<void> _readyPostTask() {
+  Future<void> _readyPostTask() async {
     print('Task is ready for posting pasok committee');
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Task is ready for posting')),
     );
+
+    await FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(widget.taskid)
+        .collection('timeline')
+        .add({
+      'author': _auth.currentUser!.displayName,
+      'comment': 'task is ready for posting',
+      'content': 'Task is ready for posting',
+      'date': FieldValue.serverTimestamp(),
+      'revision': 'posting',
+      'timelinestatus': 'ready_post',
+    });
+
     return FirebaseFirestore.instance
         .collection('tasks')
         .doc(widget.taskid)
-        .update({'status': 'ready_post'});
+        .update({
+      'status': 'ready_post',
+      'completed_at': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> _checkUser() async {
@@ -81,7 +98,22 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
         .collection('tasks')
         .doc(widget.taskid)
         .update({'status': 'created'});
+
+    await FirebaseFirestore.instance
+        .collection('tasks')
+        .doc(widget.taskid)
+        .collection('timeline')
+        .add({
+      'author': _auth.currentUser!.displayName,
+      'comment': 'task approved',
+      'content': 'Task is ready for posting',
+      'date': FieldValue.serverTimestamp(),
+      'revision': 'posting',
+      'timelinestatus': 'approved task',
+    });
+
     if (mounted) {
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Task is approved')),
       );
@@ -195,15 +227,15 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                   widget.taskTitle ?? 'Task Title', // Default text if null
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: titleFontSize,
+                    fontSize: titleFontSmall,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  '0/10 tasks started', // Default text if null
+                  '${widget.completedTask}/${widget.totalTask} tasks started', // Default text if null
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: titleFontSize,
+                    fontSize: titleFontSmall,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -212,7 +244,7 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                       'Task deadline test', // Default text if null
                   style: TextStyle(
                     color: Colors.black,
-                    fontSize: titleFontSize,
+                    fontSize: titleFontSmall,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -480,11 +512,8 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
                                 const SizedBox(height: 10),
                                 isManagement
                                     ? ElevatedButton(
-                                        onPressed: () async {
-                                          await _approveTask();
-                                          if (mounted) {
-                                            Navigator.pop(context);
-                                          }
+                                        onPressed: () {
+                                          _approveTask();
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor:
