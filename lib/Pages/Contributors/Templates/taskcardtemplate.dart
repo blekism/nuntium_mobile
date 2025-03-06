@@ -43,18 +43,12 @@ class TaskCardTemplate extends StatefulWidget {
 
 class _TaskCardTemplate extends State<TaskCardTemplate> {
   bool isManagement = false;
-  late Stream<QuerySnapshot> assignedTasksStream;
 
   @override
   void initState() {
     super.initState();
     _checkUser();
-
-    assignedTasksStream = FirebaseFirestore.instance
-        .collection('tasks')
-        .doc(widget.taskid)
-        .collection('assigned_tasks')
-        .snapshots();
+    print('shown is Task ID: ${widget.taskid}');
   }
 
   Future<void> _readyPostTask() {
@@ -90,6 +84,8 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        print('clicked taskid is: ${widget.taskid}');
+        print('clicked section is: ${widget.section}');
         if (widget.status == 'ready_post') {
           print('Task ID being passed: ${widget.taskid}');
           Navigator.push(
@@ -537,7 +533,11 @@ class _TaskCardTemplate extends State<TaskCardTemplate> {
               const SizedBox(height: 10),
               Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: assignedTasksStream,
+                  stream: FirebaseFirestore.instance
+                      .collection('tasks')
+                      .doc(widget.taskid)
+                      .collection('assigned_tasks')
+                      .snapshots(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());

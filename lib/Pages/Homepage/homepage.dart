@@ -56,17 +56,7 @@ class _HomepageState extends State<Homepage> {
     _checkNewUser();
 
     _screens = [
-      HomeScreen(
-        //change yung qquery na posts to most recent lang e.g. 10 most recent
-        featuredPost: FirebaseFirestore.instance
-            .collection('posts')
-            .where('isFeatured', isEqualTo: true)
-            .snapshots(),
-        normalPost: FirebaseFirestore.instance
-            .collection('posts')
-            .where('isNormal', isEqualTo: true)
-            .snapshots(),
-      ),
+      const HomeScreen(),
       const DiscoverPage(),
       SavedPage(
         userRole: widget.userRole ?? 'none',
@@ -161,13 +151,8 @@ class _HomepageState extends State<Homepage> {
 }
 
 class HomeScreen extends StatefulWidget {
-  final Stream<QuerySnapshot> featuredPost;
-  final Stream<QuerySnapshot> normalPost;
-
   const HomeScreen({
     super.key,
-    required this.featuredPost,
-    required this.normalPost,
   });
 
   @override
@@ -214,7 +199,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           StreamBuilder<QuerySnapshot>(
-              stream: widget.featuredPost,
+              stream: FirebaseFirestore.instance
+                  .collection('posts')
+                  .where('isFeatured', isEqualTo: true)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Padding(
@@ -313,7 +301,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           StreamBuilder<QuerySnapshot>(
-              stream: widget.normalPost,
+              stream: FirebaseFirestore.instance
+                  .collection('posts')
+                  .where('isNormal', isEqualTo: true)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const NormalPostCard(

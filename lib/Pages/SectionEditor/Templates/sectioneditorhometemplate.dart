@@ -146,12 +146,27 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
             return const Center(child: Text('No tasks found, good job!'));
           }
 
-          sectionTaskData =
-              snapshot.data!.docs.map((DocumentSnapshot document) {
-            var data = document.data() as Map<String, dynamic>;
-            data['id'] = document.id;
-            return data;
-          }).toList();
+          for (var change in snapshot.data!.docChanges) {
+            var data = change.doc.data() as Map<String, dynamic>;
+            data['id'] = change.doc.id;
+
+            switch (change.type) {
+              case DocumentChangeType.added:
+                sectionTaskData.insert(0, data);
+                break;
+              case DocumentChangeType.modified:
+                int index = sectionTaskData
+                    .indexWhere((task) => task['id'] == data['id']);
+                if (index != -1) {
+                  sectionTaskData[index] = data;
+                }
+                break;
+              case DocumentChangeType.removed:
+                sectionTaskData.removeWhere((task) => task['id'] == data['id']);
+                break;
+            }
+          }
+
           List<Map<String, dynamic>> filteredTasks = sectionTaskData;
 
           if (selectedTask != 'all') {
