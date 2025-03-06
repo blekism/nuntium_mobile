@@ -107,6 +107,14 @@ class _AppdrawerState extends State<Appdrawer> {
                 )
               : const SizedBox.shrink(),
           widget.userRole != 'reader'
+              ? ListTile(
+                  title: const Text('History'),
+                  onTap: () {
+                    Navigator.pushNamed(context, '/historypage');
+                  },
+                )
+              : const SizedBox.shrink(),
+          widget.userRole != 'reader'
               ? _changeButtonPerRole(widget.pageOrigin!)
               : const SizedBox.shrink(),
           widget.userRole != 'none'

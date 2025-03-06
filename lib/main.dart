@@ -28,6 +28,8 @@ import 'Pages/SectionWriter/swhomepage.dart';
 import 'Pages/Committee/committeehomepage.dart';
 import 'Pages/Committee/committeehometemplate.dart';
 import 'Pages/Committee/taskcontentpage.dart';
+import 'Pages/History/history.dart';
+import 'Pages/History/completedtaskitems.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 
 void main() async {
@@ -80,6 +82,9 @@ class NuntiumApp extends StatelessWidget {
         '/commmitteehometemplate': (context) =>
             const CommitteeHomePageTemplate(),
         '/taskcontentpage': (context) => const TaskContentPage(),
+        '/completedtaskitems': (context) =>
+            const CompletedItems(title: '', description: ''),
+        '/historypage': (context) => const TaskHistoryPage(),
         '/initial': (context) => AuthChecker(
               authStream: FirebaseAuth.instance.authStateChanges(),
             ),
