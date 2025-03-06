@@ -55,6 +55,7 @@ class _CreateEventPage extends State<CreateEventPage> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Event Details',
+
                       style: TextStyle(
                           fontSize: titleFontSize, fontWeight: FontWeight.bold),
                     ),

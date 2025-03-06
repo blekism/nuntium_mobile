@@ -15,6 +15,7 @@ import 'Pages/Homepage/contribhuntpage.dart';
 import 'Pages/Contributors/contribhomepage.dart';
 import 'Pages/Calendar/calendarpage.dart';
 import 'Pages/Calendar/createeventpage.dart';
+import 'Pages/Calendar/viewcreatedevent.dart';
 import 'Pages/ContentPage/articlecontent.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -68,6 +69,7 @@ class NuntiumApp extends StatelessWidget {
         '/eiclandingpage': (context) => const EicLandingPage(),
         '/calendarpage': (context) => const CalendarPage(),
         '/createeventpage': (context) => const CreateEventPage(),
+        '/viewcreatedevent': (context) => const ViewCreatedEventPage(),
         '/eichomepage': (context) => const EicHomepage(),
         '/eicorgtasks': (context) => const OrganizationTasks(),
         '/assigntaskpage': (context) => const AssignTaskPage(),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class TaskContentPage extends StatefulWidget {
   final String? taskid;
@@ -21,7 +22,8 @@ class _TaskContentPage extends State<TaskContentPage> {
   String? section;
   List<String> timelineAuthors = [];
   List<String> taskAssignees = [];
-  List<Map<String, dynamic>> assignedTasks = [];
+  String? writingContent;
+  String? pubmatImageUrl;
 
   Future<void> fetchData() async {
     try {
@@ -68,36 +70,37 @@ class _TaskContentPage extends State<TaskContentPage> {
 
       print(assignedTasksSnapshot.docs.length);
 
+      Set<String> assignees = {};
+
       for (var doc in assignedTasksSnapshot.docs) {
         var data = doc.data();
         print('Fetched data: $data');
         String taskType = data['task_type'];
 
         if (taskType == 'writing') {
-          assignedTasks.add({
-            'content': doc.data()['content'],
-          });
-        }
-        if (taskType == 'pubmat') {
+          print('Writing Task Content: ${data['content']}');
+          writingContent = data['content'];
+        } else if (taskType == 'pubmat') {
           List<dynamic> images = data['images'] ?? [];
           if (images.isNotEmpty) {
-            assignedTasks.add({
-              'image_url': images[0],
-            });
+            print('Pubmat Image URL: ${images[0]}');
+            pubmatImageUrl = images[0];
           }
         }
-        List<String> assignees = assignedTasksSnapshot.docs
-            .map((doc) => doc.data()['assignee_id'] as String)
-            .toList();
 
-        setState(() {
-          taskAssignees = assignees;
-        });
-        print('Fetched assignees: $taskAssignees');
+        assignees.add(data['assignee_id'] as String);
       }
+
+      List<String> usernames = [];
+      for (String assigneeId in assignees) {
+        String username = await fetchUsername(assigneeId) ?? 'Unknown User';
+        usernames.add(username);
+      }
+
       setState(() {
-        assignedTasks = assignedTasks;
+        taskAssignees = usernames;
       });
+      print('Fetched assignees: $taskAssignees');
     } catch (e) {
       print('Error fetching assigned tasks: $e');
     }
@@ -115,6 +118,7 @@ class _TaskContentPage extends State<TaskContentPage> {
 
       List<String> authors = timelineSnapshot.docs
           .map((doc) => doc.data()['author'] as String)
+          .toSet() // Convert to Set to remove duplicates
           .toList();
 
       setState(() {
@@ -148,20 +152,43 @@ class _TaskContentPage extends State<TaskContentPage> {
     }
   }
 
+  Future<String?> fetchUsername(String userId) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> userSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+
+      if (userSnapshot.exists) {
+        return userSnapshot.data()?['username'];
+      } else {
+        print('User document does not exist');
+        return 'Unknown User';
+      }
+    } catch (e) {
+      print('Error fetching username: $e');
+      return 'Error User';
+    }
+  }
+
   Future<void> submitContent() async {
     try {
       CollectionReference posts =
           FirebaseFirestore.instance.collection('posts');
 
+      String formattedTime =
+          DateFormat('h:mm a').format(DateTime.now().toLocal());
+
       Map<String, dynamic> postData = {
         'appearIn': "general",
         'title': title,
-        'content': assignedTasks[1]['content'],
+        'content': writingContent,
         'section': section,
-        'image': assignedTasks[0]['image_url'],
+        'image': pubmatImageUrl,
         'isFeatured': true,
         'isNormal': true,
-        'time': "TIME MONA",
+        'time': formattedTime,
         'datePosted': FieldValue.serverTimestamp(),
       };
 
@@ -189,9 +216,8 @@ class _TaskContentPage extends State<TaskContentPage> {
               children: [
                 Positioned.fill(
                   child: Image.network(
-                    assignedTasks.isNotEmpty &&
-                            assignedTasks[0].containsKey('image_url')
-                        ? assignedTasks[0]['image_url']
+                    pubmatImageUrl != null
+                        ? pubmatImageUrl!
                         : 'https://firebasestorage.googleapis.com/v0/b/nu-publication-system.firebasestorage.app/o/burge.jpg?alt=media&token=e301878c-4317-4517-b9eb-91279f82aca9',
                     fit: BoxFit.cover,
                   ),
@@ -463,9 +489,7 @@ class _TaskContentPage extends State<TaskContentPage> {
 
   Text _textContent(context) {
     return Text(
-      assignedTasks.isNotEmpty && assignedTasks[1].containsKey('content')
-          ? assignedTasks[1]['content']
-          : "No content available",
+      writingContent != null ? writingContent! : "No content available",
       style: const TextStyle(
         color: Colors.black,
         fontSize: 16,

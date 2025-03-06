@@ -106,6 +106,7 @@ class _CreateParentTask extends State<CreateParentTask> {
         print("Newly assigned task: ${newTask.data()}");
 
         // Clear the form
+        _formKey.currentState!.reset();
         _taskTitleController.clear();
         _taskDetailsController.clear();
         _taskDeadlineController.clear();
@@ -258,7 +259,7 @@ class _CreateParentTask extends State<CreateParentTask> {
                               filled: true,
                               fillColor: Color(0xFfffffff),
                               labelText: "Priority",
-                              labelStyle: TextStyle(color: Colors.black),
+                              // labelStyle: TextStyle(color: Colors.black),
                             ),
                             value: selectedPriority,
                             items: [
@@ -287,7 +288,7 @@ class _CreateParentTask extends State<CreateParentTask> {
                                     filled: true,
                                     fillColor: Color(0xFfffffff),
                                     labelText: "Task Section",
-                                    labelStyle: TextStyle(color: Colors.black),
+                                    // labelStyle: TextStyle(color: Colors.black),
                                   ),
                                   value: _selectedValue,
                                   items: _sectionData.map((section) {
@@ -311,7 +312,7 @@ class _CreateParentTask extends State<CreateParentTask> {
                             decoration: InputDecoration(
                               labelText: 'Details',
                               labelStyle: const TextStyle(
-                                color: Color(0xFF020B40),
+                                // color: Color(0xFF020B40),
                                 fontSize: 16,
                               ),
                               alignLabelWithHint: true,
