@@ -202,9 +202,11 @@ class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
   Widget _cardList() {
     List<Map<String, dynamic>> filteredTasks = selectedTask == 'all'
         ? yourTasksData
-        : yourTasksData
-            .where((task) => task['section'] == selectedTask)
-            .toList();
+        : yourTasksData.where((task) {
+            print(
+                'Selected Task: $selectedTask, Task Section: ${task['section']}');
+            return task['section'] == selectedTask;
+          }).toList();
 
     return Expanded(
       child: yourTasksData.isEmpty && !isLoadingMore

@@ -22,7 +22,7 @@ class _AssignTaskPage extends State<AssignTaskPage> {
   bool _isLoading = false;
 
   // List to hold task assignment containers
-  List<Widget> _taskContainers = [];
+  // List<Widget> _taskContainers = [];
   List<String> users = [];
   List<String> taskTitle = [];
 
@@ -52,23 +52,23 @@ class _AssignTaskPage extends State<AssignTaskPage> {
     super.initState();
     _usersFuture = getUsers();
     _tasksFuture = getTasksTitle();
-    _taskContainers.add(_buildTaskAssignmentContainer(0));
+    // _taskContainers.add(_buildTaskAssignmentContainer(0));
   }
 
   // Function to add a new task assignment container
-  void _addTaskAssignmentContainer() {
-    setState(() {
-      _taskContainers
-          .add(_buildTaskAssignmentContainer(_taskContainers.length));
-    });
-  }
+  // void _addTaskAssignmentContainer() {
+  //   setState(() {
+  //     _taskContainers
+  //         .add(_buildTaskAssignmentContainer(_taskContainers.length));
+  //   });
+  // }
 
-  // Function to remove a task assignment container
-  void _removeTaskAssignmentContainer(int index) {
-    setState(() {
-      _taskContainers.removeAt(index);
-    });
-  }
+  // // Function to remove a task assignment container
+  // void _removeTaskAssignmentContainer(int index) {
+  //   setState(() {
+  //     _taskContainers.removeAt(index);
+  //   });
+  // }
 
   //PARA SA PAG FETCH NG USERS FOR THE DROPDWOWN
   Future<List<Map<String, String>>> getUsers() async {
@@ -168,63 +168,51 @@ class _AssignTaskPage extends State<AssignTaskPage> {
   Future<void> assignTask() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
-        _isLoading = true;
+        _isLoading = true; // Show loading indicator
       });
 
       try {
-        String? taskId = selectedTaskTitle;
-        if (selectedMembers.isEmpty) {
+        if (selectedMembers == null) {
           print("Error: No members selected");
           return;
         }
 
-        for (var member in selectedMembers) {
-          print("Assigning to: $member");
-          print("task id to  : ${widget.taskid}");
+        var member = selectedMembers;
+        print("Assigning to: $member");
+        print("Task ID: ${widget.taskid}");
 
-          DocumentReference taskRef = await FirebaseFirestore.instance
-              .collection('tasks')
-              .doc(widget.taskid)
-              .collection('assigned_tasks')
-              .add({
-            'assignee_id': member,
-            'status': 'assigned',
-            'created_at': FieldValue.serverTimestamp(),
-            'task_id': widget.taskid,
-            'task_type': selectedTask,
-            'isParent': 'Child Task',
-            'priority': selectedPriority,
-            'deadline': _selectedDate,
-          });
+        DocumentReference taskRef = await FirebaseFirestore.instance
+            .collection('tasks')
+            .doc(widget.taskid)
+            .collection('assigned_tasks')
+            .add({
+          'assignee_id': member,
+          'status': 'assigned',
+          'created_at': FieldValue.serverTimestamp(),
+          'task_id': widget.taskid,
+          'task_type': selectedTask,
+          'isParent': 'Child Task',
+          'priority': selectedPriority,
+          'deadline': _selectedDate,
+        });
 
-          await FirebaseFirestore.instance
-              .collection('tasks')
-              .doc(widget.taskid)
-              .update({
-            'total_subtasks': FieldValue.increment(1),
-          });
+        await FirebaseFirestore.instance
+            .collection('tasks')
+            .doc(widget.taskid)
+            .update({
+          'total_subtasks': FieldValue.increment(1),
+        });
 
-          await conditionalUpdate(widget.taskid!);
+        await conditionalUpdate(widget.taskid!);
 
-          DocumentSnapshot newTask = await taskRef.get();
-          print("Newly assigned task: ${newTask.data()}");
-        }
+        DocumentSnapshot newTask = await taskRef.get();
+        print("Newly assigned task: ${newTask.data()}");
 
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Task assigned successfully')),
         );
-
-        // Only reset fields after loading is done
-        setState(() {
-          _isLoading = false;
-          _formKey.currentState!.reset();
-          _taskContainers = [_buildTaskAssignmentContainer(0)];
-          // _taskTitleController.clear();
-          selectedMembers = [''];
-          selectedPriority = null;
-        });
       } catch (e) {
         print("Error submitting task: $e");
 
@@ -234,134 +222,23 @@ class _AssignTaskPage extends State<AssignTaskPage> {
           SnackBar(content: Text('Error: $e')),
         );
       } finally {
+        // Only reset fields *after* submission is done
         if (mounted) {
           setState(() {
             _isLoading = false;
+            _taskDeadlineController.clear();
+            selectedMembers = null;
+            selectedPriority = null;
+            selectedTask = null;
           });
         }
       }
     }
   }
 
-  // Function to build the task assignment container
-  Widget _buildTaskAssignmentContainer(int index) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(10))),
-                filled: true,
-                fillColor: Color(0xFffFfFfF),
-                labelText: "Task",
-                labelStyle: TextStyle(color: Colors.black),
-              ),
-              items: ['writing', 'photojourn', 'pubmat'].map((task) {
-                return DropdownMenuItem(
-                  value: task,
-                  child: Text(task),
-                );
-              }).toList(),
-              onChanged: (value) {
-                selectedTask = value;
-              },
-              validator: (value) =>
-                  value == null ? 'Please select a task' : null,
-            ),
-            const SizedBox(height: 10),
-            FutureBuilder<List<Map<String, String>>>(
-              future: _usersFuture, // Call getUsers() and wait for it
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const CircularProgressIndicator();
-                }
-                if (snapshot.hasError) {
-                  return Text("Error: ${snapshot.error}");
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Text("No users found.");
-                }
-                return DropdownButtonFormField<String>(
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(10))),
-                    filled: true,
-                    fillColor: Color(0xFFFFFFFF),
-                    labelText: "Assign To",
-                    labelStyle: TextStyle(color: Colors.black),
-                  ),
-                  items: snapshot.data!.map((user) {
-                    return DropdownMenuItem(
-                      value: user['userId'],
-                      child: Text(user['username']!),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (index >= selectedMembers.length) {
-                      selectedMembers.add(value);
-                    } else {
-                      selectedMembers[index] = value;
-                    }
-                  },
-                  validator: (value) =>
-                      value == null ? 'Please select a member' : null,
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _taskDeadlineController,
-              readOnly: true,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: const Color(0xFfffffff),
-                labelText: "Deadline",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                focusedBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(
-                    color: Color(0XFF020B40),
-                  ),
-                ),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.calendar_today),
-                  onPressed: _pickDate, // Opens the date picker
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return "Please set a deadline";
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 5),
-            if (index != 0)
-              Align(
-                alignment: Alignment.bottomRight,
-                child: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _removeTaskAssignmentContainer(index),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   String? selectedTaskTitle;
   String? selectedTask;
-  List<String?> selectedMembers = [];
+  String? selectedMembers;
   String? selectedPriority;
 
   @override
@@ -386,7 +263,9 @@ class _AssignTaskPage extends State<AssignTaskPage> {
       ),
       backgroundColor: Colors.white,
       body: FutureBuilder(
-          future: Future.wait([_usersFuture, _tasksFuture]),
+          future: Future.wait([
+            _usersFuture,
+          ]),
           builder: (context, AsyncSnapshot<List<dynamic>> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -437,7 +316,7 @@ class _AssignTaskPage extends State<AssignTaskPage> {
                                 decoration: InputDecoration(
                                   labelText: 'Task Title',
                                   labelStyle: const TextStyle(
-                                    color: Color(0xFF020B40),
+                                    // color: Color(0xFF020B40),
                                     fontSize: 16,
                                   ),
                                   filled: true,
@@ -482,7 +361,7 @@ class _AssignTaskPage extends State<AssignTaskPage> {
                                   filled: true,
                                   fillColor: Color(0xFfffffff),
                                   labelText: "Priority",
-                                  labelStyle: TextStyle(color: Colors.black),
+                                  // labelStyle: TextStyle(color: Colors.black),
                                 ),
                                 value: selectedPriority,
                                 items: [
@@ -503,11 +382,41 @@ class _AssignTaskPage extends State<AssignTaskPage> {
                                     : null,
                               ),
                               const SizedBox(height: 10),
-                              Row(
+                              const SizedBox(height: 10),
+                              TextFormField(
+                                controller: _taskDeadlineController,
+                                readOnly: true,
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: const Color(0xFfffffff),
+                                  labelText: "Deadline",
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  focusedBorder: const OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Color(0XFF020B40),
+                                    ),
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: const Icon(Icons.calendar_today),
+                                    onPressed:
+                                        _pickDate, // Opens the date picker
+                                  ),
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Please set a deadline";
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              const Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Assign To:',
                                     style: TextStyle(
                                       color: Colors.black,
@@ -515,18 +424,85 @@ class _AssignTaskPage extends State<AssignTaskPage> {
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.add_circle_outline,
-                                        color: Color(0xffD4AF37)),
-                                    onPressed:
-                                        _addTaskAssignmentContainer, // Adds a new container
-                                  ),
+                                  // IconButton(
+                                  //   icon: const Icon(Icons.add_circle_outline,
+                                  //       color: Color(0xffD4AF37)),
+                                  //   onPressed:
+                                  //       _addTaskAssignmentContainer, // Adds a new container
+                                  // ),
                                 ],
                               ),
                               const SizedBox(height: 10),
-                              Column(
-                                children:
-                                    _taskContainers, // Display all added task assignment containers
+                              // Column(
+                              //   children:
+                              //       _taskContainers, // Display all added task assignment containers
+                              // ),
+                              DropdownButtonFormField<String>(
+                                value: selectedTask,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(10))),
+                                  filled: true,
+                                  fillColor: Color(0xFffFfFfF),
+                                  labelText: "Task",
+                                  // labelStyle: TextStyle(color: Colors.black),
+                                ),
+                                items: ['writing', 'photojourn', 'pubmat']
+                                    .map((task) {
+                                  return DropdownMenuItem(
+                                    value: task,
+                                    child: Text(task),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  selectedTask = value;
+                                },
+                                validator: (value) => value == null
+                                    ? 'Please select a task'
+                                    : null,
+                              ),
+                              const SizedBox(height: 10),
+                              FutureBuilder<List<Map<String, String>>>(
+                                future:
+                                    _usersFuture, // Call getUsers() and wait for it
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const CircularProgressIndicator();
+                                  }
+                                  if (snapshot.hasError) {
+                                    return Text("Error: ${snapshot.error}");
+                                  }
+                                  if (!snapshot.hasData ||
+                                      snapshot.data!.isEmpty) {
+                                    return const Text("No users found.");
+                                  }
+                                  return DropdownButtonFormField<String>(
+                                    value: selectedMembers,
+                                    decoration: const InputDecoration(
+                                      border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(10))),
+                                      filled: true,
+                                      fillColor: Color(0xFFFFFFFF),
+                                      labelText: "Assign To",
+                                      // labelStyle: TextStyle(color: Colors.black),
+                                    ),
+                                    items: snapshot.data!.map((user) {
+                                      return DropdownMenuItem(
+                                        value: user['userId'],
+                                        child: Text(user['username']!),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      selectedMembers = value;
+                                    },
+                                    validator: (value) => value == null
+                                        ? 'Please select a member'
+                                        : null,
+                                  );
+                                },
                               ),
                               const SizedBox(height: 20),
                               Align(

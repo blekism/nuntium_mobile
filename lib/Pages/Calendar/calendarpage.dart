@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'createeventpage.dart';
+import 'viewcreatedevent.dart';
 
 class CalendarPage extends StatefulWidget {
   const CalendarPage({super.key});
@@ -62,6 +63,31 @@ class _CalendarPage extends State<CalendarPage> {
                       'Add A New Event',
                       style: TextStyle(
                           color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ViewCreatedEventPage()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xffF2F2F2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'View Created Event',
+                      style: TextStyle(
+                          color: Color(0xff020B40),
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
