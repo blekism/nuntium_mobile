@@ -132,7 +132,13 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
   Widget _cardList() {
     return Expanded(
       child: StreamBuilder<QuerySnapshot>(
-        stream: sectionTaskStream,
+        stream: FirebaseFirestore.instance
+            .collection('tasks')
+            .where('section', isEqualTo: widget.sectionID)
+            .where('assigned_by',
+                isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+            .orderBy('deadline', descending: true)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -146,31 +152,16 @@ class _SectionEditorHomePage extends State<SectionEditorHomePage> {
             return const Center(child: Text('No tasks found, good job!'));
           }
 
-          for (var change in snapshot.data!.docChanges) {
-            var data = change.doc.data() as Map<String, dynamic>;
-            data['id'] = change.doc.id;
-
-            switch (change.type) {
-              case DocumentChangeType.added:
-                sectionTaskData.insert(0, data);
-                break;
-              case DocumentChangeType.modified:
-                int index = sectionTaskData
-                    .indexWhere((task) => task['id'] == data['id']);
-                if (index != -1) {
-                  sectionTaskData[index] = data;
-                }
-                break;
-              case DocumentChangeType.removed:
-                sectionTaskData.removeWhere((task) => task['id'] == data['id']);
-                break;
-            }
+          List<Map<String, dynamic>> updatedTasks = [];
+          for (var doc in snapshot.data!.docs) {
+            var data = doc.data() as Map<String, dynamic>;
+            data['id'] = doc.id;
+            updatedTasks.add(data);
           }
 
-          List<Map<String, dynamic>> filteredTasks = sectionTaskData;
-
-          if (selectedTask != 'all') {
-            filteredTasks = sectionTaskData
+          List<Map<String, dynamic>> filteredTasks = [];
+          if (selectedTask == 'all') {
+            filteredTasks = updatedTasks
                 .where((task) => task['status'] == selectedTask)
                 .toList();
           }

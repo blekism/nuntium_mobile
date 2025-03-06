@@ -113,6 +113,10 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
   }
 
   Widget _content(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final titleFontSize = (screenWidth * 0.06).clamp(15.0, 17.0);
+    final titlefontSmall = (screenWidth * 0.06).clamp(11.0, 13.0);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -149,25 +153,25 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
               children: [
                 Text(
                   taskTitle ?? 'Task Title', // Default text if null
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 18,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
                   widget.taskType ?? 'Task Type', // Default text if null
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
                 Text(
                   widget.deadline ?? 'Task deadline', // Default text if null
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
-                    fontSize: 16,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -188,9 +192,9 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
                         alignment: Alignment.center,
                         child: Text(
                           widget.isParent ?? 'Parent Task',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 13,
+                            fontSize: titlefontSmall,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -209,9 +213,9 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
                         alignment: Alignment.center,
                         child: Text(
                           widget.status ?? 'Waiting',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 13,
+                            fontSize: titleFontSize,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -233,9 +237,9 @@ class _TaskCardTemplate extends State<ChildTaskCardTemplate> {
                     alignment: Alignment.center,
                     child: Text(
                       widget.priority ?? 'High Priority',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 13,
+                        fontSize: titlefontSmall,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

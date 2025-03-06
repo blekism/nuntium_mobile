@@ -13,106 +13,12 @@ class CommitteeHomePageTemplate extends StatefulWidget {
 
 class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
   String selectedTask = 'all';
-  final ScrollController _scrollController = ScrollController();
-  DocumentSnapshot? lastDocument;
-  List<Map<String, dynamic>> yourTasksData = [];
-  List<String> yourTaskIds = [];
-  bool isLoadingMore = false;
-  bool hasMoreTasks = true;
-  static const int initialBatchSize = 5;
-  int batchSize = initialBatchSize;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_scrollListener);
-    fetchInitialTasks();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _scrollListener() {
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent * 0.9 &&
-        !isLoadingMore &&
-        hasMoreTasks) {
-      fetchNextBatch();
-    }
-  }
-
-  Future<void> fetchInitialTasks() async {
-    setState(() {
-      yourTasksData.clear();
-      lastDocument = null;
-      hasMoreTasks = true;
-      batchSize = initialBatchSize;
-    });
-    await fetchNextBatch();
-  }
-
-  Future<void> fetchNextBatch() async {
-    if (!hasMoreTasks || isLoadingMore) return;
-    setState(() => isLoadingMore = true);
-
-    // print('section id is ${widget.sectionID}');
-
-    Query query = FirebaseFirestore.instance
-        .collection('tasks')
-        .where('status',
-            isEqualTo: 'ready_post') // Add this line to filter by status
-        .orderBy('deadline', descending: true)
-        .limit(batchSize);
-
-    if (lastDocument != null) {
-      query = query.startAfterDocument(lastDocument!);
-    }
-
-    QuerySnapshot taskSnapshot = await query.get();
-    if (taskSnapshot.docs.isEmpty) {
-      setState(() => hasMoreTasks = false);
-    } else {
-      lastDocument =
-          taskSnapshot.docs.last; // Save last document for pagination
-    }
-
-    List<Map<String, dynamic>> combinedTasks = [];
-
-    for (final doc in taskSnapshot.docs) {
-      String documentId = doc.id;
-      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
-      Map<String, dynamic> combinedData = {
-        'id': documentId,
-        ...data,
-      };
-
-      combinedTasks.add(combinedData);
-    }
-
-    setState(() {
-      yourTasksData.addAll(combinedTasks);
-      isLoadingMore = false;
-    });
-  }
-
-  Future<void> filteredSection(String section) async {
-    if (section != 'all') {
-      setState(() {
-        selectedTask = section;
-      });
-    } else {
-      setState(() {
-        selectedTask = 'all';
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
+    final titleFontSize = (screenWidth * 0.06).clamp(18.0, 24.0);
+
     return Scaffold(
       backgroundColor: const Color(0xffFFFFFF),
       body: Padding(
@@ -120,13 +26,13 @@ class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Align(
+            Align(
               alignment: Alignment.topLeft,
               child: Text(
                 'Tasks For Posting',
                 textAlign: TextAlign.start,
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: titleFontSize,
                   color: Colors.black,
                   fontWeight: FontWeight.w800,
                 ),
@@ -200,41 +106,60 @@ class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
   }
 
   Widget _cardList() {
-    List<Map<String, dynamic>> filteredTasks = selectedTask == 'all'
-        ? yourTasksData
-        : yourTasksData.where((task) {
-            print(
-                'Selected Task: $selectedTask, Task Section: ${task['section']}');
-            return task['section'] == selectedTask;
-          }).toList();
-
     return Expanded(
-      child: yourTasksData.isEmpty && !isLoadingMore
-          ? const Center(child: Text('No tasks found, good job!'))
-          : ListView.builder(
-              controller: _scrollController,
-              itemCount: filteredTasks.length + (isLoadingMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == filteredTasks.length) {
-                  return const TaskCardTemplate(isLoading: true);
-                }
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('tasks')
+            .where('status', isEqualTo: 'ready_post')
+            .orderBy('deadline', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
 
-                final task = filteredTasks[index];
-                return Padding(
-                  padding: const EdgeInsets.all(6.0),
-                  child: TaskCardTemplate(
-                    taskTitle: task['title'],
-                    taskid: task['id'],
-                    taskType: widget.sectionName,
-                    details: task['details'],
-                    isLoading: false,
-                    // deadline: task['deadline'],
-                    status: task['status'],
-                    isParent: task['isParent'],
-                  ),
-                );
-              },
-            ),
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No tasks found, good job!'));
+          }
+
+          List<Map<String, dynamic>> updatedTasks = [];
+          for (var doc in snapshot.data!.docs) {
+            var data = doc.data() as Map<String, dynamic>;
+            data['id'] = doc.id;
+            updatedTasks.add(data);
+          }
+
+          List<Map<String, dynamic>> filteredTasks = updatedTasks;
+          if (selectedTask != 'all') {
+            filteredTasks = updatedTasks
+                .where((task) => task['status'] == selectedTask)
+                .toList();
+          }
+
+          return ListView.builder(
+            itemCount: filteredTasks.length,
+            itemBuilder: (context, index) {
+              final task = filteredTasks[index];
+              return Padding(
+                padding: const EdgeInsets.all(6.0),
+                child: TaskCardTemplate(
+                  taskTitle: task['title'],
+                  taskid: task['id'],
+                  taskType: widget.sectionName,
+                  details: task['details'],
+                  isLoading: false,
+                  status: task['status'],
+                  isParent: task['isParent'],
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -306,17 +231,16 @@ class _CommitteeHomePageTemplate extends State<CommitteeHomePageTemplate> {
     );
   }
 
-  Widget _buildLoadingList() {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.8,
-      child: ListView.builder(
-        itemCount: 5,
-        itemBuilder: (context, index) => const Padding(
-          padding: EdgeInsets.only(bottom: 16),
-          child: TaskCardTemplate(isLoading: true),
-        ),
-      ),
-    );
+  Future<void> filteredSection(String section) async {
+    if (section != 'all') {
+      setState(() {
+        selectedTask = section;
+      });
+    } else {
+      setState(() {
+        selectedTask = 'all';
+      });
+    }
   }
 }
 

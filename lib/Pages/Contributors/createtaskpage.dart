@@ -222,6 +222,11 @@ class _CreateTaskPage extends State<CreateTaskPage> {
         'timelinestatus': 'started',
       });
       print("Task started successfully!");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Task is Started')),
+        );
+      }
     } catch (e) {
       print("Error starting task: $e");
     }
@@ -300,6 +305,11 @@ class _CreateTaskPage extends State<CreateTaskPage> {
         'timelinestatus': 'Revoewed task',
       });
       print("Comment added successfully!");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Task returned to member')),
+        );
+      }
     } else {
       print("Error: taskId is null");
     }
@@ -370,6 +380,12 @@ class _CreateTaskPage extends State<CreateTaskPage> {
         'revision': 'Task Approval',
         'timelinestatus': 'approved',
       });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Task is approved')),
+        );
+      }
       print("Task approved successfully!");
     } catch (e) {
       print("Error approving task: $e");
@@ -439,6 +455,11 @@ class _CreateTaskPage extends State<CreateTaskPage> {
       });
 
       print("Content and timeline history logged successfully!");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Task submitted')),
+        );
+      }
       fetchLatestContent(taskId);
     } catch (e) {
       print("Error submitting content and logging timeline history: $e");
@@ -902,38 +923,40 @@ class _CreateTaskPage extends State<CreateTaskPage> {
           },
         ),
         const SizedBox(height: 10),
-        isStarted
-            ? Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (widget.taskId != null) {
-                      submitContent(widget.taskId!, _taskContentController.text,
-                          'userId');
-                    } else {
-                      print("Error: taskId is null");
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF020B40),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(10), // Rounded corners
+        userRole != 'eic' || userRole != 'section_editors'
+            ? isStarted
+                ? Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (widget.taskId != null) {
+                          submitContent(widget.taskId!,
+                              _taskContentController.text, 'userId');
+                        } else {
+                          print("Error: taskId is null");
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF020B40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(10), // Rounded corners
+                        ),
+                        elevation: 10, // Add elevation for shadow
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 15.0,
+                            horizontal: 30.0), // Padding for the button
+                      ),
+                      child: const Text(
+                        'Submit',
+                        style: TextStyle(
+                          color: Colors.white, // White text color
+                          fontWeight: FontWeight.w700, // Bold text
+                        ),
+                      ),
                     ),
-                    elevation: 10, // Add elevation for shadow
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 15.0,
-                        horizontal: 30.0), // Padding for the button
-                  ),
-                  child: const Text(
-                    'Submit',
-                    style: TextStyle(
-                      color: Colors.white, // White text color
-                      fontWeight: FontWeight.w700, // Bold text
-                    ),
-                  ),
-                ),
-              )
+                  )
+                : const SizedBox.shrink()
             : const SizedBox.shrink(),
       ],
     );

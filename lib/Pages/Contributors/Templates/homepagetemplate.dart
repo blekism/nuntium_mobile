@@ -145,33 +145,20 @@ class _HomePageTemplate extends State<HomePageTemplate> {
             return const Center(child: Text('No tasks found, good job!'));
           }
 
-          for (var change in snapshot.data!.docChanges) {
-            var data = change.doc.data() as Map<String, dynamic>;
-            data['id'] = change.doc.id;
-
-            switch (change.type) {
-              case DocumentChangeType.added:
-                yourTasksData.insert(0, data);
-                break;
-              case DocumentChangeType.modified:
-                int index = yourTasksData
-                    .indexWhere((task) => task['id'] == data['id']);
-                if (index != -1) {
-                  yourTasksData[index] = data;
-                }
-                break;
-              case DocumentChangeType.removed:
-                yourTasksData.removeWhere((task) => task['id'] == data['id']);
-                break;
-            }
+          List<Map<String, dynamic>> updatedTasks = [];
+          for (var doc in snapshot.data!.docs) {
+            var data = doc.data() as Map<String, dynamic>;
+            data['id'] = doc.id;
+            updatedTasks.add(data);
           }
-          List<Map<String, dynamic>> filteredTasks = yourTasksData;
 
+          List<Map<String, dynamic>> filteredTasks = updatedTasks;
           if (selectedSection != 'all') {
-            filteredTasks = yourTasksData
+            filteredTasks = updatedTasks
                 .where((task) => task['status'] == selectedSection)
                 .toList();
           }
+
           return ListView.builder(
             itemCount: filteredTasks.length,
             itemBuilder: (context, index) {
