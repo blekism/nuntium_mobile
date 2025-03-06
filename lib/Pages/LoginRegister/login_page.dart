@@ -88,6 +88,9 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       print("Error signing in with Google: $e");
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign-in failed.')),
+        );
         setState(() {
           _isLoading = false;
         });
@@ -133,6 +136,12 @@ class _LoginPageState extends State<LoginPage> {
         return null;
       }
     } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Sign-in failed. check your credentials.')),
+        );
+      }
       print("Error signing in with own credentials: $e");
       setState(() {
         _isLoading = false;
@@ -211,7 +220,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             const SizedBox(height: 10),
                             const Text(
-                              'Log In to start Reading!',
+                              'Start Reading Now!',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w400,

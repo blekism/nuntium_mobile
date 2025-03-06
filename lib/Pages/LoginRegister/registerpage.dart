@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -20,7 +19,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _branch = TextEditingController();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore db = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final emailRegex =
       RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
   final passwordRegex =
@@ -282,7 +280,6 @@ class _RegisterPageState extends State<RegisterPage> {
                                           color: Color(0XFF020B40),
                                         ),
                                       ),
-                                      focusColor: const Color(0XFF020B40),
                                     ),
                                     style: const TextStyle(
                                       color: Colors.white, // Text color white
