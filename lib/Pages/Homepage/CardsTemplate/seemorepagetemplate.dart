@@ -1,18 +1,21 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:nuntium_mobile/Pages/Homepage/CardsTemplate/featuredcard.dart';
+import 'package:nuntium_mobile/Pages/Homepage/searchwidget.dart';
+import 'package:nuntium_mobile/models/normalitem.dart';
 import 'normalpost.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:nuntium_mobile/Pages/Homepage/CardsTemplate/termlypostcard.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SeeMorePageTemplate extends StatefulWidget {
   final String pageName;
-  final Stream<QuerySnapshot> shownContentStream;
-  final bool? isTermly;
+  final List<NormalItem> shownTopics;
+  final List<NormalItem>? termlyFeatured;
 
   const SeeMorePageTemplate({
     super.key,
     required this.pageName,
-    required this.shownContentStream,
-    this.isTermly,
+    required this.shownTopics,
+    this.termlyFeatured,
   });
 
   @override
@@ -20,24 +23,43 @@ class SeeMorePageTemplate extends StatefulWidget {
 }
 
 class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
-  List<Map<String, dynamic>> discoverPostData = [];
   String selectedSection = 'All';
-  Map<String, Map<String, dynamic>> _referencedPosts = {};
-  List<Map<String, dynamic>> termlyContentData = [];
   final PageController _pageController = PageController(viewportFraction: 0.9);
+  User? currentUser = FirebaseAuth.instance.currentUser;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  Timer? _debounceTimer;
 
-  Future<List<DocumentSnapshot>> _fetchReferencedPosts(
-      List<DocumentReference> postRefs) async {
-    List<DocumentSnapshot> fetchedPosts = [];
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
 
-    for (var ref in postRefs) {
-      if (!_referencedPosts.containsKey(ref.id)) {
-        DocumentSnapshot snapshot = await ref.get(); // Get post details
-        fetchedPosts.add(snapshot);
-      }
-    }
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
 
-    return fetchedPosts;
+  void _onSearchChanged() {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
+  }
+
+  List<NormalItem> _filterArticles(List<NormalItem> allArticles) {
+    return allArticles.where((article) {
+      final titleMatch =
+          article.title.toLowerCase().contains(_searchQuery.toLowerCase());
+      final sectionMatch =
+          selectedSection == 'All' || article.section == selectedSection;
+      return titleMatch && sectionMatch;
+    }).toList();
   }
 
   Future<void> filteredSection(String section) async {
@@ -54,6 +76,9 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
 
   @override
   Widget build(BuildContext context) {
+    final List<NormalItem> filteredBySearch =
+        _filterArticles(widget.shownTopics);
+
     return Center(
       child: Column(
         children: [
@@ -76,199 +101,175 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
               ],
             ),
           ),
-          _searchbar(),
+          widget.pageName == 'Discover' || widget.pageName == 'Archive'
+              ? SearchWidget(
+                  searchController: _searchController,
+                )
+              : const SizedBox.shrink(),
           const SizedBox(height: 15),
-          _genreFilter(),
+          widget.pageName != 'Archive'
+              ? _genreFilter()
+              : const SizedBox.shrink(),
           const SizedBox(height: 20),
-          _mainContent(),
+          _mainContent(
+            filteredBySearch,
+            currentUser,
+            widget.termlyFeatured ?? [],
+          ),
         ],
       ),
     );
   }
 
-  Expanded _mainContent() {
-    return widget.pageName == 'Saved Posts' || widget.pageName == 'History'
-        ? _userSavedContent()
-        : widget.isTermly == true
-            ? _termlyBuild(_pageController)
-            : _discoverBuild();
+  Expanded _mainContent(
+    List<NormalItem> filteredTopics,
+    User? currentUser,
+    List<NormalItem> termlyFeatured,
+  ) {
+    switch (widget.pageName) {
+      case 'Saved Posts':
+      case 'History':
+        return _userSavedContent(filteredTopics, currentUser);
+      case 'Archive':
+        return _termlyBuild(
+          _pageController,
+          filteredTopics,
+          termlyFeatured,
+          currentUser,
+        );
+      default:
+        return _discoverBuild(filteredTopics, currentUser);
+    }
   }
 
-  Expanded _termlyBuild(PageController pageController) {
+  Expanded _termlyBuild(
+    PageController pageController,
+    List<NormalItem> filteredTopics,
+    List<NormalItem> termlyFeatured,
+    User? currentUser,
+  ) {
     return Expanded(
-      child: StreamBuilder<QuerySnapshot>(
-        stream: widget.shownContentStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingList();
-          }
-          if (snapshot.hasError) {
-            return const Center(
-                child: Text('Error occurred while loading latest posts'));
-          }
-          if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('No data found'));
-          }
-
-          return PageView.builder(
-            controller: pageController,
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              termlyContentData =
-                  snapshot.data!.docs.map((DocumentSnapshot document) {
-                var data = document.data() as Map<String, dynamic>;
-                data['id'] = document.id; // Store the document ID
-                return data;
-              }).toList();
-              return Padding(
-                padding:
-                    const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16),
-                child: Termlypostcard(
-                  termlyCover: termlyContentData[index]['image'],
-                  title: termlyContentData[index]['title'],
-                  termlyType: termlyContentData[index]['section'],
-                  isLoading: false,
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Expanded _userSavedContent() {
-    return Expanded(
-      child: StreamBuilder<QuerySnapshot>(
-        stream: widget.shownContentStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoadingList();
-          }
-          if (snapshot.hasError) {
-            return const Center(
-                child: Text('Error occurred while loading latest posts'));
-          }
-          if (!snapshot.hasData || snapshot.data == null) {
-            return const Center(child: Text('No data found'));
-          }
-
-          var savedPosts = snapshot.data!.docs;
-          var postRefs = savedPosts
-              .map((post) => post['postId'] as DocumentReference)
-              .toList();
-
-          return FutureBuilder<List<DocumentSnapshot>>(
-            future: _fetchReferencedPosts(postRefs),
-            builder: (context, futureSnapshot) {
-              if (futureSnapshot.connectionState == ConnectionState.waiting) {
-                return _buildLoadingList();
-              }
-              if (futureSnapshot.hasError) {
-                return const Center(
-                    child: Text('Error loading referenced posts'));
-              }
-              if (!futureSnapshot.hasData) {
-                return const Center(child: Text('No referenced posts found'));
-              }
-
-              for (var doc in futureSnapshot.data!) {
-                _referencedPosts[doc.id] = doc.data() as Map<String, dynamic>;
-              }
-
-              // **Filtering posts before building UI**
-              var filteredPosts = savedPosts.where((post) {
-                var postRef = post['postId'] as DocumentReference;
-                var referencedPost = _referencedPosts[postRef.id];
-
-                return referencedPost != null &&
-                    (selectedSection == "All" ||
-                        referencedPost['section'] == selectedSection);
-              }).toList();
-
-              if (filteredPosts.isEmpty) {
-                return const Center(child: Text('No posts available'));
-              }
-
-              return ListView.builder(
-                itemCount: filteredPosts.length,
-                itemBuilder: (context, index) {
-                  var postRef =
-                      filteredPosts[index]['postId'] as DocumentReference;
-                  var referencedPost = _referencedPosts[postRef.id];
-
-                  return Padding(
-                    padding: const EdgeInsets.only(
-                        left: 16.0, right: 16.0, bottom: 16),
-                    child: NormalPostCard(
-                      imageAsset: referencedPost?['image'] ??
-                          'assets/images/nudasma.jpg',
-                      sectionType: referencedPost?['section'] ?? "unknown",
-                      articleTitle: referencedPost?['title'] ?? "unknown",
-                      datePosted: referencedPost?['time'] ?? "unknown",
-                      postID: postRef.id,
-                      isLoading: false,
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Expanded _discoverBuild() {
-    return Expanded(
-      child: StreamBuilder<QuerySnapshot>(
-          stream: widget.shownContentStream,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return _buildLoadingList();
-            }
-            if (snapshot.hasError) {
-              return const Center(
-                  child: Text('Error occurred while loading latest posts'));
-            }
-            if (!snapshot.hasData || snapshot.data == null) {
-              return const Center(child: Text('No data found'));
-            }
-
-            discoverPostData =
-                snapshot.data!.docs.map((DocumentSnapshot document) {
-              var data = document.data() as Map<String, dynamic>;
-              data['id'] = document.id; // Store the document ID
-              return data;
-            }).toList();
-            print('data found: ${discoverPostData.length}');
-            List<Map<String, dynamic>> filteredPosts = discoverPostData;
-
-            if (selectedSection != "All") {
-              filteredPosts = discoverPostData
-                  .where((post) => post['section'] == selectedSection)
-                  .toList();
-            }
-
-            return ListView.builder(
-              itemCount: filteredPosts.length,
+        child: SingleChildScrollView(
+      child: Column(
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * .5,
+            child: PageView.builder(
+              itemCount: termlyFeatured.length,
+              controller: pageController,
               itemBuilder: (context, index) {
+                final topic = termlyFeatured[index];
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: FeaturedPostCard(
+                    imageAsset: topic.imageUrl,
+                    sectionType: topic.section,
+                    articleTitle: topic.title,
+                    postID: topic.id,
+                    isAuthenticated: currentUser != null,
+                    timePosted: topic.datePosted,
+                    isLoading: false,
+                    isTermly: true,
+                    pdfUrl: topic.pdfUrl,
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Additional Information',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          _genreFilter(),
+          const SizedBox(height: 10),
+          filteredTopics.isEmpty
+              ? const Center(child: Text('No posts available'))
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredTopics.length,
+                  itemBuilder: (context, index) {
+                    final topic = filteredTopics[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(
+                          left: 16.0, right: 16.0, bottom: 16),
+                      child: NormalPostCard(
+                        imageAsset: topic.imageUrl,
+                        sectionType: topic.section,
+                        articleTitle: topic.title,
+                        postID: topic.id,
+                        isAuthenticated: currentUser != null,
+                        datePosted: topic.datePosted,
+                        isLoading: false,
+                        isTermly: true,
+                        pdfUrl: topic.pdfUrl,
+                      ),
+                    );
+                  },
+                ),
+        ],
+      ),
+    ));
+  }
+
+  Expanded _userSavedContent(
+      List<NormalItem> filteredTopics, User? currentUser) {
+    return Expanded(
+      child: filteredTopics.isEmpty
+          ? const Center(child: Text('No posts available'))
+          : ListView.builder(
+              shrinkWrap: true,
+              itemCount: filteredTopics.length,
+              itemBuilder: (context, index) {
+                final topic = filteredTopics[index];
+
                 return Padding(
                   padding: const EdgeInsets.only(
                       left: 16.0, right: 16.0, bottom: 16),
                   child: NormalPostCard(
-                    imageAsset: filteredPosts[index]['image'] ??
-                        'assets/images/nudasma.jpg',
-                    sectionType: filteredPosts[index]['section'] ?? "unknown",
-                    articleTitle: filteredPosts[index]['title'] ?? "unknown",
-                    datePosted: filteredPosts[index]['time'] ?? "unknown",
-                    postID: filteredPosts[index]['id'] ?? "0",
+                    imageAsset: topic.imageUrl,
+                    sectionType: topic.section,
+                    articleTitle: topic.title,
+                    postID: topic.id,
+                    isAuthenticated: currentUser != null,
+                    datePosted: topic.datePosted,
                     isLoading: false,
+                    isTermly: false,
                   ),
                 );
               },
-            );
-          }),
+            ),
+    );
+  }
+
+  Expanded _discoverBuild(List<NormalItem> filteredTopics, User? currentUser) {
+    return Expanded(
+      child: filteredTopics.isEmpty
+          ? const Center(child: Text('No posts available'))
+          : ListView.builder(
+              shrinkWrap: true,
+              itemCount: filteredTopics.length,
+              itemBuilder: (context, index) {
+                final topic = filteredTopics[index];
+
+                return Padding(
+                  padding: const EdgeInsets.only(
+                      left: 16.0, right: 16.0, bottom: 16),
+                  child: NormalPostCard(
+                    imageAsset: topic.imageUrl,
+                    sectionType: topic.section,
+                    articleTitle: topic.title,
+                    postID: topic.id,
+                    isAuthenticated: currentUser != null,
+                    datePosted: topic.datePosted,
+                    isLoading: false,
+                    isTermly: false,
+                  ),
+                );
+              },
+            ),
     );
   }
 
@@ -330,81 +331,6 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
       ),
     );
   }
-
-  Column _searchbar() {
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.only(top: 15, left: 20, right: 20),
-          decoration: BoxDecoration(boxShadow: [
-            BoxShadow(
-              color: const Color(0xff1D1617).withOpacity(0.11),
-              blurRadius: 40,
-              spreadRadius: 0.0,
-            ),
-          ]),
-          child: TextField(
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.all(15),
-              hintText: 'What are you looking for?',
-              hintStyle: const TextStyle(
-                color: Color(0xffDDDADA),
-                fontSize: 14,
-              ),
-              prefixIcon: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Image.asset(
-                  'assets/images/searchicon.png',
-                  height: 25,
-                  width: 25,
-                ),
-              ),
-              suffixIcon: SizedBox(
-                width: 100,
-                child: IntrinsicHeight(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      const VerticalDivider(
-                        color: Colors.black,
-                        thickness: 0.2,
-                        indent: 10,
-                        endIndent: 10,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Image.asset(
-                          'assets/images/felter.png',
-                          height: 25,
-                          width: 25,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLoadingList() {
-    return ListView.builder(
-      itemCount: 5,
-      itemBuilder: (context, index) => const Padding(
-        padding: EdgeInsets.only(left: 16.0, right: 16.0, bottom: 16),
-        child: NormalPostCard(isLoading: true),
-      ),
-    );
-  }
 }
 
 final List<Map<String, String>> pubSections = [
@@ -416,4 +342,11 @@ final List<Map<String, String>> pubSections = [
   {"section": "Feature"},
   {"section": "Literary"},
   {"section": "Photography"},
+];
+
+final List<Map<String, String>> termlySections = [
+  {"section": "All"},
+  {"section": "Magazine"},
+  {"section": "Newsletter"},
+  {"section": "Literaryfolio"},
 ];

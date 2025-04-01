@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/firebase_functions.dart';
+import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'CardsTemplate/SeeMorePageTemplate.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class SavedPage extends StatefulWidget {
+final firebaseFunctions = FirebaseFunctions();
+
+class SavedPage extends ConsumerStatefulWidget {
   final String? userRole;
   const SavedPage({
     super.key,
@@ -11,69 +15,39 @@ class SavedPage extends StatefulWidget {
   });
 
   @override
-  State<SavedPage> createState() => _SavedPageState();
+  ConsumerState<SavedPage> createState() => _SavedPageState();
 }
 
-class _SavedPageState extends State<SavedPage> {
-  String? _userId;
-  final FirebaseAuth _savedPostsAuth = FirebaseAuth.instance;
-  Stream<QuerySnapshot> savedPostsByUserStream =
-      const Stream<QuerySnapshot>.empty();
-  bool _isLoading = true;
-
-  Future<void> _getUserId() async {
-    try {
-      final User? user = _savedPostsAuth.currentUser;
-
-      if (user != null) {
-        setState(() {
-          _userId = user.uid;
-          savedPostsByUserStream = FirebaseFirestore.instance
-              .collection('users')
-              .doc(_userId)
-              .collection('savedPosts')
-              .where('isSaved', isEqualTo: true)
-              .snapshots();
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User not logged in')),
-        );
-      }
-    } catch (e) {
-      print('error getting user id ${e}');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error fetching user data')),
-      );
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.userRole != 'none') {
-      _getUserId();
-    }
-  }
+class _SavedPageState extends ConsumerState<SavedPage> {
+  User? currentUser = firebaseFunctions.auth.currentUser;
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (currentUser == null) {
       return const Center(
         child: Text('Please log in to use this feature'),
       );
     }
+    final bookmarkedStream =
+        ref.watch(bookmarkContentProvider(currentUser!.uid));
 
-    return SeeMorePageTemplate(
-      pageName: 'Saved Posts',
-      shownContentStream: savedPostsByUserStream,
+    return bookmarkedStream.when(
+      data: (bookmarkedStream) {
+        if (bookmarkedStream.isEmpty) {
+          return const Center(child: Text('Start bookmarking items now! hehe'));
+        }
+
+        return SeeMorePageTemplate(
+          pageName: 'Saved Posts',
+          shownTopics: bookmarkedStream,
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(),
+      ),
+      error: (error, stackStrace) => Center(
+        child: Text('Error: $error'),
+      ),
     );
   }
 }

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
+import 'package:nuntium_mobile/Pages/Homepage/aaaapdf.dart';
+import 'package:nuntium_mobile/providers/read_provider.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nuntium_mobile/firebase_functions.dart';
 
-class NormalPostCard extends StatelessWidget {
+class NormalPostCard extends ConsumerWidget {
   final String? imageAsset;
   final String? sectionType;
   final String? articleTitle;
@@ -11,8 +14,10 @@ class NormalPostCard extends StatelessWidget {
   final String? postID;
   final bool isLoading;
   final bool? isAuthenticated;
+  final bool isTermly;
+  final String? pdfUrl;
 
-  const NormalPostCard({
+  NormalPostCard({
     super.key,
     this.imageAsset,
     this.sectionType,
@@ -21,73 +26,64 @@ class NormalPostCard extends StatelessWidget {
     this.postID,
     this.isLoading = false,
     this.isAuthenticated,
+    required this.isTermly,
+    this.pdfUrl,
   });
 
-  Future<void> _handlePostClick(BuildContext context) async {
-    if (isLoading) return;
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-
-      if (user == null) {
-        print("User not logged in");
-        return;
-      }
-
-      String userID = user.uid;
-      String? postIDRef = postID;
-
-      if (postIDRef == null) {
-        print("Error: Post ID is null");
-        return;
-      }
-
-      // Reference Firestore collection
-      DocumentReference historyRef =
-          FirebaseFirestore.instance.collection('posts').doc(postIDRef);
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userID)
-          .collection('savedPosts')
-          .add({
-        'postId': historyRef,
-        'isRead': true, // Store post reference
-        'time': Timestamp.now(),
-      });
-      print("Post saved to history");
-
-      // Navigate to content page
-    } catch (e) {
-      print("Error saving post: $e");
-    }
-  }
+  final firebaseFunctions = FirebaseFunctions();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isRead;
+    final cardWidth = MediaQuery.of(context).size.width * .90;
+    if (firebaseFunctions.auth.currentUser != null) {
+      final readStatus = ref.watch(savedPostsProvider);
+      isRead = readStatus.contains(postID);
+    } else {
+      isRead = false;
+    }
+
     return GestureDetector(
       onTap: isLoading
           ? null
-          : () {
-              print('Navigating to content page from normal');
-              isAuthenticated == true ? _handlePostClick(context) : null;
-              Navigator.pushNamed(
-                context,
-                '/contentpage',
-                arguments: {
-                  'postID': postID,
+          : isTermly != true
+              ? () {
+                  print('Navigating to content page from normal');
+                  final notifier = ref.read(savedPostsProvider.notifier);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ArticlePage(
+                                postId: postID!,
+                              )));
+
+                  isAuthenticated == true
+                      ? notifier.markAsRead(postID!, isLoading)
+                      : null;
+                }
+              : () {
+                  print('Navigating to content page from normal');
+                  final notifier = ref.read(savedPostsProvider.notifier);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => PdfViewerScreen(
+                                pdfUrl: pdfUrl!,
+                              )));
+
+                  isAuthenticated == true
+                      ? notifier.markAsRead(postID!, isLoading)
+                      : null;
                 },
-              );
-            },
       child: Container(
-        width: MediaQuery.of(context).size.width * .90,
-        height: MediaQuery.of(context).size.height * .15,
+        width: cardWidth,
+        // height: MediaQuery.of(context).size.height * .15,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
-          color: Colors.white.withOpacity(0.8),
+          color: isRead ? Colors.blue.withValues(alpha: 0.2) : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 5,
               offset: const Offset(0, 2),
             ),
@@ -95,10 +91,72 @@ class NormalPostCard extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(6.0),
-          child:
-              isLoading ? _buildShimmerEffect(context) : _buildContent(context),
+          child: isLoading
+              ? _buildShimmerEffect(context)
+              : _buildContent(context, cardWidth),
         ),
       ),
+    );
+  }
+
+  /// **🔹 Actual Content**
+  Widget _buildContent(BuildContext context, double cardWidth) {
+    final titleFontSmall = (cardWidth * 0.04).clamp(10.0, 13.0);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Image.network(
+            imageAsset ??
+                'https://firebasestorage.googleapis.com/v0/b/nu-publication-system.firebasestorage.app/o/logo.jpg?alt=media&token=fed28218-248d-4ad9-a639-14f072f7e9b9',
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            width: MediaQuery.of(context).size.width * .33,
+            height: MediaQuery.of(context).size.height * .15,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(9),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Text(
+                sectionType ?? 'unknown',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: titleFontSmall,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 5),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * .40,
+                child: Text(
+                  articleTitle ?? 'unkown',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: titleFontSmall,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 10,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                datePosted ?? 'unknown',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: titleFontSmall,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        )
+      ],
     );
   }
 
@@ -111,7 +169,7 @@ class NormalPostCard extends StatelessWidget {
         children: [
           Container(
             width: MediaQuery.of(context).size.width * .33,
-            height: MediaQuery.of(context).size.height * .3,
+            height: MediaQuery.of(context).size.height * .15,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(15),
@@ -131,70 +189,6 @@ class NormalPostCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  /// **🔹 Actual Content**
-  Widget _buildContent(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
-    final titleFontSize = (screenWidth * 0.06).clamp(15.0, 17.0);
-    final titleFontSmall = (screenWidth * 0.06).clamp(11.0, 13.0);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(15),
-          child: Image.network(
-            imageAsset!,
-            fit: BoxFit.cover,
-            alignment: Alignment.center,
-            width: MediaQuery.of(context).size.width * .33,
-            height: MediaQuery.of(context).size.height * .3,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(9),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                sectionType!,
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: titleFontSmall,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 9),
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * .50,
-                ),
-                child: Text(
-                  articleTitle!,
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: titleFontSmall,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  softWrap: true,
-                  // maxLines: 2,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                datePosted!,
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: titleFontSmall,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        )
-      ],
     );
   }
 }

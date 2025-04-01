@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/Pages/customappbar.dart';
+import 'package:nuntium_mobile/firebase_functions.dart';
+import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'CardsTemplate/featuredcard.dart';
 import 'CardsTemplate/normalpost.dart';
 import 'discoverpage.dart';
@@ -27,6 +30,7 @@ class _HomepageState extends State<Homepage> {
   bool userIsNew = false;
   int _currentIndex = 0;
   late List<Widget> _screens;
+  final firebaseFunctions = FirebaseFunctions();
 
   Future<void> _checkNewUser() async {
     print('user role is ${widget.userRole}');
@@ -53,6 +57,11 @@ class _HomepageState extends State<Homepage> {
   @override
   void initState() {
     super.initState();
+    if (_auth.currentUser != null) {
+      firebaseFunctions.resetExpiredLikeThrottles();
+      firebaseFunctions.resetExpiredBookmarkThrottles();
+    }
+
     _checkNewUser();
 
     _screens = [
@@ -71,8 +80,10 @@ class _HomepageState extends State<Homepage> {
   @override //this is whats rendered when homepage is called
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF2F2F2),
-      appBar: _appBar(context),
+      backgroundColor: const Color(0xFFF2F2F2),
+      appBar: const CustomAppBar(
+        appbarTitle: 'Home',
+      ),
       drawer: Appdrawer(
         onLogout: widget.onLogout!,
         userRole: widget.userRole ?? 'none',
@@ -124,7 +135,7 @@ class _HomepageState extends State<Homepage> {
 
   AppBar _appBar(BuildContext context) {
     return AppBar(
-      backgroundColor: Color(0xFFF2F2F2),
+      backgroundColor: const Color(0xFFF2F2F2),
       actions: [
         GestureDetector(
           onTap: () {
@@ -150,23 +161,21 @@ class _HomepageState extends State<Homepage> {
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({
-    super.key,
-  });
+class HomeScreen extends ConsumerStatefulWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   final PageController _pageController = PageController(viewportFraction: 0.9);
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   @override
   Widget build(BuildContext context) {
-    List<Map<String, dynamic>> featuredPostData;
-    List<Map<String, dynamic>> normalPostData;
+    final featuredCards = ref.watch(featuredCardProvider);
+    final normalCards = ref.watch(normalCardProvider);
     User? currentUser = _auth.currentUser;
 
     return Center(
@@ -187,92 +196,46 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                // Text(
-                //   'ViewAll',
-                //   style: TextStyle(
-                //     fontSize: 12,
-                //     color: Color(0XFF020B40),
-                //     fontWeight: FontWeight.w500,
-                //   ),
-                // ),
               ],
             ),
           ),
-          StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('posts')
-                  .where('isFeatured', isEqualTo: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: FeaturedPostCard(
-                      isLoading: true,
-                    ),
-                  );
-                }
-                if (snapshot.hasError) {
+          Container(
+            child: featuredCards.when(
+              data: (featuredCards) {
+                if (featuredCards.isEmpty) {
                   return const Center(
-                      child: Text('Error occurred while loading latest posts'));
+                      child: Text('No featured items available'));
                 }
-                if (!snapshot.hasData || snapshot.data == null) {
-                  return const Center(child: Text('No data found'));
-                }
-
-                featuredPostData =
-                    snapshot.data!.docs.map((DocumentSnapshot document) {
-                  var data = document.data() as Map<String, dynamic>;
-                  data['id'] = document.id; // Store the document ID
-                  return data;
-                }).toList();
-                print('data found in featured: ${featuredPostData.length}');
-
-                return SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.20,
+                return Expanded(
                   child: PageView.builder(
-                    controller: _pageController,
-                    itemCount: featuredPostData.length,
-                    itemBuilder: (context, index) {
-                      if (!featuredPostData[index].containsKey('isFeatured')) {
-                        print('url is ${featuredPostData[index]['image']}');
+                      controller: _pageController,
+                      itemCount: featuredCards.length,
+                      itemBuilder: (context, index) {
+                        final item = featuredCards[index];
+
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: FeaturedPostCard(
-                            imageAsset: featuredPostData[index]['image'] ??
-                                'assets/images/nudasma.jpg',
-                            sectionType:
-                                featuredPostData[index]['section'] ?? "unknown",
-                            articleTitle:
-                                featuredPostData[index]['title'] ?? "unknown",
-                            timePosted:
-                                featuredPostData[index]['time'] ?? "unknown",
-                            postID: featuredPostData[index]['id'],
-                            isLoading: true,
+                            imageAsset: item.imageUrl,
+                            sectionType: item.section,
+                            articleTitle: item.title,
+                            postID: item.id,
                             isAuthenticated: currentUser != null,
+                            timePosted: item.datePosted,
+                            isLoading: false,
+                            isTermly: false,
                           ),
                         );
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: FeaturedPostCard(
-                          imageAsset: featuredPostData[index]['image'] ??
-                              'assets/images/nudasma.jpg',
-                          sectionType:
-                              featuredPostData[index]['section'] ?? "News",
-                          articleTitle: featuredPostData[index]['title'] ??
-                              "Breaking News!",
-                          timePosted:
-                              featuredPostData[index]['time'] ?? "2 hours ago",
-                          postID: featuredPostData[index]['id'],
-                          isLoading: false,
-                          isAuthenticated: currentUser != null,
-                        ),
-                      );
-                    },
-                  ),
+                      }),
                 );
-              }),
+              },
+              loading: () => FeaturedPostCard(
+                isLoading: true,
+                isTermly: false,
+              ),
+              error: (error, stack) => Center(child: Text('Error: $error')),
+            ),
+          ),
 
           const SizedBox(height: 13),
           const Padding(
@@ -289,87 +252,48 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                // Text(
-                //   'ViewAll',
-                //   style: TextStyle(
-                //     fontSize: 12,
-                //     color: Color(0XFF020B40),
-                //     fontWeight: FontWeight.w500,
-                //   ),
-                // ),
               ],
             ),
           ),
-          StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('posts')
-                  .where('isNormal', isEqualTo: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const NormalPostCard(
-                    isLoading: true,
-                  );
+          Container(
+            child: normalCards.when(
+              data: (normalCards) {
+                if (normalCards.isEmpty) {
+                  return const Center(child: Text('No normal items available'));
                 }
-                if (snapshot.hasError) {
-                  return const Center(
-                      child: Text('Error occurred while loading latest posts'));
-                }
-                if (!snapshot.hasData || snapshot.data == null) {
-                  return const Center(child: Text('No data found'));
-                }
-
-                normalPostData =
-                    snapshot.data!.docs.map((DocumentSnapshot document) {
-                  var data = document.data() as Map<String, dynamic>;
-                  data['id'] = document.id; // Store the document ID
-                  return data;
-                }).toList();
-                print('data found: ${normalPostData.length}');
-
                 return Expanded(
                   child: ListView.builder(
-                    itemCount: normalPostData.length,
+                    shrinkWrap: true,
+                    itemCount: normalCards.length,
                     itemBuilder: (context, index) {
-                      if (!normalPostData[index].containsKey('isNormal')) {
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                              left: 16.0, right: 16.0, bottom: 16),
-                          child: NormalPostCard(
-                            imageAsset: normalPostData[index]['image'] ??
-                                'assets/images/nudasma.jpg',
-                            sectionType:
-                                normalPostData[index]['section'] ?? "unknown",
-                            articleTitle:
-                                normalPostData[index]['title'] ?? "unknown",
-                            datePosted:
-                                normalPostData[index]['time'] ?? "unknown",
-                            postID: normalPostData[index]['id'],
-                            isLoading: true,
-                          ),
-                        );
-                      }
-
+                      final item = normalCards[index];
                       return Padding(
                         padding: const EdgeInsets.only(
                             left: 16.0, right: 16.0, bottom: 16),
                         child: NormalPostCard(
-                          imageAsset: normalPostData[index]['image'] ??
-                              'assets/images/nudasma.jpg',
-                          sectionType:
-                              normalPostData[index]['section'] ?? "News",
-                          articleTitle: normalPostData[index]['title'] ??
-                              "Breaking News!",
-                          datePosted:
-                              normalPostData[index]['time'] ?? "2 hours ago",
-                          postID: normalPostData[index]['id'],
+                          imageAsset: item.imageUrl,
+                          sectionType: item.section,
+                          articleTitle: item.title,
+                          postID: item.id,
+                          isAuthenticated: currentUser != null,
+                          datePosted: item.datePosted,
                           isLoading: false,
+                          isTermly: false,
                         ),
                       );
                     },
                   ),
                 );
-              }),
+              },
+              loading: () => SizedBox(
+                  height: MediaQuery.of(context).size.height * .15,
+                  child: NormalPostCard(
+                    isLoading: true,
+                    isTermly: false,
+                  )),
+              error: (error, stack) => Center(child: Text('Error: $error')),
+            ),
+          ),
           // userIsNew
           //     ? const Text('Welcome New user!')
           //     : const Text('Welcome Back!'),

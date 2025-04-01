@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nuntium_mobile/firebase_functions.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -24,6 +25,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final passwordRegex =
       RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$');
 
+  final firebaseFunctions = FirebaseFunctions();
+
   Future<User?> signInWithOwnCredentials(
       String email, password, username) async {
     try {
@@ -33,6 +36,15 @@ class _RegisterPageState extends State<RegisterPage> {
 
       if (user != null) {
         await user.updateDisplayName(username);
+
+        // await firebaseFunctions.createUserDoc(
+        //   user.uid,
+        //   user.email,
+        //   user.displayName,
+        //   null,
+        //   password,
+        // );
+
         try {
           await user.sendEmailVerification();
           print('Verification email sent to ${user.email}');
@@ -315,11 +327,10 @@ class _RegisterPageState extends State<RegisterPage> {
                                       onPressed: () async {
                                         if (_formKey.currentState?.validate() ??
                                             false) {
-                                          User? user =
-                                              await signInWithOwnCredentials(
-                                                  _emailController.text,
-                                                  _passwordController.text,
-                                                  _usernameController.text);
+                                          await signInWithOwnCredentials(
+                                              _emailController.text,
+                                              _passwordController.text,
+                                              _usernameController.text);
                                           // _handleSignUpResult(user);
                                         }
                                       },

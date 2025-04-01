@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
+import 'package:nuntium_mobile/Pages/Homepage/aaaapdf.dart';
+import 'package:nuntium_mobile/firebase_functions.dart';
+import 'package:nuntium_mobile/providers/read_provider.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-class FeaturedPostCard extends StatelessWidget {
+class FeaturedPostCard extends ConsumerWidget {
   final String? imageAsset;
   final String? sectionType;
   final String? articleTitle;
@@ -11,8 +14,10 @@ class FeaturedPostCard extends StatelessWidget {
   final String? postID;
   final bool isLoading;
   final bool? isAuthenticated;
+  final bool isTermly;
+  final String? pdfUrl;
 
-  const FeaturedPostCard({
+  FeaturedPostCard({
     super.key,
     this.imageAsset,
     this.sectionType,
@@ -21,63 +26,55 @@ class FeaturedPostCard extends StatelessWidget {
     this.postID,
     this.isLoading = false,
     this.isAuthenticated,
+    required this.isTermly,
+    this.pdfUrl,
   });
 
-  Future<void> _handlePostClick(BuildContext context) async {
-    if (isLoading) return;
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-
-      if (user == null) {
-        print("User not logged in");
-        return;
-      }
-
-      String userID = user.uid;
-      String? postIDRef = postID;
-
-      if (postIDRef == null) {
-        print("Error: Post ID is null");
-        return;
-      }
-
-      // Reference Firestore collection
-      DocumentReference historyRef =
-          FirebaseFirestore.instance.collection('posts').doc(postIDRef);
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userID)
-          .collection('savedPosts')
-          .add({
-        'postId': historyRef,
-        'isRead': true,
-        'time': Timestamp.now(),
-      });
-      print("Post saved to history");
-
-      // Navigate to content page
-    } catch (e) {
-      print("Error saving post: $e");
-    }
-  }
+  final firebaseFunctions = FirebaseFunctions();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool isRead;
+    if (firebaseFunctions.auth.currentUser != null) {
+      final readStatus = ref.watch(savedPostsProvider);
+      isRead = readStatus.contains(postID);
+    } else {
+      isRead = false;
+    }
+
     return GestureDetector(
       onTap: isLoading
           ? null
-          : () {
-              print('Navigating to content page from featured');
-              isAuthenticated == true ? _handlePostClick(context) : null;
-              Navigator.pushNamed(context, '/contentpage', arguments: {
-                'postID': postID,
-              });
-            },
+          : isTermly != true
+              ? () {
+                  final notifier = ref.read(savedPostsProvider.notifier);
+                  print('Navigating to content page from featured');
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ArticlePage(
+                                postId: postID!,
+                              )));
+                  isAuthenticated == true
+                      ? notifier.markAsRead(postID!, isLoading)
+                      : null;
+                }
+              : () {
+                  final notifier = ref.read(savedPostsProvider.notifier);
+                  print('Navigating to content page from featured');
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => PdfViewerScreen(
+                                pdfUrl: pdfUrl!,
+                              )));
+                  isAuthenticated == true
+                      ? notifier.markAsRead(postID!, isLoading)
+                      : null;
+                },
       child: Container(
         width: MediaQuery.of(context).size.width * .8,
-        height: MediaQuery.of(context).size.height * .2,
+        height: MediaQuery.of(context).size.height * .35,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
           color: Colors.white,
@@ -94,7 +91,7 @@ class FeaturedPostCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(15),
           child: isLoading
               ? _buildShimmerEffect() // Show shimmer when loading
-              : _buildContent(context),
+              : _buildContent(context, isRead),
         ),
       ),
     );
@@ -147,22 +144,24 @@ class FeaturedPostCard extends StatelessWidget {
   }
 
   /// **🔹 Actual Content**
-  Widget _buildContent(BuildContext context) {
+  Widget _buildContent(BuildContext context, bool isRead) {
     final screenWidth = MediaQuery.of(context).size.width; // Get screen width
-    final titleFontSize = (screenWidth * 0.06).clamp(15.0, 17.0);
     final titleFontSmall = (screenWidth * 0.06).clamp(11.0, 13.0);
     return Stack(
       fit: StackFit.expand,
       children: [
         // Background Image
-        Image.network(
-          imageAsset!,
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-                color: Colors.grey[200]); // Placeholder if image fails
-          },
+        ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Image.network(
+            imageAsset!,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                  color: Colors.grey[200]); // Placeholder if image fails
+            },
+          ),
         ),
         // Overlay for readability
         Container(
@@ -203,7 +202,7 @@ class FeaturedPostCard extends StatelessWidget {
                 child: Text(
                   sectionType!,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: isRead ? Colors.grey[400] : Colors.white,
                     fontSize: titleFontSmall,
                     fontWeight: FontWeight.w400,
                   ),
@@ -216,7 +215,7 @@ class FeaturedPostCard extends StatelessWidget {
                   Text(
                     articleTitle!,
                     style: TextStyle(
-                      color: Colors.white,
+                      color: isRead ? Colors.grey[400] : Colors.white,
                       fontSize: titleFontSmall,
                       fontWeight: FontWeight.w600,
                     ),
@@ -228,7 +227,9 @@ class FeaturedPostCard extends StatelessWidget {
                   Text(
                     timePosted!,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
+                      color: isRead
+                          ? Colors.grey[400]
+                          : Colors.white.withValues(alpha: 0.3),
                       fontSize: titleFontSmall,
                       fontWeight: FontWeight.w400,
                     ),

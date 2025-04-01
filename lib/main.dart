@@ -1,6 +1,13 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'Pages/SectionEditor/sectioneditorhome.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
+import 'package:nuntium_mobile/Pages/Homepage/contribhuntpage.dart';
+import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset.dart';
+import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset_noacc.dart';
+import 'package:nuntium_mobile/Pages/ProfilePage/profilepage.dart';
+import 'package:nuntium_mobile/firebase_functions.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Pages/LoginRegister/login_page.dart';
@@ -11,25 +18,8 @@ import 'Pages/Homepage/discoverpage.dart';
 import 'Pages/Homepage/savedpostspage.dart';
 import 'Pages/Homepage/termlypostspage.dart';
 import 'Pages/Homepage/readhistory.dart';
-import 'Pages/Homepage/contribhuntpage.dart';
-import 'Pages/Contributors/contribhomepage.dart';
-import 'Pages/Calendar/calendarpage.dart';
-import 'Pages/Calendar/createeventpage.dart';
-import 'Pages/Calendar/viewcreatedevent.dart';
-import 'Pages/ContentPage/articlecontent.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'Pages/Eic/eiclandingpage.dart';
-import 'Pages/Eic/eichomepage.dart';
-import 'Pages/Eic/eicorgtasks.dart';
-import 'Pages/SectionEditor/Templates/assigntaskpage.dart';
-import 'Pages/SectionEditor/assigntasklogpage.dart';
-import 'Pages/SectionWriter/swhomepage.dart';
-import 'Pages/Committee/committeehomepage.dart';
-import 'Pages/Committee/committeehometemplate.dart';
-import 'Pages/Committee/taskcontentpage.dart';
-import 'Pages/History/history.dart';
-import 'Pages/History/completedtaskitems.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 
 void main() async {
@@ -42,7 +32,37 @@ void main() async {
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.debug,
   );
-  runApp(const NuntiumApp());
+
+  await requestNotificationPermission();
+
+  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .update({
+        "fcmToken": newToken,
+      });
+    }
+  });
+
+  runApp(const ProviderScope(child: NuntiumApp()));
+}
+
+Future<void> requestNotificationPermission() async {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+  NotificationSettings settings = await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    print("Notification permission granted.");
+  } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
+    print("Notification permission denied.");
+  }
 }
 
 class NuntiumApp extends StatelessWidget {
@@ -51,40 +71,46 @@ class NuntiumApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(textTheme: GoogleFonts.poppinsTextTheme()),
+      theme: ThemeData(
+        textTheme: GoogleFonts.poppinsTextTheme(),
+      ),
       initialRoute: '/initial',
       routes: {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/verify': (context) => const VerifyPage(),
-        // '/exitConfirm': (context) => const ExitConfirmPage(),
         '/homepage': (context) => const Homepage(),
         '/discover': (context) => const DiscoverPage(),
         '/saved': (context) => const SavedPage(),
         '/history': (context) => const HistoryPage(),
         '/termly': (context) => const TermlyPage(),
-        '/contentpage': (context) => const ContentPage(),
-        '/sectioneditorhome': (context) => const EditorsHomePage(),
-        // '/profile': (context) => const ProfilePage(),
-        // '/joinus': (context) => const JoinUsPage(),
-        '/contribhomepage': (context) => const ContribHomePage(),
-        '/eiclandingpage': (context) => const EicLandingPage(),
-        '/calendarpage': (context) => const CalendarPage(),
-        '/createeventpage': (context) => const CreateEventPage(),
-        '/viewcreatedevent': (context) => const ViewCreatedEventPage(),
-        '/eichomepage': (context) => const EicHomepage(),
-        '/eicorgtasks': (context) => const OrganizationTasks(),
-        '/assigntaskpage': (context) => const AssignTaskPage(),
-        '/assigntasklogpage': (context) => const AssignTaskLogPage(),
-        '/swhomepage': (context) => const SectionWriterHomePage(),
+        '/contentpage': (context) => const ArticlePage(),
+        // '/exitConfirm': (context) => const ExitConfirmPage(),
+        // '/sectioneditorhome': (context) => const EditorsHomePage(),
+        '/profile': (context) => const ProfilePage(),
         '/contribhuntpage': (context) => const ContribHuntPage(),
-        '/commmitteehomepage': (context) => const CommitteeHomePage(),
-        '/commmitteehometemplate': (context) =>
-            const CommitteeHomePageTemplate(),
-        '/taskcontentpage': (context) => const TaskContentPage(),
-        '/completedtaskitems': (context) =>
-            const CompletedItems(title: '', description: ''),
-        '/historypage': (context) => const TaskHistoryPage(),
+        '/passreset': (context) => const PasswordResetModal(),
+        '/presetnoacc': (context) => const PResetNoAcc(),
+
+        // // '/joinus': (context) => const JoinUsPage(),
+        // '/contribhomepage': (context) => const ContribHomePage(),
+        // '/eiclandingpage': (context) => const EicLandingPage(),
+        // '/calendarpage': (context) => const CalendarPage(),
+        // '/createeventpage': (context) => const CreateEventPage(),
+        // '/viewcreatedevent': (context) => const ViewCreatedEventPage(),
+        // '/eichomepage': (context) => const EicHomepage(),
+        // '/eicorgtasks': (context) => const OrganizationTasks(),
+        // '/assigntaskpage': (context) => const AssignTaskPage(),
+        // '/assigntasklogpage': (context) => const AssignTaskLogPage(),
+        // '/swhomepage': (context) => const SectionWriterHomePage(),
+
+        // '/commmitteehomepage': (context) => const CommitteeHomePage(),
+        // '/commmitteehometemplate': (context) =>
+        //     const CommitteeHomePageTemplate(),
+        // '/taskcontentpage': (context) => const TaskContentPage(),
+        // '/completedtaskitems': (context) =>
+        //     const CompletedItems(title: '', description: ''),
+        // '/historypage': (context) => const TaskHistoryPage(),
         '/initial': (context) => AuthChecker(
               authStream: FirebaseAuth.instance.authStateChanges(),
             ),
@@ -105,34 +131,30 @@ class AuthChecker extends StatefulWidget {
 class _AuthCheckerState extends State<AuthChecker> {
   String? userRole;
   bool isLoading = true;
+  final firebaseFunctions = FirebaseFunctions();
 
   Future<void> getUserRole(
       String uid, String? email, String? displayName, String? photoURL) async {
-    print('getUserRole called at ${DateTime.now()}');
     try {
-      DocumentSnapshot userDoc =
-          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      DocumentSnapshot userDoc = await firebaseFunctions.getUserDoc(uid);
 
       if (!userDoc.exists) {
-        print('New user detected, creating Firestore record...');
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'email': email,
           'uid': uid,
           'username': displayName,
-          'photoURL': photoURL,
+          'photoURL': photoURL ??
+              'https://firebasestorage.googleapis.com/v0/b/nu-publication-system.firebasestorage.app/o/logo.jpg?alt=media&token=fed28218-248d-4ad9-a639-14f072f7e9b9',
           'createdAt': FieldValue.serverTimestamp(),
           'role': 'reader',
+          'section': 'reader',
         });
-        userDoc =
-            await FirebaseFirestore.instance.collection('users').doc(uid).get();
+        userDoc = await firebaseFunctions.getUserDoc(uid);
       }
 
       if (mounted) {
         if (userDoc.exists) {
-          print('User document exists.');
-          print('User name is ${displayName ?? 'No name'}');
           final role = userDoc['role'] as String?;
-          print('User role is $role');
           if (role != null) {
             setState(() {
               userRole = role;
@@ -140,14 +162,12 @@ class _AuthCheckerState extends State<AuthChecker> {
             });
           }
         } else {
-          print('User document still does not exist.');
           setState(() {
             isLoading = false;
           });
         }
       }
     } catch (e) {
-      print('Error fetching user role: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -172,7 +192,6 @@ class _AuthCheckerState extends State<AuthChecker> {
     return StreamBuilder<User?>(
       stream: widget.authStream,
       builder: (context, snapshot) {
-        print('Auth state changed at ${DateTime.now()}');
         if (snapshot.data == null) {
           return Homepage(
             onLogout: _onSignOut,
@@ -183,8 +202,6 @@ class _AuthCheckerState extends State<AuthChecker> {
         if (ConnectionState.active == snapshot.connectionState &&
             snapshot.hasData) {
           if (snapshot.data!.emailVerified) {
-            print('user email verified now at ${DateTime.now()}');
-
             if (userRole == null && isLoading) {
               getUserRole(
                 snapshot.data!.uid,
@@ -201,38 +218,35 @@ class _AuthCheckerState extends State<AuthChecker> {
                   onLogout: _onSignOut,
                   userRole: userRole,
                 );
-              case 'contributor':
-                return ContribHomePage(
-                  onLogout: _onSignOut,
-                  userRole: userRole,
-                );
-              case 'section_writer':
-                return SectionWriterHomePage(
-                  onLogout: _onSignOut,
-                  userRole: userRole,
-                );
-              case 'eic':
-                return EicLandingPage(
-                  onLogout: _onSignOut,
-                  userRole: userRole,
-                );
-              case 'section_editors':
-                return EditorsHomePage(
-                  onLogout: _onSignOut,
-                  userRole: userRole,
-                );
-              case 'committee':
-                return CommitteeHomePage(
-                  onLogout: _onSignOut,
-                  userRole: userRole,
-                );
+              // case 'contributor':
+              //   return ContribHomePage(
+              //     onLogout: _onSignOut,
+              //     userRole: userRole,
+              //   );
+              // case 'section_writer':
+              //   return SectionWriterHomePage(
+              //     onLogout: _onSignOut,
+              //     userRole: userRole,
+              //   );
+              // case 'eic':
+              //   return EicLandingPage(
+              //     onLogout: _onSignOut,
+              //     userRole: userRole,
+              //   );
+              // case 'section_editors':
+              //   return EditorsHomePage(
+              //     onLogout: _onSignOut,
+              //     userRole: userRole,
+              //   );
+              // case 'committee':
+              //   return CommitteeHomePage(
+              //     onLogout: _onSignOut,
+              //     userRole: userRole,
+              //   );
               default:
-                print(
-                    'early exit sa login due to future error at ${DateTime.now()}');
                 return const LoginPage();
             }
           } else {
-            print('no exit ya hehe');
             WidgetsBinding.instance.addPostFrameCallback(
               (_) {
                 Navigator.push(
@@ -247,8 +261,6 @@ class _AuthCheckerState extends State<AuthChecker> {
             );
           }
         } else {
-          print('User logged out. Resetting role.');
-          print('User name is ${snapshot.data?.displayName ?? 'No name'}');
           return const LoginPage();
         }
         return const SizedBox.shrink();

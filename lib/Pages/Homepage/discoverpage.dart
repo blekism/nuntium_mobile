@@ -1,25 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'CardsTemplate/SeeMorePageTemplate.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-class DiscoverPage extends StatefulWidget {
+class DiscoverPage extends ConsumerStatefulWidget {
   const DiscoverPage({super.key});
 
   @override
-  State<DiscoverPage> createState() => _DiscoverPageState();
+  ConsumerState<DiscoverPage> createState() => _DiscoverPageState();
 }
 
-class _DiscoverPageState extends State<DiscoverPage> {
-  final Stream<QuerySnapshot> discoverStream = FirebaseFirestore.instance
-      .collection('posts')
-      .where('appearIn', isEqualTo: 'general')
-      .snapshots();
-
+class _DiscoverPageState extends ConsumerState<DiscoverPage> {
   @override
   Widget build(BuildContext context) {
-    return SeeMorePageTemplate(
-      pageName: 'Discover',
-      shownContentStream: discoverStream,
+    final discoverStream = ref.watch(discoverContentProvider);
+
+    return discoverStream.when(
+      data: (discoverStream) {
+        if (discoverStream.isEmpty) {
+          return const Center(child: Text('No Articles available'));
+        }
+        return SeeMorePageTemplate(
+          pageName: 'Discover',
+          shownTopics: discoverStream,
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(),
+      ),
+      error: (error, stackTrace) => Center(
+        child: Text('Error: $error'),
+      ),
     );
   }
 }

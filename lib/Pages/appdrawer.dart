@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:nuntium_mobile/Pages/Homepage/aboutpage.dart';
 import 'package:nuntium_mobile/Pages/Homepage/homepage.dart';
+import 'package:nuntium_mobile/Pages/ProfilePage/profilepage.dart';
 
 class Appdrawer extends StatefulWidget {
   final VoidCallback onLogout;
@@ -95,7 +97,14 @@ class _AppdrawerState extends State<Appdrawer> {
           ListTile(
             title: const Text('Profile'),
             onTap: () {
-              // Navigator.pushNamed(context, '/profile');
+              _auth.currentUser != null
+                  ? Navigator.push(context,
+                      MaterialPageRoute(builder: (context) {
+                      return ProfilePage(
+                        onLogout: widget.onLogout,
+                      );
+                    }))
+                  : null;
             },
           ),
           widget.userRole == 'reader'
@@ -132,6 +141,17 @@ class _AppdrawerState extends State<Appdrawer> {
                       '/login',
                     );
                   }),
+          ListTile(
+            title: const Text('About Us'), //TODO convert to about us ang page
+            onTap: () {
+              _auth.currentUser != null
+                  ? Navigator.push(context,
+                      MaterialPageRoute(builder: (context) {
+                      return const AboutUsPage();
+                    }))
+                  : null;
+            },
+          ),
         ],
       ),
     );

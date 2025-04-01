@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class ContribHuntPage extends StatefulWidget {
   const ContribHuntPage({super.key});
@@ -23,16 +22,7 @@ class _ContribHuntPage extends State<ContribHuntPage> {
 
       try {
         // DocumentReference taskRef =
-        await FirebaseFirestore.instance.collection('applicants').add({
-          'username': FirebaseAuth.instance.currentUser!.displayName,
-          'email': FirebaseAuth.instance.currentUser!.email,
-          'created_at': FieldValue.serverTimestamp(),
-          'applied_section': selectedSection,
-          'status': 'submitted',
-        });
-
-        // DocumentSnapshot newTask = await taskRef.get();
-        // print("New application: ${newTask.data()}");
+        await firebaseFunctions.submitApplication(selectedSection!);
 
         // Clear the form
         _formKey.currentState!.reset();

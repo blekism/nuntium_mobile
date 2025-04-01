@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/firebase_functions.dart';
+import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'CardsTemplate/SeeMorePageTemplate.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class HistoryPage extends StatefulWidget {
+final firebaseFunctions = FirebaseFunctions();
+
+class HistoryPage extends ConsumerStatefulWidget {
   final String? userRole;
   const HistoryPage({
     super.key,
@@ -11,71 +15,38 @@ class HistoryPage extends StatefulWidget {
   });
 
   @override
-  State<HistoryPage> createState() => _HistoryPageState();
+  ConsumerState<HistoryPage> createState() => _HistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> {
-  String? _userId;
-  final FirebaseAuth _readPostsAuth = FirebaseAuth.instance;
-  Stream<QuerySnapshot> readPostsByUserStream =
-      const Stream<QuerySnapshot>.empty();
-  bool _isLoading = true;
-
-  Future<void> _getUserId() async {
-    try {
-      final User? user = _readPostsAuth.currentUser;
-
-      if (user != null) {
-        setState(() {
-          _userId = user.uid;
-          readPostsByUserStream = FirebaseFirestore.instance
-              .collection('users')
-              .doc(_userId)
-              .collection('savedPosts')
-              .where('isRead', isEqualTo: true)
-              .where('postId', isNotEqualTo: null)
-              .orderBy('time', descending: true)
-              .snapshots();
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User not logged in')),
-        );
-      }
-    } catch (e) {
-      print('error getting user id ${e}');
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error fetching user data')),
-      );
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.userRole != 'none') {
-      _getUserId();
-    }
-  }
+class _HistoryPageState extends ConsumerState<HistoryPage> {
+  User? user = firebaseFunctions.auth.currentUser;
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (user == null) {
       return const Center(
         child: Text('Please log in to use this feature'),
       );
     }
+    final reditPage = ref.watch(reditContentProvider(user!.uid));
 
-    return SeeMorePageTemplate(
-      pageName: 'History',
-      shownContentStream: readPostsByUserStream,
+    return reditPage.when(
+      data: (reditPage) {
+        if (reditPage.isEmpty) {
+          return const Center(child: Text('Start reading now!'));
+        }
+
+        return SeeMorePageTemplate(
+          pageName: 'History',
+          shownTopics: reditPage,
+        );
+      },
+      loading: () => const Center(
+        child: CircularProgressIndicator(),
+      ),
+      error: (error, stackTrace) => Center(
+        child: Text('Error: $error'),
+      ),
     );
   }
 }

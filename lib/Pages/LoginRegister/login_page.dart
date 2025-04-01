@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nuntium_mobile/firebase_functions.dart';
 import 'loadingpage.dart';
 
 class LoginPage extends StatefulWidget {
@@ -21,10 +22,13 @@ class _LoginPageState extends State<LoginPage> {
   final emailRegexLog =
       RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$");
   bool _isLoading = false;
+  final firebaseFunctions = FirebaseFunctions();
 
   Future<void> _handleSignInResult(User? user) async {
     if (user != null && mounted) {
-      Navigator.pushReplacementNamed(context, '/initial');
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/initial');
+      }
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -67,6 +71,7 @@ class _LoginPageState extends State<LoginPage> {
         final UserCredential userCredential =
             await _authLog.signInWithCredential(credential);
         final User? user = userCredential.user;
+        await firebaseFunctions.saveFCMToken();
         _handleSignInResult(user);
 
         if (mounted) {
@@ -119,6 +124,7 @@ class _LoginPageState extends State<LoginPage> {
 
       final User? user = userCredential.user;
       if (user != null) {
+        await firebaseFunctions.saveFCMToken();
         _handleSignInResult(user);
         print("User debug UID: ${user.uid}");
         print("User debug Email: ${user.email}");
@@ -126,6 +132,7 @@ class _LoginPageState extends State<LoginPage> {
         setState(() {
           _isLoading = false;
         });
+
         return user;
       } else {
         print("User is NULL after login!"); // VERY IMPORTANT CHECK
@@ -288,14 +295,19 @@ class _LoginPageState extends State<LoginPage> {
                               },
                             ),
                             const SizedBox(height: 5),
-                            const Align(
+                            Align(
                               alignment: Alignment.centerRight,
-                              child: Text(
-                                'Forgot Password?',
-                                style: TextStyle(
-                                  color: Color(0XFFD4AF37),
-                                  fontSize: 13,
+                              child: TextButton(
+                                child: const Text(
+                                  "Forgot Password",
+                                  style: TextStyle(
+                                    color: Color(0XFFD4AF37),
+                                    fontSize: 13,
+                                  ),
                                 ),
+                                onPressed: () {
+                                  Navigator.pushNamed(context, '/presetnoacc');
+                                },
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -310,7 +322,6 @@ class _LoginPageState extends State<LoginPage> {
                                     await enterWithOwnCredentials(
                                         _emailLogController.text,
                                         _passwordLogController.text);
-                                    // _handleSignInResult(user);
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(

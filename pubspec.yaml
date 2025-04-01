@@ -50,10 +50,24 @@ dependencies:
   firebase_app_check: ^0.3.2+3
   photo_view: ^0.15.0
   table_calendar: ^3.2.0
+  languagetool_textfield: ^0.1.1
+  flutter_riverpod: ^2.6.1
+  auto_size_text: ^3.0.0
+  custom_refresh_indicator: ^4.0.1
+  flutter_pdfview: ^1.4.0
+  url_launcher: ^6.3.1
+  http: ^1.3.0
+  path_provider: ^2.1.5
+  googleapis: ^14.0.0
+  googleapis_auth: ^2.0.0
+  firebase_messaging: ^15.2.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  flutter_native_splash: ^2.4.5
+  flutter_launcher_icons: ^0.14.3
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -89,17 +103,28 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
+
+  fonts:
+    - family: RobotoSlab
+      fonts:
+        - asset: assets/fonts/robotoslabvar.ttf
+flutter_native_splash:
+  color: "#020B40"  # Background color of splash screen
+  image: assets/images/splash.png  # Path to splash screen image
+  android: true
+  ios: true
+  fullscreen: true  # Removes status bar for a full-screen effect
+
+  # Configure App Icon
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/icon.png"  # Main app icon path
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/images/icon.png"
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+
+

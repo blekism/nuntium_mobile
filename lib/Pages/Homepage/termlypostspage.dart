@@ -1,26 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'CardsTemplate/seemorepagetemplate.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-class TermlyPage extends StatefulWidget {
+class TermlyPage extends ConsumerStatefulWidget {
   const TermlyPage({super.key});
 
   @override
-  State<TermlyPage> createState() => _TermlyPageState();
+  ConsumerState<TermlyPage> createState() => _TermlyPageState();
 }
 
-class _TermlyPageState extends State<TermlyPage> {
-  final Stream<QuerySnapshot> archiveStream = FirebaseFirestore.instance
-      .collection('posts')
-      .where('isTermly', isEqualTo: true)
-      .snapshots();
-
+class _TermlyPageState extends ConsumerState<TermlyPage> {
   @override
   Widget build(BuildContext context) {
-    return SeeMorePageTemplate(
-      pageName: 'Archive',
-      shownContentStream: archiveStream,
-      isTermly: true,
+    final latesttermlyStream = ref.watch(latestTermlyProvider);
+    final alltermlyStream = ref.watch(allTermlyProvider);
+
+    return latesttermlyStream.when(
+      data: (latestTermlyData) {
+        return alltermlyStream.when(
+          data: (allTermlyData) {
+            if (allTermlyData.isEmpty && latestTermlyData.isEmpty) {
+              return const Center(
+                child: Text('No Content Found'),
+              );
+            }
+
+            return SeeMorePageTemplate(
+              pageName: 'Archive',
+              shownTopics: allTermlyData,
+              termlyFeatured: latestTermlyData,
+            );
+          },
+          error: (error, stackTrace) => Center(child: Text('Error: $error')),
+          loading: () => const Center(child: CircularProgressIndicator()),
+        );
+      },
+      error: (error, stackTrace) => Center(child: Text('Error: $error')),
+      loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
 }
