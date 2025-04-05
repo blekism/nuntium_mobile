@@ -7,6 +7,7 @@ import 'package:nuntium_mobile/models/notif.dart';
 import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
+import 'package:nuntium_mobile/models/topicmodel.dart';
 
 final firebaseFunctions = FirebaseFunctions();
 
@@ -70,4 +71,13 @@ final membersProvider = FutureProvider<List<Member>>((ref) {
 
 final postNotificationsProvider = StreamProvider<List<NotifItem>>((ref) {
   return firebaseFunctions.streamPostNotifications();
+});
+
+final sectionProvider = FutureProvider<QuerySnapshot>((ref) {
+  return firebaseFunctions.getSections();
+});
+
+final topicProvider =
+    StreamProvider.family<List<Topic>, String>((ref, sectionId) {
+  return firebaseFunctions.getTopics(sectionId);
 });

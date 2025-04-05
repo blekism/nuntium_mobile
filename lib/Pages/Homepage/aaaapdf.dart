@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:http/http.dart' as http;
+import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:path_provider/path_provider.dart';
 
 class PdfViewerScreen extends StatefulWidget {
@@ -42,9 +43,9 @@ class PdfViewerScreenState extends State<PdfViewerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('PDF Viewer'),
-        centerTitle: true,
+      appBar: const CustomAppBar(
+        appbarTitle: 'PDF Viewer',
+        hasNavigated: false,
       ),
       body: localFilePath != null
           ? Stack(

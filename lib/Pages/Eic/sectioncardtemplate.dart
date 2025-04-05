@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nuntium_mobile/Pages/Eic/eicorgtasks.dart';
+import 'package:nuntium_mobile/Pages/Eic/topicpage.dart';
 import 'package:shimmer/shimmer.dart';
 
 class SectionCardTemplate extends StatelessWidget {
@@ -10,6 +10,7 @@ class SectionCardTemplate extends StatelessWidget {
   final String? sectionID;
   final String? totalMembers;
   final String? sectionPhoto;
+
   const SectionCardTemplate({
     super.key,
     this.isLoading = false,
@@ -25,11 +26,12 @@ class SectionCardTemplate extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        print('section name and id is: $sectionID and $sectionType');
         print('Section clicked');
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => OrganizationTasks(
+            builder: (context) => TopicPage(
               sectionID: sectionID,
               sectionName: sectionType,
             ),

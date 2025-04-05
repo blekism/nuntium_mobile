@@ -37,14 +37,6 @@ class _RegisterPageState extends State<RegisterPage> {
       if (user != null) {
         await user.updateDisplayName(username);
 
-        // await firebaseFunctions.createUserDoc(
-        //   user.uid,
-        //   user.email,
-        //   user.displayName,
-        //   null,
-        //   password,
-        // );
-
         try {
           await user.sendEmailVerification();
           print('Verification email sent to ${user.email}');

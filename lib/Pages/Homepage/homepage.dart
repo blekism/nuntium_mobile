@@ -83,6 +83,7 @@ class _HomepageState extends State<Homepage> {
       backgroundColor: const Color(0xFFF2F2F2),
       appBar: const CustomAppBar(
         appbarTitle: 'Home',
+        hasNavigated: false,
       ),
       drawer: Appdrawer(
         onLogout: widget.onLogout!,
@@ -128,33 +129,6 @@ class _HomepageState extends State<Homepage> {
         BottomNavigationBarItem(
           icon: Image.asset('assets/images/history.png', width: 35, height: 35),
           label: 'History',
-        ),
-      ],
-    );
-  }
-
-  AppBar _appBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: const Color(0xFFF2F2F2),
-      actions: [
-        GestureDetector(
-          onTap: () {
-            print('notif clicked');
-          },
-          child: Container(
-            alignment: Alignment.center,
-            width: MediaQuery.of(context).size.width * 0.2,
-            margin: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: const Color(0XFFF5F5F5),
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            child: Image.asset(
-              'assets/images/notif.png',
-              width: 35,
-              height: 35,
-            ),
-          ),
         ),
       ],
     );

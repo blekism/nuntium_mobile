@@ -61,6 +61,7 @@ dependencies:
   googleapis: ^14.0.0
   googleapis_auth: ^2.0.0
   firebase_messaging: ^15.2.4
+  step_progress_indicator: ^1.0.2
 
 dev_dependencies:
   flutter_test:
@@ -116,7 +117,7 @@ flutter_native_splash:
   fullscreen: true  # Removes status bar for a full-screen effect
 
   # Configure App Icon
-flutter_icons:
+flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/icon.png"  # Main app icon path

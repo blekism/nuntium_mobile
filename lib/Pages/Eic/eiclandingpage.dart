@@ -3,6 +3,7 @@ import 'package:nuntium_mobile/Pages/Eic/eichomepage.dart';
 import 'package:nuntium_mobile/Pages/SectionEditor/assigntasklogpage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
+import 'package:nuntium_mobile/Pages/customappbar.dart';
 
 class EicLandingPage extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -23,15 +24,15 @@ class _EicLandingPage extends State<EicLandingPage> {
 
   final List<Widget> _screens = [
     const EicHomepage(),
-    const AssignTaskLogPage(
-      section: 'all',
-    ),
     const CalendarPage(),
   ];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _appBar(context),
+      appBar: const CustomAppBar(
+        appbarTitle: 'Homepage',
+        hasNavigated: false,
+      ),
       drawer: Appdrawer(
         onLogout: widget.onLogout!,
         userRole: widget.userRole!,
@@ -69,57 +70,11 @@ class _EicLandingPage extends State<EicLandingPage> {
         ),
         BottomNavigationBarItem(
           icon: Image.asset(
-            'assets/images/assigntask.png',
-            width: iconSize,
-            height: iconSize,
-          ),
-          label: 'Assign Task',
-        ),
-        BottomNavigationBarItem(
-          icon: Image.asset(
             'assets/images/calendar.png',
             width: iconSize,
             height: iconSize,
           ),
           label: 'Calendar',
-        ),
-      ],
-    );
-  }
-
-  AppBar _appBar(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width; // Get screen width
-    final titleFontSize = (screenWidth * 0.06).clamp(18.0, 24.0);
-
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      title: Text(
-        'Nuntium',
-        style: TextStyle(
-          color: Colors.black,
-          fontSize: titleFontSize,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      actions: [
-        GestureDetector(
-          onTap: () {
-            print('notif clicked');
-          },
-          child: Container(
-            alignment: Alignment.center,
-            width: MediaQuery.of(context).size.width * 0.2,
-            margin: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: const Color(0XFFF5F5F5),
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            child: Image.asset(
-              'assets/images/notif.png',
-              width: 35,
-              height: 35,
-            ),
-          ),
         ),
       ],
     );

@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/Pages/Homepage/notificationpage.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? appbarTitle;
+  final bool? hasNavigated;
 
-  const CustomAppBar({super.key, this.appbarTitle});
+  const CustomAppBar({
+    super.key,
+    this.appbarTitle,
+    this.hasNavigated,
+  });
+  //TODO YUNG DI NA DAPAT OPENABLE YUNG NOTIFS PAG ANDUN NA SI USER
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -58,38 +65,43 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           centerTitle: true,
           actions: [
-            IconButton(
-              icon: Stack(
-                children: [
-                  const Icon(Icons.notifications),
-                  if (hasUnreadNotifications)
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 12,
-                          minHeight: 12,
-                        ),
-                      ),
+            hasNavigated == false
+                ? IconButton(
+                    icon: Stack(
+                      children: [
+                        const Icon(Icons.notifications),
+                        if (hasUnreadNotifications)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 12,
+                                minHeight: 12,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                ],
-              ),
-              onPressed: () {
-                // Navigate to notification page
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute(
-                //       builder: (context) => const NotificationPage()),
-                // );
-                print('navigated to notif page');
-              },
-            ),
+                    onPressed: () {
+                      // Navigate to notification page
+                      hasNavigated == true
+                          ? null
+                          : Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const NotificationPage()),
+                            );
+                      print('navigated to notif page');
+                    },
+                  )
+                : const SizedBox.shrink(),
           ],
         ),
       );

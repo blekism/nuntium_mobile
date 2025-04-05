@@ -8,10 +8,10 @@ class Topic {
     required this.status,
     required this.deadline,
     required this.priority,
-    required this.progress,
-    required this.totalTasks,
-    required this.completedTasks,
-    required this.members,
+    required this.totalSubtask,
+    required this.completedSubtask,
+    this.members = const [],
+    this.otherMembers = 0,
   });
 
   final String id;
@@ -20,8 +20,8 @@ class Topic {
   final String status;
   final String deadline;
   final String priority;
-  final String progress;
-  final String totalTasks;
-  final String completedTasks;
+  final int totalSubtask;
+  final int completedSubtask;
   final List<Member> members;
+  final int otherMembers;
 }

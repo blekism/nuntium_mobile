@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
+import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
+import 'package:nuntium_mobile/Pages/Eic/eiclandingpage.dart';
 import 'package:nuntium_mobile/Pages/Homepage/contribhuntpage.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset_noacc.dart';
@@ -91,6 +93,7 @@ class NuntiumApp extends StatelessWidget {
         '/contribhuntpage': (context) => const ContribHuntPage(),
         '/passreset': (context) => const PasswordResetModal(),
         '/presetnoacc': (context) => const PResetNoAcc(),
+        '/createtask': (context) => const CreateTaskPage(),
 
         // // '/joinus': (context) => const JoinUsPage(),
         // '/contribhomepage': (context) => const ContribHomePage(),
@@ -228,11 +231,11 @@ class _AuthCheckerState extends State<AuthChecker> {
               //     onLogout: _onSignOut,
               //     userRole: userRole,
               //   );
-              // case 'eic':
-              //   return EicLandingPage(
-              //     onLogout: _onSignOut,
-              //     userRole: userRole,
-              //   );
+              case 'eic':
+                return EicLandingPage(
+                  onLogout: _onSignOut,
+                  userRole: userRole,
+                );
               // case 'section_editors':
               //   return EditorsHomePage(
               //     onLogout: _onSignOut,

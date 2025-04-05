@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:nuntium_mobile/models/comment.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:nuntium_mobile/models/member.dart';
@@ -7,6 +8,7 @@ import 'package:nuntium_mobile/models/topic.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
+import 'package:nuntium_mobile/models/topicmodel.dart';
 
 class FirebaseFunctions {
   FirebaseFirestore db = FirebaseFirestore.instance;
@@ -82,9 +84,8 @@ class FirebaseFunctions {
           status: topicData['status'] ?? '',
           deadline: topicData['deadline'] ?? '',
           priority: topicData['priority'] ?? '',
-          progress: topicData['progress'] ?? '',
-          totalTasks: topicData['totalTasks'] ?? '',
-          completedTasks: topicData['completedTasks'] ?? '',
+          totalSubtask: topicData['totalTasks'] ?? '',
+          completedSubtask: topicData['completedTasks'] ?? '',
           members: members,
         );
       }).toList());
@@ -911,6 +912,107 @@ class FirebaseFunctions {
     }).handleError((error) {
       print('Error fetching notifications: $error');
       return <NotifItem>[];
+    });
+  }
+
+  Future<QuerySnapshot> getSections() async {
+    try {
+      QuerySnapshot sectionSnapshot = await db.collection('sections').get();
+      return sectionSnapshot;
+    } catch (e) {
+      print('error fetching data $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> createTopic(
+      String assignee, title, deadline, priority, details, section) async {
+    try {
+      if (auth.currentUser == null) {
+        print("user not logged in");
+        return;
+      }
+
+      DateTime parsedDeadline = DateFormat("d/M/yyyy h:mm a").parse(deadline);
+      Timestamp deadlineTimestamp = Timestamp.fromDate(parsedDeadline);
+
+      await db.collection('tasks').add({
+        'assigned_by': assignee,
+        'title': title,
+        'deadline': deadlineTimestamp,
+        'priority': priority,
+        'details': details,
+        'completed_subtask': 0,
+        'total_subtask': 0,
+        'created_at': Timestamp.now(),
+        'isParent': true,
+        'section': section,
+        'status': 'pendingAPR',
+        'otherMembers': 0,
+      });
+
+      print('topic created successfully');
+    } catch (e) {
+      return Future.error(e);
+    }
+  }
+
+  Stream<List<Topic>> getTopics(String sectionId) {
+    return db
+        .collection('tasks')
+        .where('section', isEqualTo: sectionId)
+        .orderBy('deadline', descending: true)
+        .snapshots()
+        .asyncMap((snapshot) {
+      return Future.wait(snapshot.docs.map((topicDoc) async {
+        final topicData = topicDoc.data();
+        final deadline = topicDoc['deadline'] as Timestamp;
+        final dateString =
+            DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
+
+        final assignedTaskData =
+            await topicDoc.reference.collection('assigned_tasks').get();
+
+        List<Member> members = [];
+
+        if (assignedTaskData.docs.isNotEmpty) {
+          members = (await Future.wait(
+            assignedTaskData.docs.map((taskDoc) async {
+              final memberId = taskDoc['assignee_id'];
+
+              if (memberId != null) {
+                final userDoc =
+                    await db.collection('users').doc(memberId).get();
+
+                if (userDoc.exists) {
+                  return Member(
+                    id: userDoc.id,
+                    name: userDoc['username'] ?? '',
+                    imageUrl: userDoc['photoURL'] ?? '',
+                  );
+                }
+              }
+              return null;
+            }),
+          ))
+              .where((member) => member != null)
+              .cast<Member>()
+              .toList();
+        }
+
+        return Topic(
+          id: topicDoc.id,
+          title: topicData['title'] ?? '',
+          section: topicData['section'] ?? '',
+          status: topicData['status'] ?? '',
+          deadline: dateString,
+          priority: topicData['priority'] ?? '',
+          totalSubtask: topicData['total_subtask'] ?? '',
+          completedSubtask: topicData['completed_subtask'] ?? '',
+          otherMembers: topicData['otherMembers'],
+          members: members,
+        );
+      }).toList());
     });
   }
 

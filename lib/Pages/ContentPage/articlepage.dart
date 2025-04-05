@@ -49,6 +49,7 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
     return Scaffold(
       appBar: const CustomAppBar(
         appbarTitle: 'NUVation',
+        hasNavigated: false,
       ),
       body: articleView.when(
         data: (articleView) {

@@ -28,6 +28,8 @@ class _NotificationPageState extends ConsumerState<NotificationPage> {
         if (unreadNotifications != null && unreadNotifications.isNotEmpty) {
           final notificationIds = unreadNotifications.map((e) => e.id).toList();
           firebaseFunctions.markNotificationsAsRead(notificationIds);
+
+          ref.invalidate(postNotificationsProvider);
         }
       }
     });
@@ -35,6 +37,7 @@ class _NotificationPageState extends ConsumerState<NotificationPage> {
     return Scaffold(
       appBar: const CustomAppBar(
         appbarTitle: 'Notifications',
+        hasNavigated: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(15),

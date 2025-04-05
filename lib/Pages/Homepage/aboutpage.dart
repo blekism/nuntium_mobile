@@ -18,6 +18,7 @@ class _AboutUsPageState extends ConsumerState<AboutUsPage> {
     return Scaffold(
       appBar: const CustomAppBar(
         appbarTitle: 'About Us',
+        hasNavigated: false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(15.0),
