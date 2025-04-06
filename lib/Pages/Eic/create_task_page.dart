@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -230,9 +229,9 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
                       color: Colors.white, // Text color white
                     ),
                     items: <String>[
-                      'High',
-                      'Medium',
-                      'Low',
+                      'High Priority',
+                      'Medium Priority',
+                      'Low Priority',
                     ].map<DropdownMenuItem<String>>((String value) {
                       return DropdownMenuItem<String>(
                         value: value,

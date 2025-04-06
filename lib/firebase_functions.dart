@@ -4,6 +4,7 @@ import 'package:nuntium_mobile/models/comment.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:nuntium_mobile/models/member.dart';
 import 'package:nuntium_mobile/models/notif.dart';
+import 'package:nuntium_mobile/models/taskmodel.dart';
 import 'package:nuntium_mobile/models/topic.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
@@ -1014,6 +1015,149 @@ class FirebaseFunctions {
         );
       }).toList());
     });
+  }
+
+  Stream<List<TaskModel>> getTasks(String topicId) {
+    return db
+        .collection('tasks')
+        .doc(topicId)
+        .collection('assigned_tasks')
+        .snapshots()
+        .asyncMap((snapshot) async {
+      DocumentSnapshot topicDoc =
+          await db.collection('tasks').doc(topicId).get();
+
+      if (!topicDoc.exists) {
+        return [];
+      }
+
+      final topicData = topicDoc.data() as Map<String, dynamic>;
+      final parentTitle = topicData['title'] as String? ?? '';
+      final parentPriority = topicData['priority'] as String? ?? '';
+      final parentSection = topicData['section'] as String? ?? '';
+
+      return Future.wait(snapshot.docs.map((taskDoc) async {
+        final taskData = taskDoc.data();
+        final memberId = taskData['assignee_id'];
+        final tasktype = taskData['task_type'];
+
+        final deadline = taskData['deadline'] as Timestamp;
+        final dateString =
+            DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
+
+        DocumentSnapshot userDoc =
+            await db.collection('users').doc(memberId).get();
+
+        String userName = userDoc.exists ? userDoc['username'] : 'unkown';
+        String imageUrl = userDoc.exists ? userDoc['photoURL'] : 'unkown';
+
+        return TaskModel(
+          id: taskDoc.id,
+          title: 'Create a $tasktype for the topic $parentTitle',
+          section: parentSection,
+          type: tasktype,
+          deadline: dateString,
+          priority: parentPriority,
+          assignee: imageUrl,
+        );
+      }));
+    });
+  }
+
+  Future<Map<String, dynamic>> getTopicInfo(String topicId) async {
+    try {
+      // Step 1: Get the topic/task document
+      DocumentSnapshot taskDoc =
+          await db.collection('tasks').doc(topicId).get();
+
+      if (!taskDoc.exists) {
+        throw Exception("Task not found");
+      }
+
+      Map<String, dynamic> taskData = taskDoc.data() as Map<String, dynamic>;
+
+      // Step 2: Get the user ID from task document
+      String userId = taskData['assigned_by'];
+
+      // Step 3: Fetch user document
+      DocumentSnapshot userDoc = await db.collection('users').doc(userId).get();
+
+      if (!userDoc.exists) {
+        throw Exception("User not found");
+      }
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+
+      // Step 4: Combine data (for example, attach user name to the topic data)
+      taskData['userName'] = userData['username']; // or any field you want
+
+      return taskData;
+    } catch (e) {
+      print('Error fetching topic with user info: $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> approveToCreate(String topicId) async {
+    try {
+      await db.collection('tasks').doc(topicId).update({
+        'status': 'doing',
+        'eicApproved': true,
+        'createApproved_at': Timestamp.now(),
+      });
+    } catch (e) {
+      print('error approving post $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> rejectToCreate(String topicId) async {
+    try {
+      await db.collection('tasks').doc(topicId).update({
+        'status': 'rejected',
+        'reason': 'rejected',
+        'rejected_at': Timestamp.now(),
+      });
+    } catch (e) {
+      print('error rejecting post $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> seApprove(String topicId, taskId) async {
+    try {
+      final dbref = db.collection('tasks').doc(topicId);
+
+      await dbref.update({
+        'completed_subtask': FieldValue.increment(1),
+      });
+
+      await dbref.collection('assigned_tasks').doc(taskId).update({
+        'status': 'approved',
+        'approved_at': Timestamp.now(),
+      });
+    } catch (e) {
+      print('error approving post $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> seReject(String topicId, taskId) async {
+    try {
+      await db
+          .collection('tasks')
+          .doc(topicId)
+          .collection('assigned_tasks')
+          .doc(taskId)
+          .update({
+        'status': 'rejected',
+        'reason': 'rejected',
+        'rejected_at': Timestamp.now(),
+      });
+    } catch (e) {
+      print('error rejecting post $e');
+      return Future.error(e);
+    }
   }
 
   // TODO notification for announcements

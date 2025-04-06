@@ -114,7 +114,7 @@ class _OrganizationTasksState extends State<OrganizationTasks> {
                     : const Color(0xFF020B40),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withAlpha(40),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   ),

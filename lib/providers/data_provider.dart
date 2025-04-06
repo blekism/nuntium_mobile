@@ -4,6 +4,7 @@ import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/models/comment.dart';
 import 'package:nuntium_mobile/models/member.dart';
 import 'package:nuntium_mobile/models/notif.dart';
+import 'package:nuntium_mobile/models/taskmodel.dart';
 import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
@@ -80,4 +81,14 @@ final sectionProvider = FutureProvider<QuerySnapshot>((ref) {
 final topicProvider =
     StreamProvider.family<List<Topic>, String>((ref, sectionId) {
   return firebaseFunctions.getTopics(sectionId);
+});
+
+final topicDataProvider =
+    FutureProvider.family<Map<String, dynamic>, String>((ref, String topicId) {
+  return firebaseFunctions.getTopicInfo(topicId);
+});
+
+final taskProvider =
+    StreamProvider.family<List<TaskModel>, String>((ref, topicId) {
+  return firebaseFunctions.getTasks(topicId);
 });

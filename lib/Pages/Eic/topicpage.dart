@@ -36,6 +36,14 @@ class _TopicPageState extends ConsumerState<TopicPage> {
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          const Text(
+            'Section Topics',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: Colors.black,
+            ),
+          ),
           const SizedBox(height: 20),
           _genreFilter(),
           const SizedBox(height: 15),

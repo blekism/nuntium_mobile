@@ -1,7 +1,7 @@
 const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -62,6 +62,39 @@ exports.sendNotificationOnNewArticle = onDocumentCreated(
   }
 );
 
+exports.createSubtasksOnApproval = onDocumentUpdated(
+  "tasks/{taskId}",
+  async (event) => {
+    const previous = event.data.before.data();
+    const current = event.data.after.data();
+
+    if (previous.status !== "doing" && current.status === "doing" && current.eicApproved) {
+      const taskId = event.params.taskId;
+      const subcollectionRef = admin.firestore().collection(`tasks/${taskId}/assigned_tasks`);
+
+      try {
+        await subcollectionRef.add({
+          taskName: "Proofread Article",
+          description: "Proofread the article for any errors.",
+          completed: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        await subcollectionRef.add({
+          taskName: "Format Article",
+          description: "Format the article for publication.",
+          completed: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        logger.log(`Subtasks created for post ${taskId}`);
+      } catch (error) {
+        logger.error("Error creating subtasks:", error);
+      }
+    }
+  }
+);
+
 exports.cleanInput = onRequest(async (req, res) => {
   try {
     if (req.method !== "POST") {
@@ -75,7 +108,7 @@ exports.cleanInput = onRequest(async (req, res) => {
     }
 
     const text = req.body.text;
-    const apiKey = "AIzaSyAs80PkwTQR_eXyefC_6GaIh4a19kL4eng"; // Securely load API key
+    const apiKey = "AIzaSyAs80PkwTQR_eXyefC_6GaIh4a19kL4eng";
 
     if (!apiKey) {
       res.status(500).send("Missing GOOGLE_API_KEY environment variable");
