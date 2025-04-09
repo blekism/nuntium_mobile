@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
 import 'package:nuntium_mobile/Pages/Eic/subtaskview.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
@@ -12,11 +13,13 @@ import 'package:step_progress_indicator/step_progress_indicator.dart';
 class TopicSingleRead extends ConsumerStatefulWidget {
   final String id;
   final String section;
+  final String sectionId;
 
   const TopicSingleRead({
     super.key,
     required this.id,
     required this.section,
+    required this.sectionId,
   });
 
   @override
@@ -29,6 +32,8 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
   @override
   Widget build(BuildContext context) {
     final topicView = ref.watch(topicDataProvider(widget.id));
+    final canUserEdit =
+        firebaseFunctions.canUserEdit(firebaseFunctions.auth.currentUser!.uid);
 
     return Scaffold(
       appBar: const CustomAppBar(
@@ -59,6 +64,67 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Task Title: ',
+                          style: TextStyle(
+                            color: Color(0xFF020B40),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    FutureBuilder<bool>(
+                      future: canUserEdit,
+                      builder:
+                          (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                        if (snapshot.hasData) {
+                          final userCanEdit =
+                              snapshot.data!; // Safely unwrap the bool
+
+                          return userCanEdit
+                              ? Align(
+                                  alignment: Alignment.topRight,
+                                  child: IconButton(
+                                    onPressed: () {
+                                      print('editing topic na ey');
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => CreateTaskPage(
+                                            topicId: widget.id,
+                                            deadline: dateString,
+                                            details: topicView['details'],
+                                            priority: topicView['priority'],
+                                            title: topicView['title'],
+                                            isEditing: true,
+                                            sectionName: widget.section,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.edit),
+                                  ),
+                                )
+                              : const SizedBox.shrink();
+                        } else if (snapshot.hasError) {
+                          return Text(
+                              'Error: ${snapshot.error}'); // Handle error appropriately
+                        } else {
+                          return const CircularProgressIndicator(); // Show loading indicator
+                        }
+                      },
+                    )
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -66,7 +132,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     style: const TextStyle(
                       color: Color(0xFF020B40),
                       fontSize: 20,
-                      fontFamily: 'Poppins',
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -79,7 +144,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     style: const TextStyle(
                       color: Color(0xFF505050),
                       fontSize: 15,
-                      fontFamily: 'Poppins',
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -92,7 +156,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     style: const TextStyle(
                       color: Color(0xFF505050),
                       fontSize: 15,
-                      fontFamily: 'Poppins',
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -122,7 +185,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                 const SizedBox(height: 30),
                 StepProgressIndicator(
                   totalSteps: 6,
-                  currentStep: completedSubtask,
+                  currentStep: topicView['projectStep'],
                   selectedColor: const Color(0XFF020B40),
                   unselectedColor: const Color(0XFF0E0E0E).withAlpha(90),
                 ),
@@ -158,7 +221,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                         child: ElevatedButton(
                           onPressed: FirebaseAuth.instance.currentUser != null
                               ? () async {
-                                  print('timeline viewed');
+                                  print('tasks viewed');
                                   showModalBottomSheet(
                                     context: context,
                                     isScrollControlled: true,
@@ -170,6 +233,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                     builder: (context) => SubTaskView(
                                       topicId: widget.id,
                                       section: widget.section,
+                                      sectionId: widget.sectionId,
                                     ),
                                   );
                                 }
@@ -178,7 +242,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
 
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Please login to comment'),
+                                      content: Text('Please login to do this'),
                                       duration: Duration(seconds: 2),
                                       behavior: SnackBarBehavior.floating,
                                     ),
@@ -213,19 +277,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     onPressed: FirebaseAuth.instance.currentUser != null
                         ? () async {
                             print('timeline viewed');
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.white,
-                              shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(20),
-                              )),
-                              builder: (context) => SubTaskView(
-                                topicId: widget.id,
-                                section: widget.section,
-                              ),
-                            );
                           }
                         : () async {
                             print('di nakalogin pano nangyari yon');
@@ -289,8 +340,53 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     children: [
                       ElevatedButton(
                         onPressed: () async {
-                          await firebaseFunctions.approveToCreate(widget.id);
-                          print('topic approved');
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text('Confirm Approval'),
+                                content: const Text(
+                                    'Are you sure you want to approve this topic?'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop(true);
+
+                                      print('topic approved');
+                                    },
+                                    child: const Text('Approve'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          if (confirm == true) {
+                            try {
+                              await firebaseFunctions
+                                  .approveToCreate(widget.id);
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Topic approved successfully!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } catch (error) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Failed to approve this topic: $error'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
@@ -314,10 +410,54 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                       const SizedBox(width: 10),
                       ElevatedButton(
                         onPressed: () async {
-                          await firebaseFunctions.rejectToCreate(widget.id);
-                          ref.invalidate(topicDataProvider);
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text('Confirm Rejection'),
+                                content: const Text(
+                                    'Are you sure you want to reject this topic?'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop(true);
 
-                          print('topic declined');
+                                      print('topic declined');
+                                    },
+                                    child: const Text('Reject'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          if (confirm == true) {
+                            try {
+                              await firebaseFunctions.rejectToCreate(widget.id);
+
+                              ref.invalidate(topicDataProvider(widget.id));
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Topic rejected successfully!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } catch (error) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content:
+                                      Text('Failed to reject topic: $error'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
@@ -347,7 +487,30 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     children: [
                       ElevatedButton(
                         onPressed: () async {
-                          print('topic approved for posting');
+                          showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text('Confirm Approval'),
+                                content: const Text(
+                                    'Are you sure you want to approve this topic?'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop(true);
+                                      print('topic approved for posting');
+                                    },
+                                    child: const Text('Approve'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
@@ -371,7 +534,30 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                       const SizedBox(width: 10),
                       ElevatedButton(
                         onPressed: () async {
-                          print('topic declined');
+                          showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text('Confirm Rejection'),
+                                content: const Text(
+                                    'Are you sure you want to reject this topic?'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop(true);
+                                      print('topic declined');
+                                    },
+                                    child: const Text('Reject'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,

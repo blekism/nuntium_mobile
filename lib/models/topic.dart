@@ -12,6 +12,7 @@ class Topic {
     required this.completedSubtask,
     this.members = const [],
     this.otherMembers = 0,
+    required this.projectStep,
   });
 
   final String id;
@@ -24,4 +25,5 @@ class Topic {
   final int completedSubtask;
   final List<Member> members;
   final int otherMembers;
+  final int projectStep;
 }

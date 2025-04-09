@@ -2,15 +2,19 @@ import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Eic/subtask_card.dart';
+import 'package:nuntium_mobile/Pages/Eic/assign_task_page.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class SubTaskView extends ConsumerStatefulWidget {
   final String topicId;
   final String section;
+  final String sectionId;
+
   const SubTaskView({
     super.key,
     required this.topicId,
     required this.section,
+    required this.sectionId,
   });
 
   @override
@@ -23,12 +27,12 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
     final tasksView = ref.watch(taskProvider(widget.topicId));
 
     return FractionallySizedBox(
-      heightFactor: .80,
+      heightFactor: .85,
       child: Column(
         children: [
           Container(
             margin: const EdgeInsets.symmetric(vertical: 10),
-            width: 50,
+            width: 100,
             height: 5,
             decoration: BoxDecoration(
               color: Colors.grey[400],
@@ -58,14 +62,16 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
                     ),
                     child: GestureDetector(
                       onTap: () {
-                        // Navigator.push(
-                        //     context,
-                        //     MaterialPageRoute(
-                        //         builder: (context) =>
-                        //         CreateTaskPage(
-                        //               sectionID: widget.sectionID,
-                        //               sectionName: widget.sectionName,
-                        //             )));
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AssignTaskPage(
+                              topicId: widget.topicId,
+                              section: widget.section,
+                              sectionId: widget.sectionId,
+                            ),
+                          ),
+                        );
                       },
                       child: DottedBorder(
                         color: const Color(0XFF020B40),
@@ -90,7 +96,6 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
                   Expanded(
                     child: SingleChildScrollView(
                       child: Container(
-                        padding: const EdgeInsets.all(15),
                         child: tasksView.when(
                           data: (tasksView) {
                             if (tasksView.isEmpty) {
@@ -100,16 +105,17 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
                               );
                             }
 
-                            return Padding(
-                              padding: const EdgeInsets.all(10.0),
-                              child: ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: tasksView.length,
-                                itemBuilder: (context, index) {
-                                  final item = tasksView[index];
+                            return ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: tasksView.length,
+                              itemBuilder: (context, index) {
+                                final item = tasksView[index];
 
-                                  return SubtaskCard(
+                                return Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  child: SubtaskCard(
                                     id: item.id,
                                     title: item.title,
                                     imageurl: item.assignee,
@@ -117,9 +123,12 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
                                     type: item.type,
                                     deadline: item.deadline,
                                     priority: item.priority,
-                                  );
-                                },
-                              ),
+                                    status: item.status,
+                                    topicId: widget.topicId,
+                                    sectionId: widget.sectionId,
+                                  ),
+                                );
+                              },
                             );
                           },
                           error: (error, stack) =>

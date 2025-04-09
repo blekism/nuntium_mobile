@@ -3,6 +3,7 @@ const logger = require("firebase-functions/logger");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
+const { FieldValue } = require("firebase-admin/firestore");
 
 admin.initializeApp();
 
@@ -66,26 +67,78 @@ exports.createSubtasksOnApproval = onDocumentUpdated(
   "tasks/{taskId}",
   async (event) => {
     const previous = event.data.before.data();
-    const current = event.data.after.data();
+    const current = event.data.after.data(); 
+    const now = admin.firestore.Timestamp.now();
+    const nowMillis = now.toMillis();
+    const threeHrsMillis = 3 * 60 * 60 * 1000;
+    const deadlineMillis = nowMillis + threeHrsMillis;
+    const deadlineTimestamp = admin.firestore.Timestamp.fromMillis(deadlineMillis);
 
     if (previous.status !== "doing" && current.status === "doing" && current.eicApproved) {
       const taskId = event.params.taskId;
       const subcollectionRef = admin.firestore().collection(`tasks/${taskId}/assigned_tasks`);
+      const parentref = admin.firestore().collection(`tasks`).doc(taskId);
 
       try {
+        // Query for an available writer in the task's section
+        const writeAssignSnapshot = await admin.firestore().collection("users")
+          .where("isAvailable", "==", true)
+          .where("section", "==", current.section)
+          .where("role", "!=", "section_editors")
+          .orderBy("assignedCount", "asc")
+          .limit(1)
+          .get();
+
+        let writerAssigneeId = "";
+        if (!writeAssignSnapshot.empty) {
+          const writerDoc = writeAssignSnapshot.docs[0];
+          writerAssigneeId = writerDoc.id;
+          // Increment the assigned count for the writer
+          await writerDoc.ref.update({ assignedCount: admin.firestore.FieldValue.increment(1) });
+        } else {
+          logger.warn(`No available writer found for section: ${current.section}`);
+          // Optionally handle the case where no writer is available
+        }
+
+        // Query for an available pubmat creator in the "AhIBjLyTec3anoj3mYkz" section
+        const pubAssignSnapshot = await admin.firestore().collection("users")
+          .where("isAvailable", "==", true)
+          .where("section", "==", "AhIBjLyTec3anoj3mYkz")
+          .where("role", "!=", "section_editors")
+          .orderBy("assignedCount", "asc")
+          .limit(1)
+          .get();
+
+        let pubAssigneeId = "";
+        if (!pubAssignSnapshot.empty) {
+          const pubDoc = pubAssignSnapshot.docs[0];
+          pubAssigneeId = pubDoc.id;
+          // Increment the assigned count for the pubmat creator
+          await pubDoc.ref.update({ assignedCount: admin.firestore.FieldValue.increment(1) });
+        } else {
+          logger.warn(`No available pubmat creator found for section: AhIBjLyTec3anoj3mYkz`);
+          // Optionally handle the case where no pubmat creator is available
+        }
+
         await subcollectionRef.add({
-          taskName: "Proofread Article",
-          description: "Proofread the article for any errors.",
-          completed: false,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          taskname: "Create a Pubmat for" + " " + previous.title,
+          task_type: "Pubmat",
+          deadline: deadlineTimestamp,
+          created_at: now,
+          status: "To Do",
+          assignee_id: pubAssigneeId,
         });
 
         await subcollectionRef.add({
-          taskName: "Format Article",
-          description: "Format the article for publication.",
-          completed: false,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          taskname: "Create the Content for" + " " + previous.title,
+          task_type: "Writing",
+          deadline: deadlineTimestamp,
+          created_at: now,
+          status: "To Do",
+          assignee_id: writerAssigneeId,
         });
+
+        await parentref.update({ total_subtask: 2, projectStep: FieldValue.increment(1) });
 
         logger.log(`Subtasks created for post ${taskId}`);
       } catch (error) {

@@ -120,6 +120,8 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                           member1: member1Image,
                           member2: member2Image,
                           otherMembers: item.otherMembers,
+                          projectStep: item.projectStep,
+                          sectionId: widget.sectionID!,
                         ),
                       );
                     },

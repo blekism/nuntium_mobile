@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/models/comment.dart';
 import 'package:nuntium_mobile/models/member.dart';
+import 'package:nuntium_mobile/models/membermodel.dart';
 import 'package:nuntium_mobile/models/notif.dart';
 import 'package:nuntium_mobile/models/taskmodel.dart';
 import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
-import 'package:nuntium_mobile/models/topicmodel.dart';
+import 'package:nuntium_mobile/models/viewed_task.dart';
 
 final firebaseFunctions = FirebaseFunctions();
 
@@ -84,11 +85,23 @@ final topicProvider =
 });
 
 final topicDataProvider =
-    FutureProvider.family<Map<String, dynamic>, String>((ref, String topicId) {
-  return firebaseFunctions.getTopicInfo(topicId);
+    StreamProvider.family<Map<String, dynamic>, String>((ref, String topicId) {
+  return firebaseFunctions.streamTopicInfo(topicId);
 });
 
 final taskProvider =
     StreamProvider.family<List<TaskModel>, String>((ref, topicId) {
   return firebaseFunctions.getTasks(topicId);
+});
+
+final memberListProvider =
+    FutureProvider.family<List<Membermodel>, String>((ref, String sectionId) {
+  return firebaseFunctions.getUsersInSection(sectionId);
+});
+
+final taskWrittenProvider =
+    FutureProvider.family<ViewedTask, (String, String)>((ref, ids) async {
+  final topicId = ids.$1;
+  final taskId = ids.$2;
+  return firebaseFunctions.taskContentWritten(topicId, taskId);
 });

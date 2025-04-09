@@ -12,7 +12,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.appbarTitle,
     this.hasNavigated,
   });
-  //TODO YUNG DI NA DAPAT OPENABLE YUNG NOTIFS PAG ANDUN NA SI USER
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);

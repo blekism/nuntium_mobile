@@ -1,15 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import 'package:nuntium_mobile/models/comment.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:nuntium_mobile/models/member.dart';
+import 'package:nuntium_mobile/models/membermodel.dart';
 import 'package:nuntium_mobile/models/notif.dart';
 import 'package:nuntium_mobile/models/taskmodel.dart';
 import 'package:nuntium_mobile/models/topic.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
-import 'package:nuntium_mobile/models/topicmodel.dart';
+import 'package:nuntium_mobile/models/viewed_task.dart';
 
 class FirebaseFunctions {
   FirebaseFirestore db = FirebaseFirestore.instance;
@@ -79,16 +81,16 @@ class FirebaseFunctions {
         }
 
         return Topic(
-          id: topicDoc.id,
-          title: topicData['title'] ?? '',
-          section: topicData['section'] ?? '',
-          status: topicData['status'] ?? '',
-          deadline: topicData['deadline'] ?? '',
-          priority: topicData['priority'] ?? '',
-          totalSubtask: topicData['totalTasks'] ?? '',
-          completedSubtask: topicData['completedTasks'] ?? '',
-          members: members,
-        );
+            id: topicDoc.id,
+            title: topicData['title'] ?? '',
+            section: topicData['section'] ?? '',
+            status: topicData['status'] ?? '',
+            deadline: topicData['deadline'] ?? '',
+            priority: topicData['priority'] ?? '',
+            totalSubtask: topicData['totalTasks'] ?? '',
+            completedSubtask: topicData['completedTasks'] ?? '',
+            members: members,
+            projectStep: topicData['projectStep']);
       }).toList());
     });
   }
@@ -415,46 +417,16 @@ class FirebaseFunctions {
             'postId': postId,
             'isLiked': true,
             'likedAt': Timestamp.now(),
-            'likeClick': FieldValue.increment(1)
           });
-          transact.update(db.collection('posts').doc(postId),
-              {'totalLikes': FieldValue.increment(1)});
-          return;
-        }
-
-        final data = doc.data() as Map<String, dynamic>;
-        final likeClick = (data['likeClick'] as int?) ?? 0;
-        final likeThrottleExpireseAt =
-            data['likeThrottleExpiresAt'] as Timestamp?;
-
-        final now = Timestamp.now();
-
-        if (likeThrottleExpireseAt != null &&
-            likeThrottleExpireseAt.toDate().isAfter(now.toDate())) {
-          print('you are temporarily locked out');
-          return;
-        }
-
-        if (likeClick < 5) {
+        } else {
           transact.update(likedPostRef, {
             'isLiked': true,
-            'likedAt': now,
-            'likeClick': likeClick + 1,
+            'likedAt': Timestamp.now(),
           });
-
-          transact.update(db.collection('posts').doc(postId),
-              {'totalLikes': FieldValue.increment(1)});
-        } else if (likeClick == 5) {
-          final lockoutTime =
-              Timestamp.fromDate(now.toDate().add(const Duration(hours: 12)));
-          transact.update(likedPostRef, {
-            'isLiked': true,
-            'likedAt': now,
-            'likeThrottleExpiresAt': lockoutTime,
-          });
-          print(
-              "You've reached the like limit for this post. Locked out until ${lockoutTime.toDate()}");
         }
+
+        transact.update(db.collection('posts').doc(postId),
+            {'totalLikes': FieldValue.increment(1)});
       });
     } catch (e) {
       print("Error liking post: $e");
@@ -483,46 +455,16 @@ class FirebaseFunctions {
             'postId': postId,
             'isSaved': true,
             'savedAt': Timestamp.now(),
-            'bookmarkClick': 1,
           });
-          transact.update(db.collection('posts').doc(postId),
-              {'totalBookmarks': FieldValue.increment(1)});
-          return;
-        }
-
-        final data = doc.data() as Map<String, dynamic>;
-        final bookmarkClick = (data['bookmarkClick'] as int?) ?? 0;
-        final bookmarkThrottleExpiresAt =
-            data['bookmarkThrottleExpiresAt'] as Timestamp?;
-
-        final now = Timestamp.now();
-
-        if (bookmarkThrottleExpiresAt != null &&
-            bookmarkThrottleExpiresAt.toDate().isAfter(now.toDate())) {
-          print('You are temporarily locked out from bookmarking.');
-          return;
-        }
-
-        if (bookmarkClick < 5) {
+        } else {
           transact.update(savedPostRef, {
             'isSaved': true,
-            'savedAt': now,
-            'bookmarkClick': bookmarkClick + 1,
+            'savedAt': Timestamp.now(),
           });
-
-          transact.update(db.collection('posts').doc(postId),
-              {'totalBookmarks': FieldValue.increment(1)});
-        } else if (bookmarkClick == 5) {
-          final lockoutTime =
-              Timestamp.fromDate(now.toDate().add(const Duration(hours: 12)));
-          transact.update(savedPostRef, {
-            'isSaved': true,
-            'savedAt': now,
-            'bookmarkThrottleExpiresAt': lockoutTime,
-          });
-          print(
-              "You've reached the bookmark limit for this post. Locked out until ${lockoutTime.toDate()}");
         }
+
+        transact.update(db.collection('posts').doc(postId),
+            {'totalBookmarks': FieldValue.increment(1)});
       });
     } catch (e) {
       print("Error bookmarking post: $e");
@@ -547,33 +489,12 @@ class FirebaseFunctions {
         final doc = await transaction.get(savedPostRef);
 
         if (doc.exists) {
-          final data = doc.data() as Map<String, dynamic>;
-          final bookmarkClick = (data['bookmarkClick'] as int?) ?? 0;
-          final bookmarkThrottleExpiresAt =
-              data['bookmarkThrottleExpiresAt'] as Timestamp?;
+          transaction.update(savedPostRef, {
+            'isSaved': false,
+          });
 
-          final now = Timestamp.now();
-
-          // If the user is currently throttled, we don't want to decrement the bookmarkClick
-          if (bookmarkThrottleExpiresAt != null &&
-              bookmarkThrottleExpiresAt.toDate().isAfter(now.toDate())) {
-            print("Cannot remove bookmark while throttled.");
-            return;
-          }
-
-          if (bookmarkClick < 5) {
-            transaction.update(savedPostRef, {
-              'isSaved': false,
-              'bookmarkClick': bookmarkClick + 1,
-            });
-
-            transaction.update(db.collection('posts').doc(postId),
-                {'totalBookmarks': FieldValue.increment(-1)});
-          } else if (bookmarkClick == 5) {
-            transaction.update(savedPostRef, {
-              'isSaved': false,
-            });
-          }
+          transaction.update(db.collection('posts').doc(postId),
+              {'totalBookmarks': FieldValue.increment(-1)});
         }
       });
     } catch (e) {
@@ -600,33 +521,12 @@ class FirebaseFunctions {
         final doc = await transaction.get(likedPostRef);
 
         if (doc.exists) {
-          final data = doc.data() as Map<String, dynamic>;
-          final likeClick = (data['likeClick'] as int?) ?? 0;
-          final likeThrottleExpiresAt =
-              data['likeThrottleExpiresAt'] as Timestamp?;
+          transaction.update(likedPostRef, {
+            'isLiked': false,
+          });
 
-          final now = Timestamp.now();
-
-          // If the user is currently throttled, we don't want to decrement the likeClick
-          if (likeThrottleExpiresAt != null &&
-              likeThrottleExpiresAt.toDate().isAfter(now.toDate())) {
-            print("Cannot remove like while throttled.");
-            return;
-          }
-
-          if (likeClick < 5) {
-            transaction.update(likedPostRef, {
-              'isLiked': false,
-              'likeClick': likeClick + 1,
-            });
-
-            transaction.update(db.collection('posts').doc(postId),
-                {'totalLikes': FieldValue.increment(-1)});
-          } else if (likeClick == 5) {
-            transaction.update(likedPostRef, {
-              'isLiked': false,
-            });
-          }
+          transaction.update(db.collection('posts').doc(postId),
+              {'totalLikes': FieldValue.increment(-1)});
         }
       });
     } catch (e) {
@@ -950,6 +850,7 @@ class FirebaseFunctions {
         'section': section,
         'status': 'pendingAPR',
         'otherMembers': 0,
+        'projectStep': 1,
       });
 
       print('topic created successfully');
@@ -1012,6 +913,7 @@ class FirebaseFunctions {
           completedSubtask: topicData['completed_subtask'] ?? '',
           otherMembers: topicData['otherMembers'],
           members: members,
+          projectStep: topicData['projectStep'],
         );
       }).toList());
     });
@@ -1040,6 +942,8 @@ class FirebaseFunctions {
         final taskData = taskDoc.data();
         final memberId = taskData['assignee_id'];
         final tasktype = taskData['task_type'];
+        final title = taskData['taskname'];
+        final status = taskData['status'];
 
         final deadline = taskData['deadline'] as Timestamp;
         final dateString =
@@ -1053,33 +957,31 @@ class FirebaseFunctions {
 
         return TaskModel(
           id: taskDoc.id,
-          title: 'Create a $tasktype for the topic $parentTitle',
+          title: title,
           section: parentSection,
           type: tasktype,
           deadline: dateString,
           priority: parentPriority,
           assignee: imageUrl,
+          status: status,
         );
       }));
     });
   }
 
-  Future<Map<String, dynamic>> getTopicInfo(String topicId) async {
-    try {
-      // Step 1: Get the topic/task document
-      DocumentSnapshot taskDoc =
-          await db.collection('tasks').doc(topicId).get();
-
+  Stream<Map<String, dynamic>> streamTopicInfo(String topicId) {
+    return db
+        .collection('tasks')
+        .doc(topicId)
+        .snapshots()
+        .asyncMap((taskDoc) async {
       if (!taskDoc.exists) {
         throw Exception("Task not found");
       }
 
       Map<String, dynamic> taskData = taskDoc.data() as Map<String, dynamic>;
-
-      // Step 2: Get the user ID from task document
       String userId = taskData['assigned_by'];
 
-      // Step 3: Fetch user document
       DocumentSnapshot userDoc = await db.collection('users').doc(userId).get();
 
       if (!userDoc.exists) {
@@ -1087,15 +989,13 @@ class FirebaseFunctions {
       }
 
       Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-
-      // Step 4: Combine data (for example, attach user name to the topic data)
-      taskData['userName'] = userData['username']; // or any field you want
+      taskData['userName'] = userData['username'];
 
       return taskData;
-    } catch (e) {
+    }).handleError((e) {
       print('Error fetching topic with user info: $e');
       return Future.error(e);
-    }
+    });
   }
 
   Future<void> approveToCreate(String topicId) async {
@@ -1104,6 +1004,7 @@ class FirebaseFunctions {
         'status': 'doing',
         'eicApproved': true,
         'createApproved_at': Timestamp.now(),
+        'projectStep': FieldValue.increment(1),
       });
     } catch (e) {
       print('error approving post $e');
@@ -1160,5 +1061,186 @@ class FirebaseFunctions {
     }
   }
 
+  Future<List<Membermodel>> getUsersInSection(String section) async {
+    try {
+      final snapshot = await db
+          .collection('users')
+          .where('section', isEqualTo: section)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        return Membermodel(
+          id: doc.id,
+          username: doc['username'],
+        );
+      }).toList();
+    } catch (e) {
+      print('Error fetching users in section: $e');
+      return [];
+    }
+  }
+
+  Future<void> createTask(String id, deadline, type, title, member) async {
+    try {
+      DateTime parsedDeadline = DateFormat("d/M/yyyy h:mm a").parse(deadline);
+      Timestamp deadlineTimestamp = Timestamp.fromDate(parsedDeadline);
+
+      await db.collection('tasks').doc(id).collection('assigned_tasks').add({
+        'assignee_id': member,
+        'created_at': Timestamp.now(),
+        'deadline': deadlineTimestamp,
+        'status': 'To Do',
+        'task_type': type,
+        'taskname': title,
+      });
+
+      await db.collection('tasks').doc(id).update({
+        'total_subtask': FieldValue.increment(1),
+      });
+
+      //TODO also update users doc sa assignedCount
+      print('task created successfully');
+    } catch (e) {
+      print('error creating a new task lods $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<bool> canUserEdit(String uid) async {
+    try {
+      DocumentSnapshot<Map<String, dynamic>> userdoc =
+          await db.collection('users').doc(uid).get();
+
+      if (userdoc.exists) {
+        final data = userdoc.data();
+        if (data != null && data.containsKey('role')) {
+          final role = data['role'];
+          if (role != 'reader' &&
+              role != 'contributor' &&
+              role != 'section_member') {
+            return true;
+          } else {
+            return false;
+          }
+        }
+        return false;
+      }
+      return false;
+    } catch (e) {
+      print('user cannot edit');
+      return false;
+    }
+  }
+
+  Future<ViewedTask> taskContentWritten(String topicId, String taskId) async {
+    try {
+      String? description, priority;
+
+      final parentDocref = db.collection('tasks').doc(topicId);
+
+      final DocumentSnapshot parentSnap = await parentDocref.get();
+
+      final DocumentSnapshot subTaskSnap =
+          await parentDocref.collection('assigned_tasks').doc(taskId).get();
+
+      if (parentSnap.exists && parentSnap.data() != null) {
+        final parentData = parentSnap.data() as Map<String, dynamic>;
+
+        description = parentData['details'];
+        priority = parentData['priority'];
+
+        final username = await getUserInfo(parentSnap['assigned_by']);
+        final deadlineTimestamp = subTaskSnap['deadline'] as Timestamp?;
+        final deadline = deadlineTimestamp != null
+            ? DateFormat('dd/MM/yyyy hh:mm a')
+                .format(deadlineTimestamp.toDate())
+            : 'No Deadline';
+
+        return ViewedTask(
+          title: subTaskSnap['taskname'] ?? '',
+          details: description ?? '',
+          tasktype: subTaskSnap['task_type'] ?? '',
+          deadline: deadline,
+          assigner: username['username'],
+          assignee: subTaskSnap['assignee_id'],
+          priority: priority ?? '',
+          content: subTaskSnap.data() != null
+              ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ?? ''
+              : '',
+          taskId: subTaskSnap.id,
+        );
+      } else {
+        print(
+            'Error: Task document not found for topicId: $topicId and taskId: $taskId');
+        return Future.error('Task not found'); // Or throw an exception
+      }
+    } catch (e) {
+      print('error ka bruh: $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> updateContent(
+    String topicId,
+    subtaskId,
+    newTitle,
+    newDeadline,
+    newType,
+    newMember,
+  ) async {
+    try {
+      DateTime parsedDeadline =
+          DateFormat("d/M/yyyy h:mm a").parse(newDeadline);
+      Timestamp deadlineTimestamp = Timestamp.fromDate(parsedDeadline);
+
+      await db
+          .collection('tasks')
+          .doc(topicId)
+          .collection('assigned_tasks')
+          .doc(subtaskId)
+          .update({
+        'assignee_id': newMember,
+        'updated_at': Timestamp.now(),
+        'updated_by': auth.currentUser!.uid,
+        'deadline': deadlineTimestamp,
+        'task_type': newType,
+        'taskname': newTitle,
+      });
+      print('task uppydatey suckcessfully');
+    } catch (e) {
+      print('error yung update bruh: $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> updateTopic(
+    String topicId,
+    newTitle,
+    newDetail,
+    newDeadline,
+    newPriority,
+  ) async {
+    try {
+      DateTime parsedDeadline =
+          DateFormat("d/M/yyyy h:mm a").parse(newDeadline);
+      Timestamp deadlineTimestamp = Timestamp.fromDate(parsedDeadline);
+
+      await db.collection('tasks').doc(topicId).update({
+        'title': newTitle,
+        'details': newDetail,
+        'updated_at': Timestamp.now(),
+        'updated_by': auth.currentUser!.uid,
+        'deadline': deadlineTimestamp,
+        'priority': newPriority,
+        //reason why di included yung section sa pwede iupdate is because it would not make sense to update from one section to another
+        //since may assigned members na para jan.
+        //much better to just delete the topic if nagkamali rather than changing the section
+      });
+      print('task uppydatey suckcessfully');
+    } catch (e) {
+      print('error yung update bruh: $e');
+      return Future.error(e);
+    }
+  }
   // TODO notification for announcements
 }

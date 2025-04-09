@@ -13,21 +13,24 @@ class ParentTopicCard extends StatefulWidget {
   final int completedSubtask;
   final String member1, member2;
   final int otherMembers;
+  final int projectStep;
+  final String sectionId;
 
-  const ParentTopicCard({
-    super.key,
-    required this.id,
-    required this.topicTitle,
-    required this.section,
-    required this.status,
-    required this.deadline,
-    required this.priority,
-    required this.totalSubtask,
-    required this.completedSubtask,
-    required this.member1,
-    required this.member2,
-    this.otherMembers = 0,
-  });
+  const ParentTopicCard(
+      {super.key,
+      required this.id,
+      required this.topicTitle,
+      required this.section,
+      required this.status,
+      required this.deadline,
+      required this.priority,
+      required this.totalSubtask,
+      required this.completedSubtask,
+      required this.member1,
+      required this.member2,
+      this.otherMembers = 0,
+      required this.projectStep,
+      required this.sectionId});
 
   @override
   State<ParentTopicCard> createState() => _ParentTopicCardState();
@@ -44,6 +47,7 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
             builder: (context) => TopicSingleRead(
               id: widget.id,
               section: widget.section,
+              sectionId: widget.sectionId,
             ),
           ),
         );
@@ -67,16 +71,74 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Align(
-              alignment: Alignment.topLeft,
-              child: Text(
-                widget.topicTitle,
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Text(
+                      widget.topicTitle,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 3),
+                Align(
+                  alignment: Alignment.topRight,
+                  child: PopupMenuButton<String>(
+                    // Specify the type of the menu items' value
+                    icon: const Icon(Icons.more_horiz_rounded),
+                    onSelected: (String value) async {
+                      if (value == 'delete') {
+                        bool? confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text('Confirm Delete'),
+                              content: const Text(
+                                  'Are you sure you want to delete this?'),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false), // No
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true), // Yes
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+
+                        if (confirmed == true) {
+                          print('Delete confirmed');
+                          // Implement your delete functionality here
+                        } else {
+                          print('Delete cancelled');
+                          // User cancelled the delete operation
+                        }
+                      }
+                    },
+                    itemBuilder: (BuildContext context) {
+                      return <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Text('Delete'),
+                        ),
+                      ];
+                    },
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             Row(
@@ -264,7 +326,7 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
             const SizedBox(height: 10),
             StepProgressIndicator(
               totalSteps: 6,
-              currentStep: widget.completedSubtask,
+              currentStep: widget.projectStep,
               selectedColor: const Color(0XFF020B40),
               unselectedColor: const Color(0XFF0E0E0E).withAlpha(90),
             ),
@@ -274,7 +336,7 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Text(
-                  'Progress',
+                  'Topic Progress',
                   style: TextStyle(
                     color: Colors.black,
                     fontSize: 16,

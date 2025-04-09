@@ -87,7 +87,6 @@ class NuntiumApp extends StatelessWidget {
         '/history': (context) => const HistoryPage(),
         '/termly': (context) => const TermlyPage(),
         '/contentpage': (context) => const ArticlePage(),
-        // '/exitConfirm': (context) => const ExitConfirmPage(),
         // '/sectioneditorhome': (context) => const EditorsHomePage(),
         '/profile': (context) => const ProfilePage(),
         '/contribhuntpage': (context) => const ContribHuntPage(),
@@ -150,7 +149,6 @@ class _AuthCheckerState extends State<AuthChecker> {
               'https://firebasestorage.googleapis.com/v0/b/nu-publication-system.firebasestorage.app/o/logo.jpg?alt=media&token=fed28218-248d-4ad9-a639-14f072f7e9b9',
           'createdAt': FieldValue.serverTimestamp(),
           'role': 'reader',
-          'section': 'reader',
         });
         userDoc = await firebaseFunctions.getUserDoc(uid);
       }

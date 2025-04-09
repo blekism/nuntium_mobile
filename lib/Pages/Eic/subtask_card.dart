@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:nuntium_mobile/Pages/Eic/do_assigned_task.dart';
 
 class SubtaskCard extends StatelessWidget {
-  final String imageurl, id, title, section, type, deadline, priority;
+  final String imageurl,
+      id,
+      title,
+      section,
+      type,
+      deadline,
+      priority,
+      status,
+      topicId,
+      sectionId;
 
   const SubtaskCard({
     super.key,
@@ -12,125 +22,224 @@ class SubtaskCard extends StatelessWidget {
     required this.type,
     required this.deadline,
     required this.priority,
+    required this.status,
+    required this.topicId,
+    required this.sectionId,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DoAssignedTaskPage(
+              section: section,
+              taskId: id,
+              topicId: topicId,
+              sectionId: sectionId,
+            ),
+          ),
+        );
+      },
       child: Container(
-        width: MediaQuery.of(context).size.width * .85,
-        padding: const EdgeInsets.all(10.0),
-        decoration: BoxDecoration(
-          color: const Color(0XFFB8CFED),
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+          width: MediaQuery.of(context).size.width * .90,
+          padding: const EdgeInsets.all(10.0),
+          decoration: BoxDecoration(
+            color: (() {
+              switch (status) {
+                case 'To Do':
+                  return const Color(0xFFB8CFED);
+                case 'Doing':
+                  return const Color(0xFFE4BD3D).withAlpha(80);
+                case 'Done':
+                  return const Color(0xFFBAD8B6);
+                case 'Returned':
+                  return const Color(0xFF6A9C64);
+                case 'Submitted':
+                  return const Color(0xFFC6B9F9);
+                default:
+                  return const Color(0xFFDDE4FB);
+              }
+            })(),
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '$section | $type',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ],
-                ),
-                CircleAvatar(
-                  backgroundColor: Colors.white,
-                  radius: 25, // Adjust radius as needed
-                ),
-              ],
-            ),
-            const SizedBox(height: 16), // Add spacing
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: (() {
-                      switch (priority) {
-                        case 'High Priority':
-                          return const Color(0xFFFFE0E0); // light red
-                        case 'Medium Priority':
-                          return const Color(0xFFFFF8E0); // light yellow
-                        case 'Low Priority':
-                          return const Color(0xFFE0FFE0); // light green
-                        default:
-                          return const Color(0xFFDDE4FB); // default blue
-                      }
-                    })(),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    priority,
-                    style: const TextStyle(
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFA3A3A3),
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(10),
-                        offset: const Offset(0, 4),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.access_time_filled_outlined,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 7),
-                      Text(
-                        deadline,
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Text(
+                        title,
+                        softWrap: true,
                         style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 5),
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Text(
+                        '$section | $type',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: (() {
+                              switch (priority) {
+                                case 'High Priority':
+                                  return const Color(0xFFD23737); // light red
+                                case 'Medium Priority':
+                                  return const Color(0xFFE4BD3D)
+                                      .withAlpha(80); // light yellow
+                                case 'Low Priority':
+                                  return const Color(0xFF6A9C64); // light green
+                                default:
+                                  return const Color(
+                                      0xFFDDE4FB); // default blue
+                              }
+                            })(),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            priority,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Container(
+                          width: MediaQuery.of(context).size.width * .4,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFA3A3A3),
+                            borderRadius: BorderRadius.circular(32),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(10),
+                                offset: const Offset(0, 4),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.access_time_filled_outlined,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 7),
+                              Expanded(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    deadline,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  ],
                 ),
-                CircleAvatar(
-                  backgroundImage: NetworkImage(
-                    imageurl,
+              ),
+              const SizedBox(width: 8),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: PopupMenuButton<String>(
+                      // Specify the type of the menu items' value
+                      icon: const Icon(Icons.more_horiz_rounded),
+                      onSelected: (String value) async {
+                        if (value == 'delete') {
+                          bool? confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: const Text('Confirm Delete'),
+                                content: const Text(
+                                    'Are you sure you want to delete this?'),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(false), // No
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(true), // Yes
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          if (confirmed == true) {
+                            print('Delete confirmed');
+                            // Implement your delete functionality here
+                          } else {
+                            print('Delete cancelled');
+                            // User cancelled the delete operation
+                          }
+                        }
+                      },
+                      itemBuilder: (BuildContext context) {
+                        return <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Text('Delete'),
+                          ),
+                        ];
+                      },
+                    ),
                   ),
-                  radius: 20, // Adjust radius as needed
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+                  const SizedBox(height: 8),
+                  CircleAvatar(
+                    backgroundImage: NetworkImage(
+                      imageurl,
+                    ),
+                    radius: 20, // Adjust radius as needed
+                  ),
+                ],
+              )
+            ],
+          )),
     );
   }
 }
