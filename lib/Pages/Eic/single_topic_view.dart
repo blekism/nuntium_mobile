@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
 import 'package:nuntium_mobile/Pages/Eic/subtaskview.dart';
+import 'package:nuntium_mobile/Pages/Eic/timelinev2.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
@@ -14,12 +15,18 @@ class TopicSingleRead extends ConsumerStatefulWidget {
   final String id;
   final String section;
   final String sectionId;
+  final String member1;
+  final String member2;
+  final int otherMember;
 
   const TopicSingleRead({
     super.key,
     required this.id,
     required this.section,
     required this.sectionId,
+    this.member1 = '',
+    this.member2 = '',
+    this.otherMember = 0,
   });
 
   @override
@@ -277,6 +284,23 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     onPressed: FirebaseAuth.instance.currentUser != null
                         ? () async {
                             print('timeline viewed');
+                            print('timeline viewed: ${widget.id}');
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TimelineV2Page(
+                                    topicId: widget.id,
+                                    title: topicView['title'],
+                                    sectionName: widget.section,
+                                    deadline: dateString,
+                                    totalSubtask: totalSubtask,
+                                    member1Url: widget.member1,
+                                    member2Url: widget.member2,
+                                    otherMembers: widget.otherMember,
+                                    projectStep: topicView['projectStep']),
+                              ),
+                            );
                           }
                         : () async {
                             print('di nakalogin pano nangyari yon');

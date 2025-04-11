@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import 'package:nuntium_mobile/models/comment.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:nuntium_mobile/models/eb_section_model.dart';
 import 'package:nuntium_mobile/models/member.dart';
 import 'package:nuntium_mobile/models/membermodel.dart';
 import 'package:nuntium_mobile/models/notif.dart';
 import 'package:nuntium_mobile/models/taskmodel.dart';
+import 'package:nuntium_mobile/models/timeline_item_model.dart';
 import 'package:nuntium_mobile/models/topic.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
@@ -17,6 +18,11 @@ class FirebaseFunctions {
   FirebaseFirestore db = FirebaseFirestore.instance;
   FirebaseAuth auth = FirebaseAuth.instance;
   Map<String, String> userCache = {};
+
+  String formatTimestamp(Timestamp timestamp) {
+    DateTime dateTime = timestamp.toDate();
+    return DateFormat('dd/MM/yyyy hh:mm a').format(dateTime);
+  }
 
   NormalItem maptoNormalItem(DocumentSnapshot doc) {
     final data = (doc.data() is Function)
@@ -826,6 +832,7 @@ class FirebaseFunctions {
     }
   }
 
+//starting here ang need ng logging sa timeline
   Future<void> createTopic(
       String assignee, title, deadline, priority, details, section) async {
     try {
@@ -851,6 +858,11 @@ class FirebaseFunctions {
         'status': 'pendingAPR',
         'otherMembers': 0,
         'projectStep': 1,
+      }).then((docRef) async {
+        final dateString = formatTimestamp(Timestamp.now());
+
+        await logInTimeline(docRef.id, 'Task Created',
+            'Task was created at $dateString', 'Topic Created');
       });
 
       print('topic created successfully');
@@ -916,6 +928,9 @@ class FirebaseFunctions {
           projectStep: topicData['projectStep'],
         );
       }).toList());
+    }).handleError((e) {
+      print('Error fetching topic for card with user info: $e');
+      return Future.error(e);
     });
   }
 
@@ -1006,6 +1021,11 @@ class FirebaseFunctions {
         'createApproved_at': Timestamp.now(),
         'projectStep': FieldValue.increment(1),
       });
+
+      final dateString = formatTimestamp(Timestamp.now());
+
+      await logInTimeline(topicId, 'Topic Approved',
+          'Topic was Approved at $dateString', 'Approved');
     } catch (e) {
       print('error approving post $e');
       return Future.error(e);
@@ -1019,31 +1039,50 @@ class FirebaseFunctions {
         'reason': 'rejected',
         'rejected_at': Timestamp.now(),
       });
+
+      final dateString = formatTimestamp(Timestamp.now());
+
+      await logInTimeline(topicId, 'Topic Rejected',
+          'Topic was Rejected at $dateString', 'Rejected');
     } catch (e) {
       print('error rejecting post $e');
       return Future.error(e);
     }
   }
 
-  Future<void> seApprove(String topicId, taskId) async {
+  Future<void> seApprove(
+    String topicId,
+    taskId,
+  ) async {
+    // need na sa log starting dito yung mismong content and mismong comments na
+    // this is essentially eb returns the task along with the comments for revision
     try {
       final dbref = db.collection('tasks').doc(topicId);
 
       await dbref.update({
         'completed_subtask': FieldValue.increment(1),
+        'projectStep': FieldValue.increment(1),
       });
 
       await dbref.collection('assigned_tasks').doc(taskId).update({
         'status': 'approved',
         'approved_at': Timestamp.now(),
       });
+
+      await logInTimeline(
+          topicId,
+          'Task Content Approved',
+          'Task Content was Approved at ${Timestamp.now()}',
+          'Content Approved');
     } catch (e) {
       print('error approving post $e');
       return Future.error(e);
     }
   }
 
-  Future<void> seReject(String topicId, taskId) async {
+  Future<void> seReject(String topicId, taskId, comment, content) async {
+    // need na sa log starting dito yung mismong content and mismong comments na
+    // this is essentially eb returns the task along with the comments for revision
     try {
       await db
           .collection('tasks')
@@ -1053,8 +1092,11 @@ class FirebaseFunctions {
           .update({
         'status': 'rejected',
         'reason': 'rejected',
+        'comment': comment,
         'rejected_at': Timestamp.now(),
       });
+
+      await logInTimeline(topicId, comment, content, 'For Revision');
     } catch (e) {
       print('error rejecting post $e');
       return Future.error(e);
@@ -1092,11 +1134,17 @@ class FirebaseFunctions {
         'status': 'To Do',
         'task_type': type,
         'taskname': title,
+        'parent_topic': id,
       });
 
       await db.collection('tasks').doc(id).update({
         'total_subtask': FieldValue.increment(1),
       });
+
+      final dateString = formatTimestamp(Timestamp.now());
+
+      await logInTimeline(id, 'Task Created', 'Task was Created at $dateString',
+          'Task Created');
 
       //TODO also update users doc sa assignedCount
       print('task created successfully');
@@ -1133,6 +1181,7 @@ class FirebaseFunctions {
   }
 
   Future<ViewedTask> taskContentWritten(String topicId, String taskId) async {
+    // this is for viewing. not necessary to log
     try {
       String? description, priority;
 
@@ -1206,6 +1255,11 @@ class FirebaseFunctions {
         'task_type': newType,
         'taskname': newTitle,
       });
+
+      final dateString = formatTimestamp(Timestamp.now());
+
+      await logInTimeline(topicId, 'Task Updated',
+          'Task was Updated at $dateString', 'Task Updated');
       print('task uppydatey suckcessfully');
     } catch (e) {
       print('error yung update bruh: $e');
@@ -1236,11 +1290,158 @@ class FirebaseFunctions {
         //since may assigned members na para jan.
         //much better to just delete the topic if nagkamali rather than changing the section
       });
+
+      final dateString = formatTimestamp(Timestamp.now());
+
+      await logInTimeline(topicId, 'Topic Updated',
+          'Topic was Updated at $dateString', 'Topic Updated');
       print('task uppydatey suckcessfully');
     } catch (e) {
       print('error yung update bruh: $e');
       return Future.error(e);
     }
+  }
+
+  Stream<List<TimelineItemModel>> getTimelineItems(String topicId) {
+    return db
+        .collection('tasks')
+        .doc(topicId)
+        .collection('timeline')
+        .orderBy('dateLogged', descending: true)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      final timelineItem =
+          await Future.wait(snapshot.docs.map((timelineDoc) async {
+        final data = timelineDoc.data();
+        final userId = data['userId'];
+
+        final username = await getUserInfo(userId);
+        final deadlineTimestamp = data['dateLogged'] as Timestamp?;
+        final deadline = deadlineTimestamp != null
+            ? DateFormat('dd/MM/yyyy hh:mm a')
+                .format(deadlineTimestamp.toDate())
+            : 'No Deadline';
+
+        return TimelineItemModel(
+          timelineDocId: timelineDoc.id,
+          comment: data['comment'],
+          content: data['content'],
+          logOwner: username['username'],
+          dateLogged: deadline,
+          status: data['status'],
+        );
+      }).toList());
+
+      return timelineItem;
+    });
+  }
+
+  Future<void> logInTimeline(String topicId, comment, content, status) async {
+    try {
+      await db.collection('tasks').doc(topicId).collection('timeline').add({
+        'userId': auth.currentUser!.uid,
+        'comment': comment,
+        'content': content,
+        'status': status,
+        'dateLogged': Timestamp.now(),
+      });
+    } catch (e) {
+      print('error logging timeline: $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<EbSectionModel> getEbSection(String uid) async {
+    try {
+      final String userSectionId, userSectionName;
+      final userData = await getUserInfo(uid);
+
+      if (userData.exists) {
+        userSectionId = userData['section'];
+
+        DocumentSnapshot sectionSnapshot =
+            await db.collection('sections').doc(userSectionId).get();
+
+        if (sectionSnapshot.exists) {
+          userSectionName = sectionSnapshot['sectionType'];
+          return EbSectionModel(
+            sectionId: userSectionId,
+            sectionName: userSectionName,
+          );
+        }
+      }
+    } catch (e) {
+      print('error getting section: $e');
+      return Future.error(e);
+    }
+
+    throw Exception('Section not found for user: $uid');
+  }
+
+  Stream<List<TaskModel>> getMemberTasks(String uid) {
+    return db
+        .collectionGroup('assigned_tasks')
+        .where('assignee_id', isEqualTo: uid)
+        .orderBy('deadline', descending: true)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      return Future.wait(snapshot.docs.map((taskDoc) async {
+        final taskData = taskDoc.data();
+        final parentId = taskData['parent_topic'];
+        final memberId = taskData['assignee_id'];
+        final tasktype = taskData['task_type'];
+        final title = taskData['taskname'];
+        final status = taskData['status'];
+
+        DocumentSnapshot topicDoc =
+            await db.collection('tasks').doc(parentId).get();
+
+        if (!topicDoc.exists) {
+          return const TaskModel(
+            id: '',
+            title: 'No Task',
+            section: '',
+            type: '',
+            deadline: '',
+            priority: '',
+            assignee: '',
+            status: '',
+            parentId: '',
+            sectionName: '',
+          );
+        }
+
+        final topicData = topicDoc.data() as Map<String, dynamic>;
+        final parentPriority = topicData['priority'] as String? ?? '';
+        final parentSection = topicData['section'] as String? ?? '';
+
+        final deadline = taskData['deadline'] as Timestamp;
+        final dateString =
+            DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
+
+        DocumentSnapshot userDoc =
+            await db.collection('users').doc(memberId).get();
+
+        DocumentSnapshot secDoc =
+            await db.collection('sections').doc(parentSection).get();
+
+        String imageUrl = userDoc.exists ? userDoc['photoURL'] : 'unkown';
+        String userSec = secDoc.exists ? secDoc['sectionType'] : 'unknown';
+
+        return TaskModel(
+          id: taskDoc.id,
+          title: title,
+          section: parentSection,
+          type: tasktype,
+          deadline: dateString,
+          priority: parentPriority,
+          assignee: imageUrl,
+          status: status,
+          parentId: parentId,
+          sectionName: userSec,
+        );
+      }));
+    });
   }
   // TODO notification for announcements
 }

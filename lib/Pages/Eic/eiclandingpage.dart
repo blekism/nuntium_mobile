@@ -26,6 +26,7 @@ class _EicLandingPage extends State<EicLandingPage> {
     const EicHomepage(),
     const CalendarPage(),
   ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

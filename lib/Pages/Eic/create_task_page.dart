@@ -427,7 +427,7 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
                                       FirebaseAuth.instance.currentUser!.uid,
                                       _titleController.text,
                                       _deadlineController.text,
-                                      _priorityController.text,
+                                      _selectedPriority,
                                       _detailController.text,
                                       _selectedSectionID,
                                     );

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
+import 'package:nuntium_mobile/Pages/EditorialBoard/eb_landing_page.dart';
+import 'package:nuntium_mobile/Pages/EditorialSecMembers/sec_member_landing_page.dart';
 import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
 import 'package:nuntium_mobile/Pages/Eic/eiclandingpage.dart';
 import 'package:nuntium_mobile/Pages/Homepage/contribhuntpage.dart';
@@ -58,6 +60,7 @@ Future<void> requestNotificationPermission() async {
     alert: true,
     badge: true,
     sound: true,
+    announcement: true,
   );
 
   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
@@ -224,26 +227,22 @@ class _AuthCheckerState extends State<AuthChecker> {
               //     onLogout: _onSignOut,
               //     userRole: userRole,
               //   );
-              // case 'section_writer':
-              //   return SectionWriterHomePage(
-              //     onLogout: _onSignOut,
-              //     userRole: userRole,
-              //   );
+              case 'section_writer':
+                return SecMemberLandingPage(
+                  onLogout: _onSignOut,
+                  userRole: userRole,
+                  uid: snapshot.data!.uid,
+                );
               case 'eic':
                 return EicLandingPage(
                   onLogout: _onSignOut,
                   userRole: userRole,
                 );
-              // case 'section_editors':
-              //   return EditorsHomePage(
-              //     onLogout: _onSignOut,
-              //     userRole: userRole,
-              //   );
-              // case 'committee':
-              //   return CommitteeHomePage(
-              //     onLogout: _onSignOut,
-              //     userRole: userRole,
-              //   );
+              case 'section_editors':
+                return EbLandingPage(
+                  onLogout: _onSignOut,
+                  userRole: userRole,
+                );
               default:
                 return const LoginPage();
             }

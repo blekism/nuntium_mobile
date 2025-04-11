@@ -48,6 +48,9 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
               id: widget.id,
               section: widget.section,
               sectionId: widget.sectionId,
+              member1: widget.member1,
+              member2: widget.member2,
+              otherMember: widget.otherMembers,
             ),
           ),
         );

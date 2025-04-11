@@ -1,5 +1,14 @@
 class TaskModel {
-  final String id, title, section, type, deadline, priority, assignee, status;
+  final String id,
+      title,
+      section,
+      type,
+      deadline,
+      priority,
+      assignee,
+      status,
+      parentId,
+      sectionName;
 
   const TaskModel({
     required this.id,
@@ -10,5 +19,7 @@ class TaskModel {
     required this.priority,
     required this.assignee,
     required this.status,
+    this.parentId = '',
+    this.sectionName = '',
   });
 }

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nuntium_mobile/Pages/Homepage/aboutpage.dart';
 import 'package:nuntium_mobile/Pages/Homepage/homepage.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/profilepage.dart';
+import 'package:nuntium_mobile/providers/provider_invalidator.dart';
 
-class Appdrawer extends StatefulWidget {
+class Appdrawer extends ConsumerStatefulWidget {
   final VoidCallback onLogout;
   final VoidCallback? logoutInReader;
   final String userRole;
@@ -21,10 +23,10 @@ class Appdrawer extends StatefulWidget {
   });
 
   @override
-  State<Appdrawer> createState() => _AppdrawerState();
+  ConsumerState<Appdrawer> createState() => _AppdrawerState();
 }
 
-class _AppdrawerState extends State<Appdrawer> {
+class _AppdrawerState extends ConsumerState<Appdrawer> {
   final GoogleSignIn _googleSignInLog = GoogleSignIn();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool canUsersRead = false;
@@ -59,6 +61,8 @@ class _AppdrawerState extends State<Appdrawer> {
 
   Future<void> _logout() async {
     try {
+      ProviderInvalidator.invalidateAll(ref);
+
       await _auth.signOut();
       await _googleSignInLog.signOut();
       widget.onLogout();
@@ -163,7 +167,6 @@ class _AppdrawerState extends State<Appdrawer> {
       case 'section_editors':
       case 'contributor':
       case 'section_writer':
-      case 'committee':
         return ListTile(
           title: const Text('Change to Reader Mode!'),
           onTap: () {

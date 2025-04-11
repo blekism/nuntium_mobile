@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
@@ -9,11 +10,13 @@ import 'package:nuntium_mobile/providers/data_provider.dart';
 class TopicPage extends ConsumerStatefulWidget {
   final String? sectionID;
   final String? sectionName;
+  final bool secEd;
 
   const TopicPage({
     super.key,
     this.sectionID,
     this.sectionName,
+    this.secEd = false,
   });
 
   @override
@@ -28,20 +31,38 @@ class _TopicPageState extends ConsumerState<TopicPage> {
     final viewTopics = ref.watch(topicProvider(widget.sectionID!));
 
     return Scaffold(
-      appBar: CustomAppBar(
-        appbarTitle: widget.sectionName,
-        hasNavigated: false,
-      ),
+      appBar: widget.secEd == true
+          ? null
+          : CustomAppBar(
+              appbarTitle: widget.sectionName,
+              hasNavigated: false,
+            ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Text(
-            'Section Topics',
-            style: TextStyle(
+          const SizedBox(height: 15),
+          Text(
+            '${widget.sectionName} Topics',
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w900,
               color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.only(left: 15),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Text(
+                'Welcome Back ${FirebaseAuth.instance.currentUser!.displayName}!',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.black,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -74,7 +95,7 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text('Create New Task'),
+                        Text('Create A New Topic'),
                         SizedBox(width: 5),
                         Icon(Icons.add_circle_outline)
                       ],

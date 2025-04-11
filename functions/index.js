@@ -127,6 +127,7 @@ exports.createSubtasksOnApproval = onDocumentUpdated(
           created_at: now,
           status: "To Do",
           assignee_id: pubAssigneeId,
+          parent_topic: taskId,
         });
 
         await subcollectionRef.add({
@@ -136,6 +137,23 @@ exports.createSubtasksOnApproval = onDocumentUpdated(
           created_at: now,
           status: "To Do",
           assignee_id: writerAssigneeId,
+          parent_topic: taskId,
+        });
+
+        await parentref.collection("timeline").add({
+        "userId": current.assigned_by,
+        "comment": "Pubmat subtask",
+        "content": "Pubmat subtask was created at " + admin.firestore.FieldValue.serverTimestamp(),
+        "status": "Task Created",
+        "dateLogged": admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        await parentref.collection("timeline").add({
+        "userId": current.assigned_by,
+        "comment": "Writing subtask",
+        "content": "Writing subtask was created at " + admin.firestore.FieldValue.serverTimestamp(),
+        "status": "Task Created",
+        "dateLogged": admin.firestore.FieldValue.serverTimestamp(),
         });
 
         await parentref.update({ total_subtask: 2, projectStep: FieldValue.increment(1) });
