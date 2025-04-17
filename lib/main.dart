@@ -33,6 +33,8 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.debug,
   );
@@ -52,6 +54,18 @@ void main() async {
   });
 
   runApp(const ProviderScope(child: NuntiumApp()));
+}
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+
+  // Access title and body from the data payload
+  String? title = message.data['title'];
+
+  print("🔔 Background message received!");
+  print("Title: $title");
+
+  // Optionally trigger a local notification here if needed
 }
 
 Future<void> requestNotificationPermission() async {
@@ -205,65 +219,55 @@ class _AuthCheckerState extends State<AuthChecker> {
 
         if (ConnectionState.active == snapshot.connectionState &&
             snapshot.hasData) {
-          if (snapshot.data!.emailVerified) {
-            if (userRole == null && isLoading) {
-              getUserRole(
-                snapshot.data!.uid,
-                snapshot.data!.email,
-                snapshot.data!.displayName,
-                snapshot.data!.photoURL,
-              );
-              return const Center(child: CircularProgressIndicator());
-            }
+          // if (!snapshot.data!.emailVerified) {
+          //   // ALWAYS redirect to VerifyPage if not verified
+          //   return VerifyPage(user: snapshot.data);
+          // }
 
-            switch (userRole) {
-              case 'reader':
-                return Homepage(
-                  onLogout: _onSignOut,
-                  userRole: userRole,
-                );
-              // case 'contributor':
-              //   return ContribHomePage(
-              //     onLogout: _onSignOut,
-              //     userRole: userRole,
-              //   );
-              case 'section_writer':
-                return SecMemberLandingPage(
-                  onLogout: _onSignOut,
-                  userRole: userRole,
-                  uid: snapshot.data!.uid,
-                );
-              case 'eic':
-                return EicLandingPage(
-                  onLogout: _onSignOut,
-                  userRole: userRole,
-                );
-              case 'section_editors':
-                return EbLandingPage(
-                  onLogout: _onSignOut,
-                  userRole: userRole,
-                );
-              default:
-                return const LoginPage();
-            }
-          } else {
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => VerifyPage(
-                      onLogout: _onSignOut,
-                    ),
-                  ),
-                );
-              },
+          if (userRole == null && isLoading) {
+            getUserRole(
+              snapshot.data!.uid,
+              snapshot.data!.email,
+              snapshot.data!.displayName,
+              snapshot.data!.photoURL,
             );
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          switch (userRole) {
+            case 'reader':
+              return Homepage(
+                onLogout: _onSignOut,
+                userRole: userRole,
+              );
+            // case 'contributor':
+            //   return ContribHomePage(
+            //     onLogout: _onSignOut,
+            //     userRole: userRole,
+            //   );
+            case 'section_writer':
+              return SecMemberLandingPage(
+                onLogout: _onSignOut,
+                userRole: userRole,
+                uid: snapshot.data!.uid,
+              );
+            case 'eic':
+              return EicLandingPage(
+                onLogout: _onSignOut,
+                userRole: userRole,
+              );
+            case 'section_editors':
+              return EbLandingPage(
+                onLogout: _onSignOut,
+                userRole: userRole,
+              );
+            default:
+              return const LoginPage();
           }
         } else {
           return const LoginPage();
         }
-        return const SizedBox.shrink();
+        //  return const SizedBox.shrink();
       },
     );
   }

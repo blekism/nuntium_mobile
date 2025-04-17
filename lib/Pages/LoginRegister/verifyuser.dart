@@ -4,9 +4,12 @@ import 'dart:async';
 
 class VerifyPage extends StatefulWidget {
   final VoidCallback? onLogout;
+  final User? user;
+
   const VerifyPage({
     super.key,
     this.onLogout,
+    this.user,
   });
 
   @override
@@ -21,8 +24,46 @@ class _VerifyPageState extends State<VerifyPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    sendEmailVerification(widget.user!);
     _checkVerificationStatus(); // Initial check when page loads
     _startAutoCheck(); // Start auto-checking in the background
+  }
+
+  Future<void> sendEmailVerification(User user) async {
+    if (user.emailVerified) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/initial',
+        (Route<dynamic> route) => false,
+      );
+    } else {
+      try {
+        await user.sendEmailVerification();
+        print('Verification email sent to ${user.email}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Email verification sent to your email. Please verify your email to continue.",
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        print("Error sending verification email: $e");
+        // Handle the error, e.g., show a SnackBar to the user.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Error sending verification email. Please check your connection.",
+              ),
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -86,7 +127,7 @@ class _VerifyPageState extends State<VerifyPage> with WidgetsBindingObserver {
 
     if (mounted) {
       print('redirected upon logout');
-      widget.onLogout!();
+      // widget.onLogout!();
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/initial',

@@ -7,6 +7,7 @@ class ViewedTask {
       assignee,
       priority,
       content,
+      headline,
       taskId;
 
   const ViewedTask({
@@ -18,6 +19,7 @@ class ViewedTask {
     required this.assignee,
     required this.priority,
     this.content = '',
+    this.headline = '',
     required this.taskId,
   });
 }

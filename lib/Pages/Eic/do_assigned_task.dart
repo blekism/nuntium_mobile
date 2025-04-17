@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Eic/assign_task_page.dart';
+import 'package:nuntium_mobile/Pages/Eic/fullscreentextfield.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
@@ -25,6 +26,32 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
   final TextEditingController _contentController = TextEditingController();
   final TextEditingController _headlineController = TextEditingController();
   final firebaseFunctions = FirebaseFunctions();
+  final ValueNotifier<String> _contentNotifier = ValueNotifier<String>('');
+
+  @override
+  void initState() {
+    super.initState();
+    _contentController.text = _contentNotifier.value; // Set initial value
+
+    _contentNotifier.addListener(() {
+      // Update the controller when the notifier changes
+      if (_contentController.text != _contentNotifier.value) {
+        _contentController.text = _contentNotifier.value;
+        // Move cursor to the end
+        _contentController.selection =
+            TextSelection.collapsed(offset: _contentController.text.length);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _contentNotifier
+        .dispose(); // Dispose of the ValueNotifier when the widget is disposed
+    _headlineController.dispose();
+    _contentController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +76,10 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
               children: [
                 assignedTaskView.when(
                   data: (assignedTask) {
+                    _headlineController.text = assignedTask.headline;
+                    _contentNotifier.value = assignedTask.content;
+                    _contentController.text = assignedTask.content;
+
                     return Column(
                       children: [
                         Row(
@@ -239,36 +270,66 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                           ),
                         ),
                         const SizedBox(height: 7),
-                        TextFormField(
-                          controller: _contentController,
-                          keyboardType: TextInputType.multiline,
-                          maxLines: 8,
-                          cursorColor: const Color(0XFF020B40),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: const Color(0XFFF5F5F5),
-                            labelText: 'Content',
-                            labelStyle: const TextStyle(
-                              color: Color(0xFF020B40),
-                              fontSize: 12,
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            focusedBorder: const OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Color(0XFF020B40),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ValueListenableBuilder<String>(
+                                valueListenable: _contentNotifier,
+                                builder: (context, value, child) {
+                                  return TextFormField(
+                                    controller: _contentController,
+                                    keyboardType: TextInputType.multiline,
+                                    maxLines: 8,
+                                    cursorColor: const Color(0XFF020B40),
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0XFFF5F5F5),
+                                      labelText: 'Content',
+                                      labelStyle: const TextStyle(
+                                        color: Color(0xFF020B40),
+                                        fontSize: 12,
+                                      ),
+                                      alignLabelWithHint: true,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      focusedBorder: const OutlineInputBorder(
+                                        borderSide: BorderSide(
+                                          color: Color(0XFF020B40),
+                                        ),
+                                      ),
+                                      focusColor: const Color(0XFF020B40),
+                                      suffixIcon: IconButton(
+                                        icon: const Icon(Icons.fullscreen),
+                                        onPressed: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  FullscreenTextPage(
+                                                contentNotifier:
+                                                    _contentNotifier,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    validator: (text) {
+                                      if (text == null || text.isEmpty) {
+                                        return 'Please enter the topic content';
+                                      }
+                                      return null;
+                                    },
+                                    onChanged: (text) {
+                                      _contentNotifier.value =
+                                          text; // Update the notifier
+                                    },
+                                  );
+                                },
                               ),
                             ),
-                            focusColor: const Color(0XFF020B40),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter the topic content';
-                            }
-
-                            return null;
-                          },
+                          ],
                         ),
                         const SizedBox(height: 15),
                         Row(
@@ -281,7 +342,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                 onPressed: () async {
                                   if (_formKey.currentState?.validate() ??
                                       false) {
-                                    showDialog<bool>(
+                                    final confirm = await showDialog<bool>(
                                       context: context,
                                       builder: (BuildContext context) {
                                         return AlertDialog(
@@ -300,15 +361,45 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                               onPressed: () async {
                                                 Navigator.of(context)
                                                     .pop(true); // Yes
-                                                print(
-                                                    'pinindot mo pre kaya nakapagsubmit ka');
                                               },
-                                              child: const Text('Assign'),
+                                              child: const Text('Submit'),
                                             ),
                                           ],
                                         );
                                       },
                                     );
+
+                                    if (confirm == true) {
+                                      try {
+                                        await firebaseFunctions
+                                            .submitSubTaskContent(
+                                          widget.topicId,
+                                          widget.taskId,
+                                          _headlineController.text,
+                                          _contentController.text,
+                                        );
+
+                                        ref.invalidate(taskWrittenProvider);
+
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                'Task submitted successfully!'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      } catch (error) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                                'Failed to submit task: $error'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
                                   }
                                 },
                                 style: ElevatedButton.styleFrom(

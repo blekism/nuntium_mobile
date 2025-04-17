@@ -1,6 +1,8 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
@@ -54,9 +56,36 @@ class _HomepageState extends State<Homepage> {
     }
   }
 
+  void _handleMessageNavigation(RemoteMessage message) {
+    final articleId = message.data['articleId'];
+    if (articleId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ArticlePage(
+            postId: articleId,
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+
+    // When user taps a notification from background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _handleMessageNavigation(message);
+    });
+
+    // When app is launched from terminated via notification
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) {
+        _handleMessageNavigation(message);
+      }
+    });
+
     if (_auth.currentUser != null) {
       firebaseFunctions.resetExpiredLikeThrottles();
       firebaseFunctions.resetExpiredBookmarkThrottles();

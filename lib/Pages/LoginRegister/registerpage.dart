@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:nuntium_mobile/Pages/LoginRegister/verifyuser.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -26,9 +27,13 @@ class _RegisterPageState extends State<RegisterPage> {
       RegExp(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$');
 
   final firebaseFunctions = FirebaseFunctions();
+  bool isLoading = false;
 
   Future<User?> signInWithOwnCredentials(
       String email, password, username) async {
+    setState(() {
+      isLoading = true;
+    });
     try {
       final UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
@@ -37,30 +42,14 @@ class _RegisterPageState extends State<RegisterPage> {
       if (user != null) {
         await user.updateDisplayName(username);
 
-        try {
-          await user.sendEmailVerification();
-          print('Verification email sent to ${user.email}');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  "Email verification sent to your email. Please verify your email to continue.",
-                ),
-              ),
-            );
-          }
-        } catch (e) {
-          print("Error sending verification email: $e");
-          // Handle the error, e.g., show a SnackBar to the user.
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  "Error sending verification email. Please check your connection.",
-                ),
-              ),
-            );
-          }
+        if (mounted) {
+          Navigator.pushReplacement(
+            // Use pushReplacement to avoid going back to register page
+            context,
+            MaterialPageRoute(
+              builder: (context) => VerifyPage(user: user),
+            ),
+          );
         }
         return user;
       }
@@ -335,16 +324,22 @@ class _RegisterPageState extends State<RegisterPage> {
                                               BorderRadius.circular(10),
                                         ),
                                       ),
-                                      child: const Align(
+                                      child: Align(
                                         alignment: Alignment.center,
-                                        child: Text(
-                                          'Sign Up',
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w900,
-                                            color: Colors.white,
-                                          ),
-                                        ),
+                                        child: isLoading
+                                            ? const CircularProgressIndicator(
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(Colors.white),
+                                              )
+                                            : const Text(
+                                                'Sign Up',
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
                                       ),
                                     ),
                                   ),

@@ -27,6 +27,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     await ref.read(yourWorksProvider.future);
   }
 
+  String _getFormattedRole(String role) {
+    switch (role) {
+      case 'section_editors':
+        return 'Section Editor';
+      case 'section_writer':
+        return 'Section Member';
+      case 'contributor':
+        return 'Contributor';
+      case 'reader':
+        return 'Reader';
+      case 'eic':
+        return 'Editor-In-Chief';
+      default:
+        return 'Unknown Role'; // fallback
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     User? currentUser = _auth.currentUser;
@@ -150,7 +167,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        userProfile['role'],
+                        _getFormattedRole(userProfile['role']),
                         style: const TextStyle(
                             color: Color(0XFF020B40),
                             fontWeight: FontWeight.w700,

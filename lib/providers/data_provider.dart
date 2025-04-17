@@ -121,3 +121,8 @@ final timelineProvider = StreamProvider.family<List<TimelineItemModel>, String>(
     (ref, String topicId) {
   return firebaseFunctions.getTimelineItems(topicId);
 });
+
+final allSectionTasksProvider =
+    StreamProvider.family<List<TaskModel>, String>((ref, String topicId) {
+  return firebaseFunctions.getSectionTasks(topicId);
+});

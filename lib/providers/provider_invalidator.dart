@@ -26,6 +26,8 @@ class ProviderInvalidator {
     ref.invalidate(memberListProvider);
     ref.invalidate(taskWrittenProvider);
     ref.invalidate(timelineProvider);
+    ref.invalidate(allSectionTasksProvider);
+
     print('all providers have been invalidated');
   }
 }

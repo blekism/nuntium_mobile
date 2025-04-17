@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:nuntium_mobile/models/comment.dart';
@@ -13,11 +15,48 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
 import 'package:nuntium_mobile/models/viewed_task.dart';
+import 'package:http/http.dart' as http;
 
 class FirebaseFunctions {
   FirebaseFirestore db = FirebaseFirestore.instance;
   FirebaseAuth auth = FirebaseAuth.instance;
   Map<String, String> userCache = {};
+
+  Future<String> processData(String content) async {
+    final Uri url = Uri.parse(
+        'https://us-central1-nu-publication-system.cloudfunctions.net/cleanInput');
+
+    final Map<String, String> headers = {'Content-Type': 'application/json'};
+    final Map<String, dynamic> body = {'text': content};
+    final String jsonBody = jsonEncode(body);
+
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonBody,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        print('text processed successfully');
+
+        if (data.containsKey('cleanedText')) {
+          return data['cleanedText'];
+        } else {
+          print('warning: procssed text not found in response');
+          return '';
+        }
+      } else {
+        print('failed to process text ${response.statusCode}');
+        print('failed response body ${response.body}');
+        throw Exception('Failed to process text: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('error processing text $e');
+      return Future.error(e);
+    }
+  }
 
   String formatTimestamp(Timestamp timestamp) {
     DateTime dateTime = timestamp.toDate();
@@ -949,7 +988,6 @@ class FirebaseFunctions {
       }
 
       final topicData = topicDoc.data() as Map<String, dynamic>;
-      final parentTitle = topicData['title'] as String? ?? '';
       final parentPriority = topicData['priority'] as String? ?? '';
       final parentSection = topicData['section'] as String? ?? '';
 
@@ -1016,7 +1054,7 @@ class FirebaseFunctions {
   Future<void> approveToCreate(String topicId) async {
     try {
       await db.collection('tasks').doc(topicId).update({
-        'status': 'doing',
+        'status': 'To Do',
         'eicApproved': true,
         'createApproved_at': Timestamp.now(),
         'projectStep': FieldValue.increment(1),
@@ -1165,7 +1203,7 @@ class FirebaseFunctions {
           final role = data['role'];
           if (role != 'reader' &&
               role != 'contributor' &&
-              role != 'section_member') {
+              role != 'section_writer') {
             return true;
           } else {
             return false;
@@ -1214,7 +1252,12 @@ class FirebaseFunctions {
           assignee: subTaskSnap['assignee_id'],
           priority: priority ?? '',
           content: subTaskSnap.data() != null
-              ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ?? ''
+              ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ??
+                  'No Content'
+              : '',
+          headline: subTaskSnap.data() != null
+              ? (subTaskSnap.data() as Map<String, dynamic>)['headline'] ??
+                  'No Headlien'
               : '',
           taskId: subTaskSnap.id,
         );
@@ -1443,5 +1486,117 @@ class FirebaseFunctions {
       }));
     });
   }
+
+  Stream<List<TaskModel>> getSectionTasks(String sectionId) {
+    // function for getting all tasks in a section
+    return db
+        .collection('tasks')
+        .where('section', isEqualTo: sectionId)
+        .snapshots()
+        .asyncMap((taskSnapshot) async {
+      final List<TaskModel> allTasks = [];
+
+      for (final taskDoc in taskSnapshot.docs) {
+        final topicId = taskDoc.id;
+        final topicData = taskDoc.data();
+        final parentPriority = topicData['priority'] ?? '';
+        final parentSection = topicData['section'] ?? '';
+        final parentTitle = topicData['title'] ?? '';
+
+        // Fetch the assigned_tasks subcollection for this task
+        final assignedTasksSnap = await db
+            .collection('tasks')
+            .doc(topicId)
+            .collection('assigned_tasks')
+            .get();
+
+        for (final assignedDoc in assignedTasksSnap.docs) {
+          final taskData = assignedDoc.data();
+          final memberId = taskData['assignee_id'];
+          final tasktype = taskData['task_type'];
+          final title = taskData['taskname'];
+          final status = taskData['status'];
+          final deadline = taskData['deadline'] as Timestamp;
+          final dateString =
+              DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
+
+          final userDoc = await db.collection('users').doc(memberId).get();
+          final imageUrl = userDoc.exists ? userDoc['photoURL'] : 'unknown';
+
+          allTasks.add(TaskModel(
+            id: assignedDoc.id,
+            title: title,
+            section: parentSection,
+            type: tasktype,
+            deadline: dateString,
+            priority: parentPriority,
+            assignee: imageUrl,
+            status: status,
+            parentId: topicId,
+            sectionName: parentTitle,
+          ));
+        }
+      }
+
+      return allTasks;
+    });
+  }
+
+  Future<void> submitSubTaskContent(
+      String topicId, taskId, headline, content) async {
+    try {
+      final dbref = db.collection('tasks').doc(topicId);
+
+      String cleanedData = await processData(content);
+
+      await dbref.collection('assigned_tasks').doc(taskId).update({
+        'headline': headline,
+        'content': cleanedData,
+        'submittedAt': Timestamp.now(),
+        'status': 'Submitted',
+      });
+
+      await dbref.update({
+        'completed_subtask': FieldValue.increment(1),
+      });
+
+      await logInTimeline(
+        topicId,
+        'Task Submitted',
+        content,
+        'Task Submitted',
+      );
+    } catch (e) {
+      print('error submitting task $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> startTask(String topicId, taskId) async {
+    //purpose is to signify in the system when a task was started
+    try {
+      final dbref = db.collection('tasks').doc(topicId);
+
+      await dbref.collection('assigned_tasks').doc(taskId).update({
+        'status': 'Doing',
+        'started_at': Timestamp.now(),
+      });
+
+      await dbref.update({
+        'status': 'Doing',
+      });
+
+      await logInTimeline(
+        topicId,
+        'Task Started',
+        'Task was Started',
+        'Task Started',
+      );
+    } catch (e) {
+      print('error starting task $e');
+      return Future.error(e);
+    }
+  }
+
   // TODO notification for announcements
 }

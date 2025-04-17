@@ -1,0 +1,3 @@
+[submodule "functions"]
+	path = functions
+	url = https://github.com/blekism/firebase-cloud-func.git
