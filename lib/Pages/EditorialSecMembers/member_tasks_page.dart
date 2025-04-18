@@ -156,6 +156,8 @@ final List<Map<String, String>> pubSections = [
   {"section": "All"},
   {"section": "pendingAPR"},
   {"section": "pendingPST"},
-  {"section": "done"},
-  {"section": "doing"},
+  {"section": "To Do"},
+  {"section": "Doing"},
+  {"section": "Submitted"},
+  {"section": "Done"},
 ];

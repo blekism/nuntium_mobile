@@ -27,26 +27,27 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
       return const Center(
         child: Text('Please log in to use this feature'),
       );
+    } else {
+      final reditPage = ref.watch(reditContentProvider(user!.uid));
+
+      return reditPage.when(
+        data: (reditPage) {
+          if (reditPage.isEmpty) {
+            return const Center(child: Text('Start reading now!'));
+          }
+
+          return SeeMorePageTemplate(
+            pageName: 'History',
+            shownTopics: reditPage,
+          );
+        },
+        loading: () => const Center(
+          child: CircularProgressIndicator(),
+        ),
+        error: (error, stackTrace) => Center(
+          child: Text('Error: $error'),
+        ),
+      );
     }
-    final reditPage = ref.watch(reditContentProvider(user!.uid));
-
-    return reditPage.when(
-      data: (reditPage) {
-        if (reditPage.isEmpty) {
-          return const Center(child: Text('Start reading now!'));
-        }
-
-        return SeeMorePageTemplate(
-          pageName: 'History',
-          shownTopics: reditPage,
-        );
-      },
-      loading: () => const Center(
-        child: CircularProgressIndicator(),
-      ),
-      error: (error, stackTrace) => Center(
-        child: Text('Error: $error'),
-      ),
-    );
   }
 }

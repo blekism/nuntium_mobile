@@ -997,6 +997,7 @@ class FirebaseFunctions {
         final tasktype = taskData['task_type'];
         final title = taskData['taskname'];
         final status = taskData['status'];
+        final canCaption = taskData['forCaption'];
 
         final deadline = taskData['deadline'] as Timestamp;
         final dateString =
@@ -1017,6 +1018,7 @@ class FirebaseFunctions {
           priority: parentPriority,
           assignee: imageUrl,
           status: status,
+          forCaption: canCaption,
         );
       }));
     });
@@ -1170,6 +1172,7 @@ class FirebaseFunctions {
         'created_at': Timestamp.now(),
         'deadline': deadlineTimestamp,
         'status': 'To Do',
+        'forCaption': false,
         'task_type': type,
         'taskname': title,
         'parent_topic': id,
@@ -1251,6 +1254,7 @@ class FirebaseFunctions {
           assigner: username['username'],
           assignee: subTaskSnap['assignee_id'],
           priority: priority ?? '',
+          canCaption: subTaskSnap['forCaption'],
           content: subTaskSnap.data() != null
               ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ??
                   'No Content'
@@ -1435,6 +1439,7 @@ class FirebaseFunctions {
         final tasktype = taskData['task_type'];
         final title = taskData['taskname'];
         final status = taskData['status'];
+        final canCaption = taskData['forCaption'];
 
         DocumentSnapshot topicDoc =
             await db.collection('tasks').doc(parentId).get();
@@ -1482,6 +1487,7 @@ class FirebaseFunctions {
           status: status,
           parentId: parentId,
           sectionName: userSec,
+          forCaption: canCaption,
         );
       }));
     });
@@ -1516,6 +1522,7 @@ class FirebaseFunctions {
           final tasktype = taskData['task_type'];
           final title = taskData['taskname'];
           final status = taskData['status'];
+          final canCaption = taskData['forCaption'];
           final deadline = taskData['deadline'] as Timestamp;
           final dateString =
               DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
@@ -1534,6 +1541,7 @@ class FirebaseFunctions {
             status: status,
             parentId: topicId,
             sectionName: parentTitle,
+            forCaption: canCaption,
           ));
         }
       }
@@ -1556,9 +1564,7 @@ class FirebaseFunctions {
         'status': 'Submitted',
       });
 
-      await dbref.update({
-        'completed_subtask': FieldValue.increment(1),
-      });
+      //tasks will be marked as completed once approved by eb
 
       await logInTimeline(
         topicId,
@@ -1596,6 +1602,51 @@ class FirebaseFunctions {
       print('error starting task $e');
       return Future.error(e);
     }
+  }
+
+  Future<void> uploadMultiImage(
+    String topicId,
+    taskId,
+    List<String> imageUrls,
+  ) async {
+    final dbref = db.collection('tasks').doc(topicId);
+
+    await dbref.collection('assigned_tasks').doc(taskId).update({
+      'submittedAt': Timestamp.now(),
+      'images': FieldValue.arrayUnion(imageUrls),
+      'content': 'Images uploaded',
+      'status': 'Submitted',
+    });
+
+    await logInTimeline(
+      topicId,
+      'Task Submitted',
+      'Images uploaded',
+      'Task Submitted',
+    );
+  }
+
+  Stream<List<String>> retrieveImages(String topicId, taskId) {
+    return db
+        .collection('tasks')
+        .doc(topicId)
+        .collection('assigned_tasks')
+        .doc(taskId)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data();
+
+        if (data != null && data.containsKey('images')) {
+          List<String> images =
+              (data['images'] as List<dynamic>).cast<String>();
+          return images;
+        } else {
+          return [];
+        }
+      }
+      return [];
+    });
   }
 
   // TODO notification for announcements

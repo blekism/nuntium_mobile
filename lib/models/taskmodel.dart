@@ -9,6 +9,7 @@ class TaskModel {
       status,
       parentId,
       sectionName;
+  final bool forCaption;
 
   const TaskModel({
     required this.id,
@@ -21,5 +22,6 @@ class TaskModel {
     required this.status,
     this.parentId = '',
     this.sectionName = '',
+    this.forCaption = false,
   });
 }

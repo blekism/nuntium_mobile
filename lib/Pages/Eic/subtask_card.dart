@@ -39,6 +39,7 @@ class SubtaskCard extends StatelessWidget {
               taskId: id,
               topicId: topicId,
               sectionId: sectionId,
+              type: type,
             ),
           ),
         );

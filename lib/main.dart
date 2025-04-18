@@ -219,11 +219,6 @@ class _AuthCheckerState extends State<AuthChecker> {
 
         if (ConnectionState.active == snapshot.connectionState &&
             snapshot.hasData) {
-          // if (!snapshot.data!.emailVerified) {
-          //   // ALWAYS redirect to VerifyPage if not verified
-          //   return VerifyPage(user: snapshot.data);
-          // }
-
           if (userRole == null && isLoading) {
             getUserRole(
               snapshot.data!.uid,

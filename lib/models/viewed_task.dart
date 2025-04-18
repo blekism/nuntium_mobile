@@ -9,6 +9,7 @@ class ViewedTask {
       content,
       headline,
       taskId;
+  final bool canCaption;
 
   const ViewedTask({
     required this.title,
@@ -21,5 +22,6 @@ class ViewedTask {
     this.content = '',
     this.headline = '',
     required this.taskId,
+    this.canCaption = false,
   });
 }

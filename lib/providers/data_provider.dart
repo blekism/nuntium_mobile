@@ -15,24 +15,22 @@ import 'package:nuntium_mobile/models/viewed_task.dart';
 
 final firebaseFunctions = FirebaseFunctions();
 
-final authStateProvider = StreamProvider<User?>((ref) {
-  return FirebaseAuth.instance.authStateChanges();
-});
-
 final topicsProvider =
-    StreamProvider.family<List<Topic>, String>((ref, sectionId) {
+    StreamProvider.family.autoDispose<List<Topic>, String>((ref, sectionId) {
   return firebaseFunctions.streamTopics(sectionId);
 });
 
-final featuredCardProvider = StreamProvider<List<FeaturedItem>>((ref) {
+final featuredCardProvider =
+    StreamProvider.autoDispose<List<FeaturedItem>>((ref) {
   return firebaseFunctions.streamFeaturedItems();
 });
 
-final normalCardProvider = StreamProvider<List<NormalItem>>((ref) {
+final normalCardProvider = StreamProvider.autoDispose<List<NormalItem>>((ref) {
   return firebaseFunctions.streamNormalItems();
 });
 
-final discoverContentProvider = StreamProvider<List<NormalItem>>((ref) {
+final discoverContentProvider =
+    StreamProvider.autoDispose<List<NormalItem>>((ref) {
   return firebaseFunctions.streamForDiscover();
 });
 
@@ -47,82 +45,91 @@ final reditContentProvider =
 });
 
 final commentsContentProvider =
-    StreamProvider.family<List<Comment>, String>((ref, postId) {
+    StreamProvider.family.autoDispose<List<Comment>, String>((ref, postId) {
   return firebaseFunctions.streamComments(postId);
 });
 
-final postContentProvider =
-    StreamProvider.family<Map<String, dynamic>?, String>((ref, String postId) {
+final postContentProvider = StreamProvider.family
+    .autoDispose<Map<String, dynamic>?, String>((ref, String postId) {
   return firebaseFunctions.streamPostData(postId);
 });
 
-final yourWorksProvider = FutureProvider<List<NormalItem>>((ref) {
+final yourWorksProvider = FutureProvider.autoDispose<List<NormalItem>>((ref) {
   return firebaseFunctions.yourWorks();
 });
 
-final userDataProfile =
-    FutureProvider.family<DocumentSnapshot, String>((ref, String userId) {
+final userDataProfile = FutureProvider.family
+    .autoDispose<DocumentSnapshot, String>((ref, String userId) {
   return firebaseFunctions.getUserInfo(userId);
 });
 
-final latestTermlyProvider = StreamProvider<List<NormalItem>>((ref) {
+final latestTermlyProvider =
+    StreamProvider.autoDispose<List<NormalItem>>((ref) {
   return firebaseFunctions.viewFeaturedTermly();
 });
 
-final allTermlyProvider = StreamProvider<List<NormalItem>>((ref) {
+final allTermlyProvider = StreamProvider.autoDispose<List<NormalItem>>((ref) {
   return firebaseFunctions.viewAllTermly();
 });
 
-final membersProvider = FutureProvider<List<Member>>((ref) {
+final membersProvider = FutureProvider.autoDispose<List<Member>>((ref) {
   return firebaseFunctions.getOrgMembers();
 });
 
-final postNotificationsProvider = StreamProvider<List<NotifItem>>((ref) {
+final postNotificationsProvider =
+    StreamProvider.autoDispose<List<NotifItem>>((ref) {
   return firebaseFunctions.streamPostNotifications();
 });
 
-final sectionProvider = FutureProvider<QuerySnapshot>((ref) {
+final sectionProvider = FutureProvider.autoDispose<QuerySnapshot>((ref) {
   return firebaseFunctions.getSections();
 });
 
 final topicProvider =
-    StreamProvider.family<List<Topic>, String>((ref, sectionId) {
+    StreamProvider.family.autoDispose<List<Topic>, String>((ref, sectionId) {
   return firebaseFunctions.getTopics(sectionId);
 });
 
-final topicDataProvider =
-    StreamProvider.family<Map<String, dynamic>, String>((ref, String topicId) {
+final topicDataProvider = StreamProvider.family
+    .autoDispose<Map<String, dynamic>, String>((ref, String topicId) {
   return firebaseFunctions.streamTopicInfo(topicId);
 });
 
 final taskProvider =
-    StreamProvider.family<List<TaskModel>, String>((ref, topicId) {
+    StreamProvider.family.autoDispose<List<TaskModel>, String>((ref, topicId) {
   return firebaseFunctions.getTasks(topicId);
 });
 
 final memberTasksProvider =
-    StreamProvider.family<List<TaskModel>, String>((ref, uid) {
+    StreamProvider.family.autoDispose<List<TaskModel>, String>((ref, uid) {
   return firebaseFunctions.getMemberTasks(uid);
 });
 
-final memberListProvider =
-    FutureProvider.family<List<Membermodel>, String>((ref, String sectionId) {
+final memberListProvider = FutureProvider.family
+    .autoDispose<List<Membermodel>, String>((ref, String sectionId) {
   return firebaseFunctions.getUsersInSection(sectionId);
 });
 
-final taskWrittenProvider =
-    FutureProvider.family<ViewedTask, (String, String)>((ref, ids) async {
+final taskWrittenProvider = FutureProvider.family
+    .autoDispose<ViewedTask, (String, String)>((ref, ids) async {
   final topicId = ids.$1;
   final taskId = ids.$2;
   return firebaseFunctions.taskContentWritten(topicId, taskId);
 });
 
-final timelineProvider = StreamProvider.family<List<TimelineItemModel>, String>(
-    (ref, String topicId) {
+final timelineProvider = StreamProvider.family
+    .autoDispose<List<TimelineItemModel>, String>((ref, String topicId) {
   return firebaseFunctions.getTimelineItems(topicId);
 });
 
-final allSectionTasksProvider =
-    StreamProvider.family<List<TaskModel>, String>((ref, String topicId) {
+final allSectionTasksProvider = StreamProvider.family
+    .autoDispose<List<TaskModel>, String>((ref, String topicId) {
   return firebaseFunctions.getSectionTasks(topicId);
+});
+
+final retImagesProvider = StreamProvider.family
+    .autoDispose<List<String>, (String, String)>((ref, ids) {
+  final topicId = ids.$1;
+  final taskId = ids.$2;
+  return firebaseFunctions.retrieveImages(topicId, taskId);
 });

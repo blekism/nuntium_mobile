@@ -61,18 +61,16 @@ class _AppdrawerState extends ConsumerState<Appdrawer> {
 
   Future<void> _logout() async {
     try {
-      ProviderInvalidator.invalidateAll(ref);
-
       await _auth.signOut();
       await _googleSignInLog.signOut();
       widget.onLogout();
 
-      // Sign the user out of Firebase
-      // After successful logout, navigate to the login screen:
+      ProviderInvalidator.invalidateAll(ref);
+
       if (mounted) {
         Navigator.pushNamedAndRemoveUntil(
           context,
-          '/login',
+          '/initial',
           (Route<dynamic> route) => false,
         ); // Or your login route
       }

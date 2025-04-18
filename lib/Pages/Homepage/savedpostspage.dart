@@ -27,27 +27,29 @@ class _SavedPageState extends ConsumerState<SavedPage> {
       return const Center(
         child: Text('Please log in to use this feature'),
       );
+    } else {
+      final bookmarkedStream =
+          ref.watch(bookmarkContentProvider(currentUser!.uid));
+
+      return bookmarkedStream.when(
+        data: (bookmarkedStream) {
+          if (bookmarkedStream.isEmpty) {
+            return const Center(
+                child: Text('Start bookmarking items now! hehe'));
+          }
+
+          return SeeMorePageTemplate(
+            pageName: 'Saved Posts',
+            shownTopics: bookmarkedStream,
+          );
+        },
+        loading: () => const Center(
+          child: CircularProgressIndicator(),
+        ),
+        error: (error, stackStrace) => Center(
+          child: Text('Error: $error'),
+        ),
+      );
     }
-    final bookmarkedStream =
-        ref.watch(bookmarkContentProvider(currentUser!.uid));
-
-    return bookmarkedStream.when(
-      data: (bookmarkedStream) {
-        if (bookmarkedStream.isEmpty) {
-          return const Center(child: Text('Start bookmarking items now! hehe'));
-        }
-
-        return SeeMorePageTemplate(
-          pageName: 'Saved Posts',
-          shownTopics: bookmarkedStream,
-        );
-      },
-      loading: () => const Center(
-        child: CircularProgressIndicator(),
-      ),
-      error: (error, stackStrace) => Center(
-        child: Text('Error: $error'),
-      ),
-    );
   }
 }

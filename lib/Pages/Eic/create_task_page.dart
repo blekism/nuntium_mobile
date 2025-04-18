@@ -32,7 +32,6 @@ class CreateTaskPage extends ConsumerStatefulWidget {
 class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _priorityController = TextEditingController();
   final TextEditingController _detailController = TextEditingController();
   final TextEditingController _deadlineController = TextEditingController();
   final TextEditingController _sectionController = TextEditingController();
