@@ -8,7 +8,8 @@ class ViewedTask {
       priority,
       content,
       headline,
-      taskId;
+      taskId,
+      assigneeSec;
   final bool canCaption;
 
   const ViewedTask({
@@ -22,6 +23,7 @@ class ViewedTask {
     this.content = '',
     this.headline = '',
     required this.taskId,
+    required this.assigneeSec,
     this.canCaption = false,
   });
 }

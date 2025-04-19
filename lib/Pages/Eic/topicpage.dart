@@ -86,21 +86,22 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                             )));
               },
               child: DottedBorder(
-                  color: const Color(0XFF020B40),
-                  borderType: BorderType.RRect,
-                  radius: const Radius.circular(10),
-                  strokeWidth: 2,
-                  child: const Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text('Create A New Topic'),
-                        SizedBox(width: 5),
-                        Icon(Icons.add_circle_outline)
-                      ],
-                    ),
-                  )),
+                color: const Color(0XFF020B40),
+                borderType: BorderType.RRect,
+                radius: const Radius.circular(10),
+                strokeWidth: 2,
+                child: const Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text('Create A New Topic'),
+                      SizedBox(width: 5),
+                      Icon(Icons.add_circle_outline)
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 15),

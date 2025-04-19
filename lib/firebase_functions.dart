@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
 import 'package:nuntium_mobile/models/comment.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -863,7 +864,13 @@ class FirebaseFunctions {
 
   Future<QuerySnapshot> getSections() async {
     try {
-      QuerySnapshot sectionSnapshot = await db.collection('sections').get();
+      QuerySnapshot sectionSnapshot =
+          await db.collection('sections').where('sectionType', whereNotIn: [
+        'Managing Editor',
+        'Associate',
+        'Editor-In-Chief',
+      ]).get();
+
       return sectionSnapshot;
     } catch (e) {
       print('error fetching data $e');
@@ -1090,10 +1097,7 @@ class FirebaseFunctions {
     }
   }
 
-  Future<void> seApprove(
-    String topicId,
-    taskId,
-  ) async {
+  Future<void> seApprove(String topicId, taskId) async {
     // need na sa log starting dito yung mismong content and mismong comments na
     // this is essentially eb returns the task along with the comments for revision
     try {
@@ -1240,6 +1244,7 @@ class FirebaseFunctions {
         priority = parentData['priority'];
 
         final username = await getUserInfo(parentSnap['assigned_by']);
+        final assigneeSec = await getUserInfo(subTaskSnap['assignee_id']);
         final deadlineTimestamp = subTaskSnap['deadline'] as Timestamp?;
         final deadline = deadlineTimestamp != null
             ? DateFormat('dd/MM/yyyy hh:mm a')
@@ -1255,6 +1260,7 @@ class FirebaseFunctions {
           assignee: subTaskSnap['assignee_id'],
           priority: priority ?? '',
           canCaption: subTaskSnap['forCaption'],
+          assigneeSec: assigneeSec['section'],
           content: subTaskSnap.data() != null
               ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ??
                   'No Content'
@@ -1611,10 +1617,34 @@ class FirebaseFunctions {
   ) async {
     final dbref = db.collection('tasks').doc(topicId);
 
+    await dbref.update({
+      'submittedAt': Timestamp.now(),
+      'images': FieldValue.arrayUnion(imageUrls),
+      'content': 'Images uploaded',
+      'status': 'Submitted',
+    });
+
     await dbref.collection('assigned_tasks').doc(taskId).update({
       'submittedAt': Timestamp.now(),
       'images': FieldValue.arrayUnion(imageUrls),
       'content': 'Images uploaded',
+      'status': 'Submitted',
+    });
+
+    await logInTimeline(
+      topicId,
+      'Task Submitted',
+      'Images uploaded',
+      'Task Submitted',
+    );
+  }
+
+  Future<void> pubmatImageUpload(String topicId, taskId, imageUrl) async {
+    final dbref = db.collection('tasks').doc(topicId);
+
+    await dbref.collection('assigned_tasks').doc(taskId).update({
+      'submittedAt': Timestamp.now(),
+      'content': imageUrl,
       'status': 'Submitted',
     });
 
@@ -1647,6 +1677,63 @@ class FirebaseFunctions {
       }
       return [];
     });
+  }
+
+  Future<void> deleteImages(
+      int index, List<String> retrievedImages, String topicId, taskId) async {
+    try {
+      String imageUrl = retrievedImages[index];
+
+      Reference storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
+
+      await storageRef.delete();
+
+      await db
+          .collection('tasks')
+          .doc(topicId)
+          .collection('assigned_tasks')
+          .doc(taskId)
+          .update({
+        'images': FieldValue.arrayRemove([retrievedImages[index]]),
+      });
+
+      await logInTimeline(
+        topicId,
+        'None',
+        'Deleted Image',
+        'Deleted',
+      );
+    } catch (e) {
+      print('error deletingi image $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> deleteImage(String topicId, taskId, imageUrl) async {
+    try {
+      Reference storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
+
+      await storageRef.delete();
+
+      await db
+          .collection('tasks')
+          .doc(topicId)
+          .collection('assigned_tasks')
+          .doc(taskId)
+          .update({
+        'content': FieldValue.delete(),
+      });
+
+      await logInTimeline(
+        topicId,
+        'None',
+        'Deleted Image',
+        'Deleted',
+      );
+    } catch (e) {
+      print('error deletingi image $e');
+      return Future.error(e);
+    }
   }
 
   // TODO notification for announcements

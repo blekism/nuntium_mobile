@@ -1,3 +1,4 @@
+import 'package:dotted_border/dotted_border.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +39,9 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
   final ValueNotifier<String> _contentNotifier = ValueNotifier<String>('');
   bool showImageIsLoading = true;
   final ImageUploadService imageUploadService = ImageUploadService();
+  File? _selectedSingleImage;
+  bool _isUploading = false;
+  bool _uploadSuccess = false;
 
   @override
   void initState() {
@@ -165,40 +169,66 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
     }
   }
 
-  // Future<void> deleteImage(int index) async {
-  //   try {
-  //     String imageUrl = retrievedImages[index];
-  //     Reference storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
-  //     await storageRef.delete();
-  //     print('Image deleted from storage');
-  //     await FirebaseFirestore.instance
-  //         .collection('tasks')
-  //         .doc(widget.taskId)
-  //         .collection('assigned_tasks')
-  //         .doc(widget.assignedId)
-  //         .update({
-  //       'images': FieldValue.arrayRemove([retrievedImages[index]]),
-  //     });
-  //     await FirebaseFirestore.instance
-  //         .collection('tasks')
-  //         .doc(widget.taskId)
-  //         .collection('timeline')
-  //         .add({
-  //       'author': _auth.currentUser!.displayName,
-  //       'comment': 'None',
-  //       'content': 'Deleted image ',
-  //       'date': FieldValue.serverTimestamp(),
-  //       'revision': 'Image Deletion',
-  //       'timelinestatus': 'Deleted',
-  //     });
-  //     print('image deleted successfully');
-  //     setState(() {
-  //       retrievedImages.removeAt(index);
-  //     });
-  //   } catch (e) {
-  //     print("Error deleting image: $e");
-  //   }
-  // }
+  Future<void> _pickSingleImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      setState(() {
+        _selectedSingleImage = File(image.path);
+      });
+    }
+  }
+
+  Future<String?> uploadSingleImage(File selectedImage) async {
+    try {
+      final String? userId = firebaseFunctions.auth.currentUser?.uid;
+      if (userId == null) {
+        print("User not logged in.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("User not logged in.")),
+        );
+        return null;
+      }
+
+      final storagePath =
+          'images/${widget.topicId}_${DateTime.now().millisecondsSinceEpoch}';
+
+      final Reference storageRef = FirebaseStorage.instance.ref(storagePath);
+
+      final UploadTask uploadTask = storageRef.putFile(selectedImage);
+
+      await uploadTask.whenComplete(() => print('Image uploaded'));
+
+      final String downloadURL = await storageRef.getDownloadURL();
+      print('File available at $downloadURL');
+      return downloadURL;
+    } catch (e) {
+      print("Error uploading image: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to upload image: $e")),
+      );
+      return null;
+    }
+  }
+
+  Future<void> deleteImage(int index, List<String> retrievedImages) async {
+    try {
+      await firebaseFunctions.deleteImages(
+        index,
+        retrievedImages,
+        widget.topicId,
+        widget.taskId,
+      );
+
+      print('image deleted successfully');
+      setState(() {
+        retrievedImages.removeAt(index);
+      });
+    } catch (e) {
+      print("Error deleting image: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +313,8 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                                         assignedTask.title,
                                                     tasktype:
                                                         assignedTask.tasktype,
-                                                    sectionId: widget.sectionId,
+                                                    sectionId: assignedTask
+                                                        .assigneeSec,
                                                     topicId: widget.topicId,
                                                     taskId: assignedTask.taskId,
                                                   ),
@@ -398,8 +429,194 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                               context,
                               retImagesView,
                             ),
-                          // 'Pubmat' => // TODO lalagay dito yung single image
+                          'Pubmat' => Align(
+                              alignment: Alignment.center,
+                              child: GestureDetector(
+                                onTap: () async {
+                                  print('image selection opened');
 
+                                  assignedTask.content != '' &&
+                                          assignedTask.content
+                                              .startsWith('http')
+                                      ? print('may image na tanga')
+                                      : await _pickSingleImage();
+                                },
+                                child: Align(
+                                  alignment: Alignment.center,
+                                  child: assignedTask.content != '' &&
+                                          assignedTask.content
+                                              .startsWith('http')
+                                      ? AspectRatio(
+                                          aspectRatio: 1,
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            child: Stack(
+                                              children: [
+                                                Image.network(
+                                                  assignedTask.content,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error,
+                                                      stackTrace) {
+                                                    return const Text(
+                                                        'Failed to load image');
+                                                  },
+                                                ),
+                                                Positioned(
+                                                  top: 8,
+                                                  left: 8,
+                                                  child: GestureDetector(
+                                                    onTap: () async {
+                                                      setState(() {
+                                                        _selectedSingleImage =
+                                                            null;
+                                                      });
+
+                                                      await firebaseFunctions
+                                                          .deleteImage(
+                                                        widget.topicId,
+                                                        widget.taskId,
+                                                        assignedTask.content,
+                                                      );
+
+                                                      ref.invalidate(
+                                                          taskWrittenProvider);
+                                                    },
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.black
+                                                            .withOpacity(0.5),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Padding(
+                                                        padding:
+                                                            EdgeInsets.all(4.0),
+                                                        child: Icon(
+                                                          Icons.close,
+                                                          color: Colors.white,
+                                                          size: 20,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                )
+                                              ],
+                                            ),
+                                          ),
+                                        )
+                                      : _selectedSingleImage == null
+                                          ? Container(
+                                              height: MediaQuery.of(context)
+                                                      .size
+                                                      .height *
+                                                  .3,
+                                              width: MediaQuery.of(context)
+                                                      .size
+                                                      .width *
+                                                  .85,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: DottedBorder(
+                                                color: const Color(0XFF020B40),
+                                                borderType: BorderType.RRect,
+                                                radius:
+                                                    const Radius.circular(10),
+                                                strokeWidth: 2,
+                                                child: const Center(
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      Text(
+                                                          'Select your pubmat image'),
+                                                      SizedBox(width: 5),
+                                                      Icon(Icons
+                                                          .add_circle_outline)
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                          : _isUploading
+                                              ? const CircularProgressIndicator()
+                                              : ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  child: Stack(
+                                                    children: [
+                                                      Image.file(
+                                                        _selectedSingleImage!,
+                                                        width: MediaQuery.of(
+                                                                    context)
+                                                                .size
+                                                                .width *
+                                                            .85,
+                                                        height: MediaQuery.of(
+                                                                    context)
+                                                                .size
+                                                                .height *
+                                                            .3,
+                                                        fit: BoxFit.cover,
+                                                      ),
+                                                      Positioned(
+                                                        top: 8,
+                                                        left: 8,
+                                                        child: GestureDetector(
+                                                          onTap: () async {
+                                                            setState(() {
+                                                              _selectedSingleImage =
+                                                                  null;
+                                                            });
+
+                                                            await firebaseFunctions
+                                                                .deleteImage(
+                                                              widget.topicId,
+                                                              widget.taskId,
+                                                              assignedTask
+                                                                  .content,
+                                                            );
+
+                                                            ref.invalidate(
+                                                                taskWrittenProvider);
+                                                          },
+                                                          child: Container(
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: Colors
+                                                                  .black
+                                                                  .withOpacity(
+                                                                      0.5),
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                            ),
+                                                            child:
+                                                                const Padding(
+                                                              padding:
+                                                                  EdgeInsets
+                                                                      .all(4.0),
+                                                              child: Icon(
+                                                                Icons.close,
+                                                                color: Colors
+                                                                    .white,
+                                                                size: 20,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
+                                ),
+                              ),
+                            ),
                           _ => const SizedBox.shrink(),
                         },
                         const SizedBox(height: 15),
@@ -433,7 +650,15 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                                 Navigator.of(context)
                                                     .pop(true); // Yes
                                               },
-                                              child: const Text('Submit'),
+                                              child: switch (widget.type) {
+                                                'Writing' =>
+                                                  const Text('Submit'),
+                                                'Photography' => const Text(
+                                                    'Submit the Caption'),
+                                                'Pubmat' =>
+                                                  const Text('Submit'),
+                                                _ => const SizedBox.shrink()
+                                              },
                                             ),
                                           ],
                                         );
@@ -442,13 +667,60 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
 
                                     if (confirm == true) {
                                       try {
-                                        await firebaseFunctions
-                                            .submitSubTaskContent(
-                                          widget.topicId,
-                                          widget.taskId,
-                                          _headlineController.text,
-                                          _contentController.text,
-                                        );
+                                        switch (widget.type) {
+                                          case 'Writing':
+                                            await firebaseFunctions
+                                                .submitSubTaskContent(
+                                              widget.topicId,
+                                              widget.taskId,
+                                              _headlineController.text,
+                                              _contentController.text,
+                                            );
+                                            break;
+                                          case 'Photography':
+                                            print('call caption submission');
+                                            break;
+                                          case 'Pubmat':
+                                            setState(() {
+                                              _isUploading = true;
+                                              _uploadSuccess = false;
+                                            });
+                                            if (_selectedSingleImage != null) {
+                                              final imageUrl =
+                                                  await uploadSingleImage(
+                                                      _selectedSingleImage!);
+                                              if (imageUrl != null) {
+                                                // Now you have the imageUrl, you can save it to Firestore or use it as needed
+                                                print(
+                                                    'Uploaded image URL: $imageUrl');
+                                                // call firebase function to save the pubmat url
+                                                await firebaseFunctions
+                                                    .pubmatImageUpload(
+                                                  widget.topicId,
+                                                  widget.taskId,
+                                                  imageUrl,
+                                                );
+                                                setState(() {
+                                                  _isUploading = false;
+                                                  _uploadSuccess = true;
+                                                });
+                                              } else {
+                                                // Handle the error case where the image upload failed
+                                                print('Image upload failed');
+                                                setState(() {
+                                                  _isUploading = false;
+                                                  _uploadSuccess = false;
+                                                });
+                                              }
+                                            } else {
+                                              print('No image selected');
+                                              setState(() {
+                                                _isUploading = false;
+                                                _uploadSuccess = false;
+                                              });
+                                            }
+                                            break;
+                                        }
 
                                         ref.invalidate(taskWrittenProvider);
 
@@ -1105,6 +1377,10 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                     ),
                                     onPressed: () async {
                                       // Handle delete functionality
+                                      await deleteImage(
+                                        index,
+                                        retImages,
+                                      );
                                       print('Photo at index $index deleted');
                                     },
                                   ),
