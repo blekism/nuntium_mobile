@@ -7,6 +7,7 @@ import 'package:nuntium_mobile/Pages/Eic/fullscreentextfield.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/image_processor/image_upload_service.dart';
+import 'package:nuntium_mobile/models/viewed_task.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'dart:io';
 import 'package:photo_view/photo_view.dart';
@@ -429,194 +430,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                               context,
                               retImagesView,
                             ),
-                          'Pubmat' => Align(
-                              alignment: Alignment.center,
-                              child: GestureDetector(
-                                onTap: () async {
-                                  print('image selection opened');
-
-                                  assignedTask.content != '' &&
-                                          assignedTask.content
-                                              .startsWith('http')
-                                      ? print('may image na tanga')
-                                      : await _pickSingleImage();
-                                },
-                                child: Align(
-                                  alignment: Alignment.center,
-                                  child: assignedTask.content != '' &&
-                                          assignedTask.content
-                                              .startsWith('http')
-                                      ? AspectRatio(
-                                          aspectRatio: 1,
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            child: Stack(
-                                              children: [
-                                                Image.network(
-                                                  assignedTask.content,
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (context, error,
-                                                      stackTrace) {
-                                                    return const Text(
-                                                        'Failed to load image');
-                                                  },
-                                                ),
-                                                Positioned(
-                                                  top: 8,
-                                                  left: 8,
-                                                  child: GestureDetector(
-                                                    onTap: () async {
-                                                      setState(() {
-                                                        _selectedSingleImage =
-                                                            null;
-                                                      });
-
-                                                      await firebaseFunctions
-                                                          .deleteImage(
-                                                        widget.topicId,
-                                                        widget.taskId,
-                                                        assignedTask.content,
-                                                      );
-
-                                                      ref.invalidate(
-                                                          taskWrittenProvider);
-                                                    },
-                                                    child: Container(
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.black
-                                                            .withOpacity(0.5),
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      child: const Padding(
-                                                        padding:
-                                                            EdgeInsets.all(4.0),
-                                                        child: Icon(
-                                                          Icons.close,
-                                                          color: Colors.white,
-                                                          size: 20,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                              ],
-                                            ),
-                                          ),
-                                        )
-                                      : _selectedSingleImage == null
-                                          ? Container(
-                                              height: MediaQuery.of(context)
-                                                      .size
-                                                      .height *
-                                                  .3,
-                                              width: MediaQuery.of(context)
-                                                      .size
-                                                      .width *
-                                                  .85,
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: DottedBorder(
-                                                color: const Color(0XFF020B40),
-                                                borderType: BorderType.RRect,
-                                                radius:
-                                                    const Radius.circular(10),
-                                                strokeWidth: 2,
-                                                child: const Center(
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      Text(
-                                                          'Select your pubmat image'),
-                                                      SizedBox(width: 5),
-                                                      Icon(Icons
-                                                          .add_circle_outline)
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            )
-                                          : _isUploading
-                                              ? const CircularProgressIndicator()
-                                              : ClipRRect(
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                  child: Stack(
-                                                    children: [
-                                                      Image.file(
-                                                        _selectedSingleImage!,
-                                                        width: MediaQuery.of(
-                                                                    context)
-                                                                .size
-                                                                .width *
-                                                            .85,
-                                                        height: MediaQuery.of(
-                                                                    context)
-                                                                .size
-                                                                .height *
-                                                            .3,
-                                                        fit: BoxFit.cover,
-                                                      ),
-                                                      Positioned(
-                                                        top: 8,
-                                                        left: 8,
-                                                        child: GestureDetector(
-                                                          onTap: () async {
-                                                            setState(() {
-                                                              _selectedSingleImage =
-                                                                  null;
-                                                            });
-
-                                                            await firebaseFunctions
-                                                                .deleteImage(
-                                                              widget.topicId,
-                                                              widget.taskId,
-                                                              assignedTask
-                                                                  .content,
-                                                            );
-
-                                                            ref.invalidate(
-                                                                taskWrittenProvider);
-                                                          },
-                                                          child: Container(
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color: Colors
-                                                                  .black
-                                                                  .withOpacity(
-                                                                      0.5),
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                            ),
-                                                            child:
-                                                                const Padding(
-                                                              padding:
-                                                                  EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Icon(
-                                                                Icons.close,
-                                                                color: Colors
-                                                                    .white,
-                                                                size: 20,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                    ],
-                                                  ),
-                                                ),
-                                ),
-                              ),
-                            ),
+                          'Pubmat' => _pubmatImageInput(assignedTask, context),
                           _ => const SizedBox.shrink(),
                         },
                         const SizedBox(height: 15),
@@ -832,6 +646,150 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Align _pubmatImageInput(ViewedTask assignedTask, BuildContext context) {
+    return Align(
+      alignment: Alignment.center,
+      child: GestureDetector(
+        onTap: () async {
+          print('image selection opened');
+
+          assignedTask.content != '' && assignedTask.content.startsWith('http')
+              ? print('may image na tanga')
+              : await _pickSingleImage();
+        },
+        child: Align(
+          alignment: Alignment.center,
+          child: assignedTask.content != '' &&
+                  assignedTask.content.startsWith('http')
+              ? AspectRatio(
+                  aspectRatio: 1,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Stack(
+                      children: [
+                        Image.network(
+                          assignedTask.content,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Text('Failed to load image');
+                          },
+                        ),
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: GestureDetector(
+                            onTap: () async {
+                              setState(() {
+                                _selectedSingleImage = null;
+                              });
+
+                              await firebaseFunctions.deleteImage(
+                                widget.topicId,
+                                widget.taskId,
+                                assignedTask.content,
+                              );
+
+                              ref.invalidate(taskWrittenProvider);
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Padding(
+                                padding: EdgeInsets.all(4.0),
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                )
+              : _selectedSingleImage == null
+                  ? Container(
+                      height: MediaQuery.of(context).size.height * .3,
+                      width: MediaQuery.of(context).size.width * .85,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: DottedBorder(
+                        color: const Color(0XFF020B40),
+                        borderType: BorderType.RRect,
+                        radius: const Radius.circular(10),
+                        strokeWidth: 2,
+                        child: const Center(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text('Select your pubmat image'),
+                              SizedBox(width: 5),
+                              Icon(Icons.add_circle_outline)
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  : _isUploading
+                      ? const CircularProgressIndicator()
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Stack(
+                            children: [
+                              Image.file(
+                                _selectedSingleImage!,
+                                width: MediaQuery.of(context).size.width * .85,
+                                height: MediaQuery.of(context).size.height * .3,
+                                fit: BoxFit.cover,
+                              ),
+                              Positioned(
+                                top: 8,
+                                left: 8,
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    setState(() {
+                                      _selectedSingleImage = null;
+                                    });
+
+                                    await firebaseFunctions.deleteImage(
+                                      widget.topicId,
+                                      widget.taskId,
+                                      assignedTask.content,
+                                    );
+
+                                    ref.invalidate(taskWrittenProvider);
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.5),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(4.0),
+                                      child: Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            ],
+                          ),
+                        ),
         ),
       ),
     );
@@ -1210,102 +1168,123 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
 
     // Get the image URLs
     List<String> imagesToShow = [];
-    retImagesView.whenData((data) => imagesToShow = data);
+    retImagesView.whenData((data) {
+      if (data.isEmpty) {
+        // If the list is empty, immediately close the dialog and show the bottom sheet
+        Navigator.of(context).pop();
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          isDismissible: true,
+          backgroundColor: Colors.white,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (modalContext) {
+            return _buildImageGrid(modalContext, const AsyncValue.data([]), {});
+          },
+        );
+      } else {
+        imagesToShow = data;
+        // Perform the similarity check
+        final imageUploadService = ImageUploadService();
 
-    // Perform the similarity check
-    final imageUploadService = ImageUploadService();
+        imageUploadService
+            .findSimilarExistingImages(imagesToShow)
+            .then((similarImagesMap) {
+          Navigator.of(context).pop();
 
-    final Map<String, List<String>> similarImagesMap =
-        await imageUploadService.findSimilarExistingImages(imagesToShow);
+          // Show the similarity dialog if similar images are found and the widget is still mounted
+          if (similarImagesMap.isNotEmpty && mounted) {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text("Similar Images Found"),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: similarImagesMap.entries.map((entry) {
+                        final currentImageUrl = entry.key;
+                        final similarUrls = entry.value;
 
-    Navigator.of(context).pop();
+                        print("Image URL: $currentImageUrl");
+                        if (similarUrls.isNotEmpty) {
+                          for (final url in similarUrls) {
+                            print("Similar Image URL: $url");
+                          }
+                        }
 
-    // Show the similarity dialog if similar images are found and the widget is still mounted
-    if (similarImagesMap.isNotEmpty && mounted) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-              title: const Text("Similar Images Found"),
-              content: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: similarImagesMap.entries.map((entry) {
-                    final currentImageUrl = entry.key;
-                    final similarUrls = entry.value;
-
-                    print("Image URL: $currentImageUrl");
-                    if (similarUrls.isNotEmpty) {
-                      for (final url in similarUrls) {
-                        print("Similar Image URL: $url");
-                      }
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                              "Image: ${currentImageUrl.split('/').last.substring(0, 15)}..."),
-                          if (similarUrls.isNotEmpty)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text("Similar to:"),
-                                ...similarUrls.map((url) => Text(
-                                    "- ${url.split('/').last.substring(0, 15)}...")),
-                              ],
-                            )
-                          else
-                            const Text(
-                                "No similar images found for this image."),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text("OK"),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    // Now show the bottom modal sheet with the images
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      isDismissible: true,
-                      backgroundColor: Colors.white,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      builder: (modalContext) {
-                        return _buildImageGrid(
-                            modalContext, retImagesView, similarImagesMap);
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                  "Image: ${currentImageUrl.split('/').last.substring(0, 15)}..."),
+                              if (similarUrls.isNotEmpty)
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text("Similar to:"),
+                                    ...similarUrls.map((url) => Text(
+                                        "- ${url.split('/').last.substring(0, 15)}...")),
+                                  ],
+                                )
+                              else
+                                const Text(
+                                    "No similar images found for this image."),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  actions: <Widget>[
+                    TextButton(
+                      child: const Text("OK"),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        // Now show the bottom modal sheet with the images
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          isDismissible: true,
+                          backgroundColor: Colors.white,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (modalContext) {
+                            return _buildImageGrid(
+                                modalContext, retImagesView, similarImagesMap);
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
-              ]);
-        },
-      );
-    } else {
-      // If no similar images found, immediately show the bottom modal sheet
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        isDismissible: true,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (modalContext) {
-          return _buildImageGrid(modalContext, retImagesView, similarImagesMap);
-        },
-      );
-    }
+                    ),
+                  ],
+                );
+              },
+            );
+          } else {
+            // If no similar images found, immediately show the bottom modal sheet
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              isDismissible: true,
+              backgroundColor: Colors.white,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              builder: (modalContext) {
+                return _buildImageGrid(
+                    modalContext, retImagesView, similarImagesMap);
+              },
+            );
+          }
+        });
+      }
+    });
   }
 
   Widget _buildImageGrid(

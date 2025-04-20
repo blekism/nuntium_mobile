@@ -11,6 +11,7 @@ import 'package:nuntium_mobile/models/timeline_item_model.dart';
 import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
+import 'package:nuntium_mobile/models/topic_content_model.dart';
 import 'package:nuntium_mobile/models/viewed_task.dart';
 
 final firebaseFunctions = FirebaseFunctions();
@@ -132,4 +133,14 @@ final retImagesProvider = StreamProvider.family
   final topicId = ids.$1;
   final taskId = ids.$2;
   return firebaseFunctions.retrieveImages(topicId, taskId);
+});
+
+final singleViewTopicContent = FutureProvider.family
+    .autoDispose<TopicContentModel, String>((ref, String topicId) {
+  return firebaseFunctions.readTaskContents(topicId);
+});
+
+final viewAllImageInParent = StreamProvider.family
+    .autoDispose<List<String>, String>((ref, String topicId) {
+  return firebaseFunctions.retrieveAllImages(topicId);
 });

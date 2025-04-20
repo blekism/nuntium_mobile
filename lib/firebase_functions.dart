@@ -15,6 +15,7 @@ import 'package:nuntium_mobile/models/topic.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
+import 'package:nuntium_mobile/models/topic_content_model.dart';
 import 'package:nuntium_mobile/models/viewed_task.dart';
 import 'package:http/http.dart' as http;
 
@@ -1060,6 +1061,79 @@ class FirebaseFunctions {
     });
   }
 
+  Future<TopicContentModel> readTaskContents(String topicId) async {
+    try {
+      final parentRef = db.collection('tasks').doc(topicId);
+
+      final DocumentSnapshot parentDoc = await parentRef.get();
+
+      if (!parentDoc.exists) {
+        print('parent does not exist');
+        return TopicContentModel(
+          topicId: topicId,
+          pubmatUrl: '',
+          headline: '',
+          writtenContent: '',
+        );
+      }
+
+      if (parentDoc['section'] != 'XDEPw2VPYdeFdKQRuRpA') {
+        final QuerySnapshot childTopics =
+            await parentRef.collection('assigned_tasks').get();
+
+        if (childTopics.docs.isEmpty) {
+          print('parent does not exist');
+          return TopicContentModel(
+            topicId: topicId,
+            pubmatUrl: '',
+            headline: '',
+            writtenContent: '',
+          );
+        }
+
+        final docs = childTopics.docs;
+        String pubmatUrl = '';
+        String writtenContent = '';
+        String headline = '';
+
+        for (final doc in docs) {
+          final data = doc.data() as Map<String, dynamic>?;
+          String taskType = data!['task_type'];
+
+          if (taskType == 'Pubmat' && data.containsKey('content')) {
+            pubmatUrl = data['content'] as String? ?? '';
+          } else if (taskType == 'Writing' &&
+              data.containsKey('content') &&
+              data.containsKey('headline')) {
+            writtenContent = data['content'] as String? ?? '';
+            headline = data['headline'] as String? ?? '';
+          }
+        }
+
+        return TopicContentModel(
+          topicId: topicId,
+          pubmatUrl: pubmatUrl,
+          headline: headline,
+          writtenContent: writtenContent,
+        );
+      }
+      return TopicContentModel(
+        topicId: topicId,
+        pubmatUrl: '',
+        headline: '',
+        writtenContent: '',
+      );
+    } catch (e) {
+      print('Error reading task contents: $e');
+      return TopicContentModel(
+        topicId: topicId,
+        pubmatUrl: '',
+        headline: '',
+        writtenContent: '',
+      );
+    }
+  }
+
   Future<void> approveToCreate(String topicId) async {
     try {
       await db.collection('tasks').doc(topicId).update({
@@ -1432,6 +1506,7 @@ class FirebaseFunctions {
   }
 
   Stream<List<TaskModel>> getMemberTasks(String uid) {
+    // for contrib and section writer
     return db
         .collectionGroup('assigned_tasks')
         .where('assignee_id', isEqualTo: uid)
@@ -1501,6 +1576,7 @@ class FirebaseFunctions {
 
   Stream<List<TaskModel>> getSectionTasks(String sectionId) {
     // function for getting all tasks in a section
+    //yung getSectionTasks, replace with getSectionTopics (this is for contribs and sec writers para maka contribute sila sa ibang tasks)
     return db
         .collection('tasks')
         .where('section', isEqualTo: sectionId)
@@ -1679,6 +1755,23 @@ class FirebaseFunctions {
     });
   }
 
+  Stream<List<String>> retrieveAllImages(String topicId) {
+    return db.collection('tasks').doc(topicId).snapshots().map((snapshot) {
+      if (snapshot.exists) {
+        final data = snapshot.data();
+
+        if (data != null && data.containsKey('images')) {
+          List<String> images =
+              (data['images'] as List<dynamic>).cast<String>();
+          return images;
+        } else {
+          return [];
+        }
+      }
+      return [];
+    });
+  }
+
   Future<void> deleteImages(
       int index, List<String> retrievedImages, String topicId, taskId) async {
     try {
@@ -1694,6 +1787,31 @@ class FirebaseFunctions {
           .collection('assigned_tasks')
           .doc(taskId)
           .update({
+        'images': FieldValue.arrayRemove([retrievedImages[index]]),
+      });
+
+      await logInTimeline(
+        topicId,
+        'None',
+        'Deleted Image',
+        'Deleted',
+      );
+    } catch (e) {
+      print('error deletingi image $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> deleteImageInParent(
+      int index, List<String> retrievedImages, String topicId) async {
+    try {
+      String imageUrl = retrievedImages[index];
+
+      Reference storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
+
+      await storageRef.delete();
+
+      await db.collection('tasks').doc(topicId).update({
         'images': FieldValue.arrayRemove([retrievedImages[index]]),
       });
 

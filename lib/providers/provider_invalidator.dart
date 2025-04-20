@@ -28,6 +28,7 @@ class ProviderInvalidator {
     ref.invalidate(timelineProvider);
     ref.invalidate(allSectionTasksProvider);
     ref.invalidate(retImagesProvider);
+    ref.invalidate(singleViewTopicContent);
 
     print('all providers have been invalidated');
   }
