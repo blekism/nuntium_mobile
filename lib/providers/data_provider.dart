@@ -135,9 +135,9 @@ final retImagesProvider = StreamProvider.family
   return firebaseFunctions.retrieveImages(topicId, taskId);
 });
 
-final singleViewTopicContent = FutureProvider.family
+final singleViewTopicContent = StreamProvider.family
     .autoDispose<TopicContentModel, String>((ref, String topicId) {
-  return firebaseFunctions.readTaskContents(topicId);
+  return firebaseFunctions.streamTaskContents(topicId);
 });
 
 final viewAllImageInParent = StreamProvider.family

@@ -5,6 +5,7 @@ import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
 import 'package:nuntium_mobile/Pages/Eic/parent_topic_card.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:dotted_border/dotted_border.dart';
+import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class TopicPage extends ConsumerStatefulWidget {
@@ -26,9 +27,27 @@ class TopicPage extends ConsumerStatefulWidget {
 class _TopicPageState extends ConsumerState<TopicPage> {
   String selectedSection = 'All';
 
+  void filteredSection(String section) {
+    setState(() {
+      selectedSection = section;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewTopics = ref.watch(topicProvider(widget.sectionID!));
+
+    List<Topic> filteredTopics = [];
+
+    if (viewTopics.hasValue) {
+      if (selectedSection == 'All') {
+        filteredTopics = viewTopics.value!;
+      } else {
+        filteredTopics = viewTopics.value!
+            .where((topic) => topic.status == selectedSection)
+            .toList();
+      }
+    }
 
     return Scaffold(
       appBar: widget.secEd == true
@@ -108,7 +127,7 @@ class _TopicPageState extends ConsumerState<TopicPage> {
           Expanded(
             child: viewTopics.when(
               data: (viewTopics) {
-                if (viewTopics.isEmpty) {
+                if (filteredTopics.isEmpty) {
                   return const Center(
                     child: Text('No Topics Found. Start Creating One Now!'),
                   );
@@ -118,9 +137,9 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                   padding: const EdgeInsets.all(15.0),
                   child: ListView.builder(
                     shrinkWrap: true,
-                    itemCount: viewTopics.length,
+                    itemCount: filteredTopics.length,
                     itemBuilder: (context, index) {
-                      final item = viewTopics[index];
+                      final item = filteredTopics[index];
                       final member1Image = item.members.isNotEmpty
                           ? item.members[0].imageUrl
                           : '';
@@ -197,7 +216,7 @@ class _TopicPageState extends ConsumerState<TopicPage> {
               ),
               child: GestureDetector(
                 onTap: () {
-                  // filteredSection(sectionName);
+                  filteredSection(sectionName);
                 },
                 child: Padding(
                   padding: const EdgeInsets.only(

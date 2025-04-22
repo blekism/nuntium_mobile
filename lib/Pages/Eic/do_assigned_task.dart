@@ -1,5 +1,4 @@
 import 'package:dotted_border/dotted_border.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,7 +16,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:multi_image_picker_view/multi_image_picker_view.dart';
 
 class DoAssignedTaskPage extends ConsumerStatefulWidget {
-  final String topicId, taskId, section, sectionId, type;
+  final String topicId, taskId, section, sectionId, type, status;
 
   const DoAssignedTaskPage({
     super.key,
@@ -26,6 +25,7 @@ class DoAssignedTaskPage extends ConsumerStatefulWidget {
     required this.section,
     required this.sectionId,
     required this.type,
+    required this.status,
   });
 
   @override
@@ -280,61 +280,67 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                 ),
                               ),
                             ),
-                            FutureBuilder<bool>(
-                              future: canUserEdit,
-                              builder: (BuildContext context,
-                                  AsyncSnapshot<bool> snapshot) {
-                                if (snapshot.hasData) {
-                                  final userCanEdit =
-                                      snapshot.data!; // Safely unwrap the bool
+                            widget.status == "Approved" ||
+                                    widget.status == "Done"
+                                ? const SizedBox.shrink()
+                                : FutureBuilder<bool>(
+                                    future: canUserEdit,
+                                    builder: (BuildContext context,
+                                        AsyncSnapshot<bool> snapshot) {
+                                      if (snapshot.hasData) {
+                                        final userCanEdit = snapshot
+                                            .data!; // Safely unwrap the bool
 
-                                  return userCanEdit
-                                      ? Align(
-                                          alignment: Alignment.topRight,
-                                          child: IconButton(
-                                            onPressed: () {
-                                              print(
-                                                  'editing this ${assignedTask.deadline}');
-                                              print(
-                                                  'editing this ${assignedTask.assignee}');
-                                              print(
-                                                  'editing this ${assignedTask.title}');
-                                              print(
-                                                  'editing this ${assignedTask.tasktype}');
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      AssignTaskPage(
-                                                    isEditing: true,
-                                                    deadline:
-                                                        assignedTask.deadline,
-                                                    member:
-                                                        assignedTask.assignee,
-                                                    taskname:
-                                                        assignedTask.title,
-                                                    tasktype:
-                                                        assignedTask.tasktype,
-                                                    sectionId: assignedTask
-                                                        .assigneeSec,
-                                                    topicId: widget.topicId,
-                                                    taskId: assignedTask.taskId,
-                                                  ),
+                                        return userCanEdit
+                                            ? Align(
+                                                alignment: Alignment.topRight,
+                                                child: IconButton(
+                                                  onPressed: () {
+                                                    print(
+                                                        'editing this ${assignedTask.deadline}');
+                                                    print(
+                                                        'editing this ${assignedTask.assignee}');
+                                                    print(
+                                                        'editing this ${assignedTask.title}');
+                                                    print(
+                                                        'editing this ${assignedTask.tasktype}');
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            AssignTaskPage(
+                                                          isEditing: true,
+                                                          deadline: assignedTask
+                                                              .deadline,
+                                                          member: assignedTask
+                                                              .assignee,
+                                                          taskname: assignedTask
+                                                              .title,
+                                                          tasktype: assignedTask
+                                                              .tasktype,
+                                                          sectionId:
+                                                              assignedTask
+                                                                  .assigneeSec,
+                                                          topicId:
+                                                              widget.topicId,
+                                                          taskId: assignedTask
+                                                              .taskId,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  icon: const Icon(Icons.edit),
                                                 ),
-                                              );
-                                            },
-                                            icon: const Icon(Icons.edit),
-                                          ),
-                                        )
-                                      : const SizedBox.shrink();
-                                } else if (snapshot.hasError) {
-                                  return Text(
-                                      'Error: ${snapshot.error}'); // Handle error appropriately
-                                } else {
-                                  return const CircularProgressIndicator(); // Show loading indicator
-                                }
-                              },
-                            )
+                                              )
+                                            : const SizedBox.shrink();
+                                      } else if (snapshot.hasError) {
+                                        return Text(
+                                            'Error: ${snapshot.error}'); // Handle error appropriately
+                                      } else {
+                                        return const CircularProgressIndicator(); // Show loading indicator
+                                      }
+                                    },
+                                  ),
                           ],
                         ),
                         const SizedBox(height: 7),
@@ -435,218 +441,249 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                           _ => const SizedBox.shrink(),
                         },
                         const SizedBox(height: 15),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            SizedBox(
-                              height: 60,
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  if (_formKey.currentState?.validate() ??
-                                      false) {
-                                    final confirm = await showDialog<bool>(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AlertDialog(
-                                          title: const Text(
-                                              'Confirm Task Submission'),
-                                          content: const Text(
-                                              'Are you sure you want to submit this task?'),
-                                          actions: <Widget>[
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(context)
-                                                      .pop(false), // No
-                                              child: const Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () async {
-                                                Navigator.of(context)
-                                                    .pop(true); // Yes
-                                              },
-                                              child: switch (widget.type) {
-                                                'Writing' =>
-                                                  const Text('Submit'),
-                                                'Photography' => const Text(
-                                                    'Submit the Caption'),
-                                                'Pubmat' =>
-                                                  const Text('Submit'),
-                                                _ => const SizedBox.shrink()
-                                              },
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
+                        widget.status == "Submitted" ||
+                                widget.status == "Approved" ||
+                                widget.status == 'Done'
+                            ? const Text(
+                                'No futher edits can be done to this task',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 15,
+                                ),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    height: 60,
+                                    child: ElevatedButton(
+                                      onPressed: () async {
+                                        if (_formKey.currentState?.validate() ??
+                                            false) {
+                                          final confirm =
+                                              await showDialog<bool>(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return AlertDialog(
+                                                title: const Text(
+                                                    'Confirm Task Submission'),
+                                                content: const Text(
+                                                    'Are you sure you want to submit this task?'),
+                                                actions: <Widget>[
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(context)
+                                                            .pop(false), // No
+                                                    child: const Text('Cancel'),
+                                                  ),
+                                                  TextButton(
+                                                    onPressed: () async {
+                                                      Navigator.of(context)
+                                                          .pop(true); // Yes
+                                                    },
+                                                    child: switch (
+                                                        widget.type) {
+                                                      'Writing' =>
+                                                        const Text('Submit'),
+                                                      'Photography' => const Text(
+                                                          'Submit the Caption'),
+                                                      'Pubmat' =>
+                                                        const Text('Submit'),
+                                                      _ =>
+                                                        const SizedBox.shrink()
+                                                    },
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
 
-                                    if (confirm == true) {
-                                      try {
-                                        switch (widget.type) {
-                                          case 'Writing':
-                                            await firebaseFunctions
-                                                .submitSubTaskContent(
-                                              widget.topicId,
-                                              widget.taskId,
-                                              _headlineController.text,
-                                              _contentController.text,
-                                            );
-                                            break;
-                                          case 'Photography':
-                                            print('call caption submission');
-                                            break;
-                                          case 'Pubmat':
-                                            setState(() {
-                                              _isUploading = true;
-                                              _uploadSuccess = false;
-                                            });
-                                            if (_selectedSingleImage != null) {
-                                              final imageUrl =
-                                                  await uploadSingleImage(
-                                                      _selectedSingleImage!);
-                                              if (imageUrl != null) {
-                                                // Now you have the imageUrl, you can save it to Firestore or use it as needed
-                                                print(
-                                                    'Uploaded image URL: $imageUrl');
-                                                // call firebase function to save the pubmat url
-                                                await firebaseFunctions
-                                                    .pubmatImageUpload(
-                                                  widget.topicId,
-                                                  widget.taskId,
-                                                  imageUrl,
-                                                );
-                                                setState(() {
-                                                  _isUploading = false;
-                                                  _uploadSuccess = true;
-                                                });
-                                              } else {
-                                                // Handle the error case where the image upload failed
-                                                print('Image upload failed');
-                                                setState(() {
-                                                  _isUploading = false;
-                                                  _uploadSuccess = false;
-                                                });
+                                          if (confirm == true) {
+                                            try {
+                                              switch (widget.type) {
+                                                case 'Writing':
+                                                  await firebaseFunctions
+                                                      .submitSubTaskContent(
+                                                    widget.topicId,
+                                                    widget.taskId,
+                                                    _headlineController.text,
+                                                    _contentController.text,
+                                                  );
+                                                  break;
+                                                case 'Photography':
+                                                  print(
+                                                      'call caption submission');
+                                                  break;
+                                                case 'Pubmat':
+                                                  setState(() {
+                                                    _isUploading = true;
+                                                    _uploadSuccess = false;
+                                                  });
+                                                  if (_selectedSingleImage !=
+                                                      null) {
+                                                    final imageUrl =
+                                                        await uploadSingleImage(
+                                                            _selectedSingleImage!);
+                                                    if (imageUrl != null) {
+                                                      // Now you have the imageUrl, you can save it to Firestore or use it as needed
+                                                      print(
+                                                          'Uploaded image URL: $imageUrl');
+                                                      // call firebase function to save the pubmat url
+                                                      await firebaseFunctions
+                                                          .pubmatImageUpload(
+                                                        widget.topicId,
+                                                        widget.taskId,
+                                                        imageUrl,
+                                                      );
+                                                      setState(() {
+                                                        _isUploading = false;
+                                                        _uploadSuccess = true;
+                                                      });
+                                                    } else {
+                                                      // Handle the error case where the image upload failed
+                                                      print(
+                                                          'Image upload failed');
+                                                      setState(() {
+                                                        _isUploading = false;
+                                                        _uploadSuccess = false;
+                                                      });
+                                                    }
+                                                  } else {
+                                                    print('No image selected');
+                                                    setState(() {
+                                                      _isUploading = false;
+                                                      _uploadSuccess = false;
+                                                    });
+                                                  }
+                                                  break;
                                               }
-                                            } else {
-                                              print('No image selected');
-                                              setState(() {
-                                                _isUploading = false;
-                                                _uploadSuccess = false;
-                                              });
+
+                                              ref.invalidate(
+                                                  taskWrittenProvider);
+
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                      'Task submitted successfully!'),
+                                                  backgroundColor: Colors.green,
+                                                ),
+                                              );
+                                            } catch (error) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                      'Failed to submit task: $error'),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
                                             }
-                                            break;
+                                          }
                                         }
-
-                                        ref.invalidate(taskWrittenProvider);
-
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                                'Task submitted successfully!'),
-                                            backgroundColor: Colors.green,
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0XFF020B40),
+                                        elevation: 10,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      child: const Align(
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          'Submit!',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white,
                                           ),
-                                        );
-                                      } catch (error) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'Failed to submit task: $error'),
-                                            backgroundColor: Colors.red,
-                                          ),
-                                        );
-                                      }
-                                    }
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0XFF020B40),
-                                  elevation: 10,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: const Align(
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    'Submit!',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
-                                      color: Colors.white,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              height: 60,
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  showDialog<bool>(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return AlertDialog(
-                                        title: const Text('Confirm Discard'),
-                                        content: const Text(
-                                            'Are you sure you want to discard this task? Any unsaved changes will be lost.'),
-                                        actions: <Widget>[
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.of(context)
-                                                    .pop(false),
-                                            child: const Text('Cancel'),
+                                  const SizedBox(width: 8),
+                                  SizedBox(
+                                    height: 60,
+                                    child: ElevatedButton(
+                                      onPressed: () async {
+                                        showDialog<bool>(
+                                          context: context,
+                                          builder: (BuildContext context) {
+                                            return AlertDialog(
+                                              title:
+                                                  const Text('Confirm Discard'),
+                                              content: const Text(
+                                                  'Are you sure you want to discard this task? Any unsaved changes will be lost.'),
+                                              actions: <Widget>[
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(context)
+                                                          .pop(false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(context)
+                                                          .pop(true),
+                                                  child: const Text('Discard'),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ).then((value) {
+                                          if (value == true) {
+                                            // Handle discard logic here, e.g., navigate back
+                                            Navigator.pop(context);
+                                          }
+                                        });
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0XFFDDDDDD),
+                                        elevation: 10,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      child: const Align(
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          'Discard',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
+                                            color: Color(0XFF020B40),
                                           ),
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.of(context).pop(true),
-                                            child: const Text('Discard'),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ).then((value) {
-                                    if (value == true) {
-                                      // Handle discard logic here, e.g., navigate back
-                                      Navigator.pop(context);
-                                    }
-                                  });
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0XFFDDDDDD),
-                                  elevation: 10,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: const Align(
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    'Discard',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0XFF020B40),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ),
-                          ],
-                        ),
                         const SizedBox(height: 10),
                         FutureBuilder<bool>(
                           future: canUserEdit,
                           builder: (BuildContext context,
                               AsyncSnapshot<bool> snapshot) {
                             if (snapshot.hasData) {
-                              final userCanEdit =
-                                  snapshot.data!; // Safely unwrap the bool
-
+                              final userCanEdit = snapshot.data!;
+                              print('status of subtask is: ${widget.status}');
                               return userCanEdit
-                                  ? _adminButtoms()
+                                  ? widget.status == 'Approved' ||
+                                          widget.status == 'Done'
+                                      ? const Text(
+                                          'Task has been approved already',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 15,
+                                          ),
+                                        )
+                                      : _adminButtoms()
                                   : const SizedBox.shrink();
                             } else if (snapshot.hasError) {
                               return Text(
@@ -700,39 +737,41 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                             return const Text('Failed to load image');
                           },
                         ),
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: GestureDetector(
-                            onTap: () async {
-                              setState(() {
-                                _selectedSingleImage = null;
-                              });
+                        widget.status == 'Approved' || widget.status == 'Done'
+                            ? const SizedBox.shrink()
+                            : Positioned(
+                                top: 8,
+                                left: 8,
+                                child: GestureDetector(
+                                  onTap: () async {
+                                    setState(() {
+                                      _selectedSingleImage = null;
+                                    });
 
-                              await firebaseFunctions.deleteImage(
-                                widget.topicId,
-                                widget.taskId,
-                                assignedTask.content,
-                              );
+                                    await firebaseFunctions.deleteImage(
+                                      widget.topicId,
+                                      widget.taskId,
+                                      assignedTask.content,
+                                    );
 
-                              ref.invalidate(taskWrittenProvider);
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.5),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Padding(
-                                padding: EdgeInsets.all(4.0),
-                                child: Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 20,
+                                    ref.invalidate(taskWrittenProvider);
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.5),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(4.0),
+                                      child: Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-                        )
                       ],
                     ),
                   ),
@@ -775,39 +814,43 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                 height: MediaQuery.of(context).size.height * .3,
                                 fit: BoxFit.cover,
                               ),
-                              Positioned(
-                                top: 8,
-                                left: 8,
-                                child: GestureDetector(
-                                  onTap: () async {
-                                    setState(() {
-                                      _selectedSingleImage = null;
-                                    });
+                              widget.status == 'Approved' ||
+                                      widget.status == 'Done'
+                                  ? const SizedBox.shrink()
+                                  : Positioned(
+                                      top: 8,
+                                      left: 8,
+                                      child: GestureDetector(
+                                        onTap: () async {
+                                          setState(() {
+                                            _selectedSingleImage = null;
+                                          });
 
-                                    await firebaseFunctions.deleteImage(
-                                      widget.topicId,
-                                      widget.taskId,
-                                      assignedTask.content,
-                                    );
+                                          await firebaseFunctions.deleteImage(
+                                            widget.topicId,
+                                            widget.taskId,
+                                            assignedTask.content,
+                                          );
 
-                                    ref.invalidate(taskWrittenProvider);
-                                  },
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.5),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(4.0),
-                                      child: Icon(
-                                        Icons.close,
-                                        color: Colors.white,
-                                        size: 20,
+                                          ref.invalidate(taskWrittenProvider);
+                                        },
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.black.withOpacity(0.5),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(4.0),
+                                            child: Icon(
+                                              Icons.close,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                              )
                             ],
                           ),
                         ),

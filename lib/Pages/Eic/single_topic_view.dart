@@ -21,6 +21,7 @@ class TopicSingleRead extends ConsumerStatefulWidget {
   final String member1;
   final String member2;
   final int otherMember;
+  final String status;
 
   const TopicSingleRead({
     super.key,
@@ -30,6 +31,7 @@ class TopicSingleRead extends ConsumerStatefulWidget {
     this.member1 = '',
     this.member2 = '',
     this.otherMember = 0,
+    required this.status,
   });
 
   @override
@@ -115,49 +117,55 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                 ),
                               ),
                             ),
-                            FutureBuilder<bool>(
-                              future: canUserEdit,
-                              builder: (BuildContext context,
-                                  AsyncSnapshot<bool> snapshot) {
-                                if (snapshot.hasData) {
-                                  final userCanEdit = snapshot.data!;
+                            widget.status == "pendingPST" ||
+                                    widget.status == "Done"
+                                ? const SizedBox.shrink()
+                                : FutureBuilder<bool>(
+                                    future: canUserEdit,
+                                    builder: (BuildContext context,
+                                        AsyncSnapshot<bool> snapshot) {
+                                      if (snapshot.hasData) {
+                                        final userCanEdit = snapshot.data!;
 
-                                  return userCanEdit
-                                      ? Align(
-                                          alignment: Alignment.topRight,
-                                          child: IconButton(
-                                            onPressed: () {
-                                              print('editing topic na ey');
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) =>
-                                                      CreateTaskPage(
-                                                    topicId: widget.id,
-                                                    deadline: dateString,
-                                                    details:
-                                                        topicView['details'],
-                                                    priority:
-                                                        topicView['priority'],
-                                                    title: topicView['title'],
-                                                    isEditing: true,
-                                                    sectionName: widget.section,
-                                                  ),
+                                        return userCanEdit
+                                            ? Align(
+                                                alignment: Alignment.topRight,
+                                                child: IconButton(
+                                                  onPressed: () {
+                                                    print(
+                                                        'editing topic na ey');
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) =>
+                                                            CreateTaskPage(
+                                                          topicId: widget.id,
+                                                          deadline: dateString,
+                                                          details: topicView[
+                                                              'details'],
+                                                          priority: topicView[
+                                                              'priority'],
+                                                          title: topicView[
+                                                              'title'],
+                                                          isEditing: true,
+                                                          sectionName:
+                                                              widget.section,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  icon: const Icon(Icons.edit),
                                                 ),
-                                              );
-                                            },
-                                            icon: const Icon(Icons.edit),
-                                          ),
-                                        )
-                                      : const SizedBox.shrink();
-                                } else if (snapshot.hasError) {
-                                  return Text(
-                                      'Error: ${snapshot.error}'); // Handle error appropriately
-                                } else {
-                                  return const CircularProgressIndicator(); // Show loading indicator
-                                }
-                              },
-                            )
+                                              )
+                                            : const SizedBox.shrink();
+                                      } else if (snapshot.hasError) {
+                                        return Text(
+                                            'Error: ${snapshot.error}'); // Handle error appropriately
+                                      } else {
+                                        return const CircularProgressIndicator(); // Show loading indicator
+                                      }
+                                    },
+                                  ),
                           ],
                         ),
                         const SizedBox(height: 10),

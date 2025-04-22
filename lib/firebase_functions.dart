@@ -1061,12 +1061,10 @@ class FirebaseFunctions {
     });
   }
 
-  Future<TopicContentModel> readTaskContents(String topicId) async {
-    try {
-      final parentRef = db.collection('tasks').doc(topicId);
+  Stream<TopicContentModel> streamTaskContents(String topicId) {
+    final parentRef = db.collection('tasks').doc(topicId);
 
-      final DocumentSnapshot parentDoc = await parentRef.get();
-
+    return parentRef.snapshots().asyncMap((parentDoc) async {
       if (!parentDoc.exists) {
         print('parent does not exist');
         return TopicContentModel(
@@ -1082,11 +1080,12 @@ class FirebaseFunctions {
       }
 
       if (parentDoc['section'] != 'XDEPw2VPYdeFdKQRuRpA') {
-        final QuerySnapshot childTopics =
-            await parentRef.collection('assigned_tasks').get();
+        final childCollection = parentRef.collection('assigned_tasks');
 
-        if (childTopics.docs.isEmpty) {
-          print('parent does not exist');
+        final childSnapshot = await childCollection.get();
+
+        if (childSnapshot.docs.isEmpty) {
+          print('no assigned tasks');
           return TopicContentModel(
             topicId: topicId,
             pubmatUrl: '',
@@ -1099,7 +1098,7 @@ class FirebaseFunctions {
           );
         }
 
-        final docs = childTopics.docs;
+        final docs = childSnapshot.docs;
         String pubmatUrl = '';
         String writtenContent = '';
         String headline = '';
@@ -1109,21 +1108,22 @@ class FirebaseFunctions {
         String writtenStatus = '';
 
         for (final doc in docs) {
-          final data = doc.data() as Map<String, dynamic>?;
-          String taskType = data!['task_type'];
+          final data = doc.data();
           final docId = doc.id;
+
+          final taskType = data['task_type'] as String?;
 
           if (taskType == 'Pubmat' && data.containsKey('content')) {
             pubmatUrl = data['content'] as String? ?? '';
             writingId = docId;
-            pubmatStatus = data['status'];
+            pubmatStatus = data['status'] ?? '';
           } else if (taskType == 'Writing' &&
               data.containsKey('content') &&
               data.containsKey('headline')) {
             writtenContent = data['content'] as String? ?? '';
             headline = data['headline'] as String? ?? '';
             pubmatId = docId;
-            writtenStatus = data['status'];
+            writtenStatus = data['status'] ?? '';
           }
         }
 
@@ -1138,6 +1138,8 @@ class FirebaseFunctions {
           writtenStatus: writtenStatus,
         );
       }
+
+      // section is 'XDEPw2VPYdeFdKQRuRpA', fallback empty content
       return TopicContentModel(
         topicId: topicId,
         pubmatUrl: '',
@@ -1148,19 +1150,7 @@ class FirebaseFunctions {
         pubmatStatus: '',
         writtenStatus: '',
       );
-    } catch (e) {
-      print('Error reading task contents: $e');
-      return TopicContentModel(
-        topicId: topicId,
-        pubmatUrl: '',
-        headline: '',
-        writtenContent: '',
-        pubmatId: '',
-        writingId: '',
-        pubmatStatus: '',
-        writtenStatus: '',
-      );
-    }
+    });
   }
 
   Future<void> approveToCreate(String topicId) async {
