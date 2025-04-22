@@ -43,12 +43,10 @@ class _RegisterPageState extends State<RegisterPage> {
         await user.updateDisplayName(username);
 
         if (mounted) {
-          Navigator.pushReplacement(
-            // Use pushReplacement to avoid going back to register page
+          Navigator.pushNamedAndRemoveUntil(
             context,
-            MaterialPageRoute(
-              builder: (context) => VerifyPage(user: user),
-            ),
+            '/initial',
+            (Route<dynamic> route) => false,
           );
         }
         return user;

@@ -71,7 +71,6 @@ class _LoginPageState extends State<LoginPage> {
         final UserCredential userCredential =
             await _authLog.signInWithCredential(credential);
         final User? user = userCredential.user;
-        await firebaseFunctions.saveFCMToken();
         _handleSignInResult(user);
 
         if (mounted) {
@@ -124,7 +123,6 @@ class _LoginPageState extends State<LoginPage> {
 
       final User? user = userCredential.user;
       if (user != null) {
-        await firebaseFunctions.saveFCMToken();
         _handleSignInResult(user);
         print("User debug UID: ${user.uid}");
         print("User debug Email: ${user.email}");

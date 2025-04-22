@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 class VerifyPage extends StatefulWidget {
   final VoidCallback? onLogout;
@@ -16,49 +16,61 @@ class VerifyPage extends StatefulWidget {
   State<VerifyPage> createState() => _VerifyPageState();
 }
 
-class _VerifyPageState extends State<VerifyPage> with WidgetsBindingObserver {
-  bool _isVerified = false; // Stores email verification status
-  Timer? _timer; // Timer to check verification status automatically
+class _VerifyPageState extends State<VerifyPage> {
+  static bool _hasSentVerification = false;
+  bool _isResending = false;
+  Timer? _checkEmailVerifiedTimer;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+    _maybeSendVerificationEmail();
 
-    sendEmailVerification(widget.user!);
-    _checkVerificationStatus(); // Initial check when page loads
-    _startAutoCheck(); // Start auto-checking in the background
+    // Periodically check if user has verified their email
+    _checkEmailVerifiedTimer =
+        Timer.periodic(const Duration(seconds: 3), (timer) async {
+      await FirebaseAuth.instance.currentUser?.reload();
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user != null && user.emailVerified) {
+        print('User has been verified kaya proceed na');
+        timer.cancel();
+        _navigateToInitialPage();
+      } else {
+        print('User is not verified, retrying...');
+      }
+    });
   }
 
-  Future<void> sendEmailVerification(User user) async {
-    if (user.emailVerified) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/initial',
-        (Route<dynamic> route) => false,
-      );
-    } else {
+  @override
+  void dispose() {
+    _checkEmailVerifiedTimer?.cancel();
+    super.dispose();
+  }
+
+  void _maybeSendVerificationEmail() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null && !user.emailVerified && !_hasSentVerification) {
       try {
+        print('bilangin mo gagu');
         await user.sendEmailVerification();
-        print('Verification email sent to ${user.email}');
+        _hasSentVerification = true;
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                "Email verification sent to your email. Please verify your email to continue.",
-              ),
+              content:
+                  Text("Verification email sent. Please check your inbox."),
             ),
           );
         }
       } catch (e) {
         print("Error sending verification email: $e");
-        // Handle the error, e.g., show a SnackBar to the user.
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                "Error sending verification email. Please check your connection.",
-              ),
+                  "an email has already been sent to your inbox, if you don't see one, please try again in a few minutes"),
             ),
           );
         }
@@ -66,81 +78,46 @@ class _VerifyPageState extends State<VerifyPage> with WidgetsBindingObserver {
     }
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Called when the app is resumed
-      _checkVerificationStatus(); // Check verification status again
-    }
-  }
-
-  Future<void> _checkVerificationStatus() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    await user?.reload(); // Refresh user info from Firebase
-    print('is user verified ${user?.emailVerified}');
-
-    if (user != null && user.emailVerified) {
+  Future<void> _resendVerificationEmail() async {
+    if (widget.user != null && !widget.user!.emailVerified) {
       setState(() {
-        _isVerified = user.emailVerified;
-        print('setstate changes is: ${user.emailVerified}');
+        _isResending = true;
       });
 
-      if (!mounted) return;
-      if (user.emailVerified == true) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/initial',
-          (Route<dynamic> route) => false,
-        );
-      } else {
-        print('User is not verified');
+      try {
+        await widget.user!.sendEmailVerification();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Verification email resent."),
+            ),
+          );
+        }
+      } catch (e) {
+        print("Error resending verification email: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Error: $e"),
+            ),
+          );
+        }
       }
+
+      setState(() {
+        _isResending = false;
+      });
     }
   }
 
-  void _startAutoCheck() {
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      await _checkVerificationStatus();
-      print('Checking verification status: ${_isVerified}');
-      if (_isVerified) {
-        timer.cancel(); // Stop checking once verified
-      }
-    });
+  void _navigateToInitialPage() {
+    Navigator.of(context).pushReplacementNamed('/initial');
   }
 
-  // 🔹 Function to resend the verification email
-  Future<void> _resendVerificationEmail() async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null && !user.emailVerified) {
-      await user.sendEmailVerification();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text("Verification email sent! Check your inbox.")),
-      );
-    }
-  }
-
-  Future<void> _logout() async {
-    _timer?.cancel();
-    await FirebaseAuth.instance.signOut();
-
-    if (mounted) {
-      print('redirected upon logout');
-      // widget.onLogout!();
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/initial',
-        (Route<dynamic> route) => false,
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
+  void _logout() {
+    FirebaseAuth.instance.signOut();
+    widget.onLogout?.call();
   }
 
   @override
@@ -167,38 +144,10 @@ class _VerifyPageState extends State<VerifyPage> with WidgetsBindingObserver {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
-              _isVerified
-                  ? Image.asset(
-                      'assets/images/verified.png',
-                      height: 100,
-                      width: 100,
-                      fit: BoxFit.cover,
-                    )
-                  : SizedBox(
-                      height: 60,
-                      child: ElevatedButton(
-                        onPressed: _resendVerificationEmail,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF020B40),
-                          elevation: 10,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          'Resend Verification Email',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-              const SizedBox(height: 20),
               SizedBox(
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: _logout,
+                  onPressed: _isResending ? null : _resendVerificationEmail,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF020B40),
                     elevation: 10,
@@ -206,9 +155,9 @@ class _VerifyPageState extends State<VerifyPage> with WidgetsBindingObserver {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'Exit',
-                    style: TextStyle(
+                  child: Text(
+                    _isResending ? 'Sending...' : 'Resend Verification Email',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
                     ),
@@ -216,10 +165,25 @@ class _VerifyPageState extends State<VerifyPage> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                "Once verified, you will be redirected automatically.",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-                textAlign: TextAlign.center,
+              SizedBox(
+                height: 60,
+                child: ElevatedButton(
+                  onPressed: _logout,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFB00020),
+                    elevation: 10,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Logout',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

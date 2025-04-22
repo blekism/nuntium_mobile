@@ -867,7 +867,7 @@ class FirebaseFunctions {
     try {
       QuerySnapshot sectionSnapshot =
           await db.collection('sections').where('sectionType', whereNotIn: [
-        'Managing Editor',
+        'Managing',
         'Associate',
         'Editor-In-Chief',
       ]).get();
@@ -1074,6 +1074,10 @@ class FirebaseFunctions {
           pubmatUrl: '',
           headline: '',
           writtenContent: '',
+          pubmatId: '',
+          writingId: '',
+          pubmatStatus: '',
+          writtenStatus: '',
         );
       }
 
@@ -1088,6 +1092,10 @@ class FirebaseFunctions {
             pubmatUrl: '',
             headline: '',
             writtenContent: '',
+            pubmatId: '',
+            writingId: '',
+            pubmatStatus: '',
+            writtenStatus: '',
           );
         }
 
@@ -1095,18 +1103,27 @@ class FirebaseFunctions {
         String pubmatUrl = '';
         String writtenContent = '';
         String headline = '';
+        String writingId = '';
+        String pubmatId = '';
+        String pubmatStatus = '';
+        String writtenStatus = '';
 
         for (final doc in docs) {
           final data = doc.data() as Map<String, dynamic>?;
           String taskType = data!['task_type'];
+          final docId = doc.id;
 
           if (taskType == 'Pubmat' && data.containsKey('content')) {
             pubmatUrl = data['content'] as String? ?? '';
+            writingId = docId;
+            pubmatStatus = data['status'];
           } else if (taskType == 'Writing' &&
               data.containsKey('content') &&
               data.containsKey('headline')) {
             writtenContent = data['content'] as String? ?? '';
             headline = data['headline'] as String? ?? '';
+            pubmatId = docId;
+            writtenStatus = data['status'];
           }
         }
 
@@ -1115,6 +1132,10 @@ class FirebaseFunctions {
           pubmatUrl: pubmatUrl,
           headline: headline,
           writtenContent: writtenContent,
+          pubmatId: pubmatId,
+          writingId: writingId,
+          pubmatStatus: pubmatStatus,
+          writtenStatus: writtenStatus,
         );
       }
       return TopicContentModel(
@@ -1122,6 +1143,10 @@ class FirebaseFunctions {
         pubmatUrl: '',
         headline: '',
         writtenContent: '',
+        pubmatId: '',
+        writingId: '',
+        pubmatStatus: '',
+        writtenStatus: '',
       );
     } catch (e) {
       print('Error reading task contents: $e');
@@ -1130,6 +1155,10 @@ class FirebaseFunctions {
         pubmatUrl: '',
         headline: '',
         writtenContent: '',
+        pubmatId: '',
+        writingId: '',
+        pubmatStatus: '',
+        writtenStatus: '',
       );
     }
   }
@@ -1179,11 +1208,10 @@ class FirebaseFunctions {
 
       await dbref.update({
         'completed_subtask': FieldValue.increment(1),
-        'projectStep': FieldValue.increment(1),
       });
 
       await dbref.collection('assigned_tasks').doc(taskId).update({
-        'status': 'approved',
+        'status': 'Approved',
         'approved_at': Timestamp.now(),
       });
 
@@ -1646,8 +1674,6 @@ class FirebaseFunctions {
         'status': 'Submitted',
       });
 
-      //tasks will be marked as completed once approved by eb
-
       await logInTimeline(
         topicId,
         'Task Submitted',
@@ -1778,6 +1804,7 @@ class FirebaseFunctions {
       String imageUrl = retrievedImages[index];
 
       Reference storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
+      final collection = FirebaseFirestore.instance.collection('image_hashes');
 
       await storageRef.delete();
 
@@ -1789,6 +1816,14 @@ class FirebaseFunctions {
           .update({
         'images': FieldValue.arrayRemove([retrievedImages[index]]),
       });
+
+      final querySnapshot =
+          await collection.where('url', isEqualTo: imageUrl).get();
+
+      for (var doc in querySnapshot.docs) {
+        await doc.reference.delete();
+        print('Deleted document: ${doc.id}');
+      }
 
       await logInTimeline(
         topicId,
@@ -1854,5 +1889,69 @@ class FirebaseFunctions {
     }
   }
 
+  Future<void> massApprove(String topicId, pubmatId, writingId) async {
+    try {
+      final parentRef = db.collection('tasks').doc(topicId);
+      final userInfo = await getUserInfo(auth.currentUser!.uid);
+      final batch = db.batch();
+
+      batch.update(parentRef.collection('assigned_tasks').doc(pubmatId), {
+        'status': 'Approved',
+        'approvedAt': Timestamp.now(),
+        'approved_by': auth.currentUser!.uid,
+      });
+
+      batch.update(parentRef.collection('assigned_tasks').doc(writingId), {
+        'status': 'Approved',
+        'approvedAt': Timestamp.now(),
+        'approved_by': auth.currentUser!.uid,
+      });
+
+      if (userInfo.exists && userInfo['role'] == 'section_editors') {
+        batch.update(parentRef, {
+          'status': 'pendingPST',
+          'projectStep': FieldValue.increment(1),
+          'completedApproved_at': Timestamp.now(),
+        });
+      } else {
+        batch.update(parentRef, {
+          'status': 'pendingPST',
+          'projectStep': FieldValue.increment(2),
+          'completedApproved_at': Timestamp.now(),
+        });
+
+        batch.update(parentRef, {
+          '${userInfo['role']}Approved': true,
+          '${userInfo['role']}Approved_at': Timestamp.now(),
+        });
+      }
+
+      await logInTimeline(
+        topicId,
+        'Pubmat task approved',
+        'Pubmat approved and ready for management approval',
+        'Approved',
+      );
+
+      await logInTimeline(
+        topicId,
+        'Written task approved',
+        'Written content approved and ready for management approval',
+        'Approved',
+      );
+
+      await logInTimeline(
+        topicId,
+        'Topic ready for management approval',
+        'Topic approved and ready for management approval',
+        'Pending',
+      );
+
+      await batch.commit();
+    } catch (e) {
+      print('error mass approving $e');
+      return Future.error(e);
+    }
+  }
   // TODO notification for announcements
 }

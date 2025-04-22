@@ -120,8 +120,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                               builder: (BuildContext context,
                                   AsyncSnapshot<bool> snapshot) {
                                 if (snapshot.hasData) {
-                                  final userCanEdit =
-                                      snapshot.data!; // Safely unwrap the bool
+                                  final userCanEdit = snapshot.data!;
 
                                   return userCanEdit
                                       ? Align(
@@ -251,8 +250,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                           ],
                         ),
                         const SizedBox(height: 15),
-                        //TODO add yung full approve
-
                         topicView['section'] == 'XDEPw2VPYdeFdKQRuRpA'
                             ? SizedBox(
                                 height: 60,
@@ -304,6 +301,8 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                       ),
                                     );
                                   }
+
+                                  print("image is ${viewContent.pubmatUrl}");
                                   return Column(
                                     mainAxisAlignment: MainAxisAlignment.start,
                                     crossAxisAlignment:
@@ -350,6 +349,123 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                         ),
                                       ),
                                       const SizedBox(height: 10),
+                                      if (viewContent.pubmatStatus ==
+                                              'Submitted' &&
+                                          viewContent.writtenStatus ==
+                                              'Submitted')
+                                        const Align(
+                                          alignment: Alignment.bottomCenter,
+                                          child: Text(
+                                            'Approve all subtask content!',
+                                            style: TextStyle(
+                                              color: Colors.green,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                        ),
+                                      if (viewContent.pubmatStatus ==
+                                              'Submitted' &&
+                                          viewContent.writtenStatus ==
+                                              'Submitted')
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            ElevatedButton(
+                                              onPressed: () async {
+                                                final confirm =
+                                                    await showDialog<bool>(
+                                                  context: context,
+                                                  builder:
+                                                      (BuildContext context) {
+                                                    return AlertDialog(
+                                                      title: const Text(
+                                                          'Confirm Approval'),
+                                                      content: const Text(
+                                                          'Are you sure you want to approve these works?'),
+                                                      actions: <Widget>[
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.of(
+                                                                      context)
+                                                                  .pop(false),
+                                                          child: const Text(
+                                                              'Cancel'),
+                                                        ),
+                                                        TextButton(
+                                                          onPressed: () async {
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(true);
+
+                                                            print(
+                                                                'works approved');
+                                                          },
+                                                          child: const Text(
+                                                              'Approve'),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  },
+                                                );
+
+                                                if (confirm == true) {
+                                                  try {
+                                                    await firebaseFunctions
+                                                        .massApprove(
+                                                      widget.id,
+                                                      viewContent.pubmatId,
+                                                      viewContent.writingId,
+                                                    );
+
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                            'Works approved successfully!'),
+                                                        backgroundColor:
+                                                            Colors.green,
+                                                      ),
+                                                    );
+                                                  } catch (error) {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                            'Failed to approve works: $error'),
+                                                        backgroundColor:
+                                                            Colors.red,
+                                                      ),
+                                                    );
+                                                  }
+                                                }
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.green,
+                                                elevation: 10,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                              child: const Align(
+                                                alignment: Alignment.center,
+                                                child: Text(
+                                                  'Approve',
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                     ],
                                   );
                                 },
@@ -772,7 +888,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                 );
               },
               error: (error, stack) => Text('Error: $error'),
-              loading: () => CircularProgressIndicator(),
+              loading: () => const CircularProgressIndicator(),
             ),
           ],
         ),

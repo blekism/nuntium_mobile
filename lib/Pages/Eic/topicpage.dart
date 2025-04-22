@@ -227,6 +227,5 @@ final List<Map<String, String>> pubSections = [
   {"section": "pendingPST"},
   {"section": "To Do"},
   {"section": "Doing"},
-  {"section": "Submitted"},
   {"section": "Done"},
 ];

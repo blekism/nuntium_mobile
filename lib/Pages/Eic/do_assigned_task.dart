@@ -1,4 +1,5 @@
 import 'package:dotted_border/dotted_border.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -635,6 +636,26 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 10),
+                        FutureBuilder<bool>(
+                          future: canUserEdit,
+                          builder: (BuildContext context,
+                              AsyncSnapshot<bool> snapshot) {
+                            if (snapshot.hasData) {
+                              final userCanEdit =
+                                  snapshot.data!; // Safely unwrap the bool
+
+                              return userCanEdit
+                                  ? _adminButtoms()
+                                  : const SizedBox.shrink();
+                            } else if (snapshot.hasError) {
+                              return Text(
+                                  'Error: ${snapshot.error}'); // Handle error appropriately
+                            } else {
+                              return const CircularProgressIndicator(); // Show loading indicator
+                            }
+                          },
+                        )
                       ],
                     );
                   },
@@ -900,6 +921,59 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
           fontSize: 15,
         ),
       ),
+    );
+  }
+
+  Row _adminButtoms() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ElevatedButton(
+          onPressed: () async {
+            print('submission accepted');
+            await firebaseFunctions.seApprove(widget.topicId, widget.taskId);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF020B40),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10), // Rounded corners
+            ),
+            elevation: 10, // Add elevation for shadow
+            padding: const EdgeInsets.symmetric(
+                vertical: 15.0, horizontal: 20.0), // Padding for the button
+          ),
+          child: const Text(
+            'Accept',
+            style: TextStyle(
+              color: Colors.white, // White text color
+              fontWeight: FontWeight.w700, // Bold text
+            ),
+          ),
+        ),
+        SizedBox(width: MediaQuery.of(context).size.width * .1),
+        ElevatedButton(
+          onPressed: () {
+            print('submission rejected');
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF020B40),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10), // Rounded corners
+            ),
+            elevation: 10, // Add elevation for shadow
+            padding: const EdgeInsets.symmetric(
+                vertical: 15.0, horizontal: 20.0), // Padding for the button
+          ),
+          child: const Text(
+            'Reject',
+            style: TextStyle(
+              color: Colors.white, // White text color
+              fontWeight: FontWeight.w700, // Bold text
+            ),
+          ),
+        ),
+      ],
     );
   }
 

@@ -29,6 +29,7 @@ class ProviderInvalidator {
     ref.invalidate(allSectionTasksProvider);
     ref.invalidate(retImagesProvider);
     ref.invalidate(singleViewTopicContent);
+    ref.invalidate(viewAllImageInParent);
 
     print('all providers have been invalidated');
   }

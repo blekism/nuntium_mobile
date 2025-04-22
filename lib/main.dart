@@ -41,18 +41,6 @@ void main() async {
 
   await requestNotificationPermission();
 
-  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      await FirebaseFirestore.instance
-          .collection("users")
-          .doc(user.uid)
-          .update({
-        "fcmToken": newToken,
-      });
-    }
-  });
-
   runApp(const ProviderScope(child: NuntiumApp()));
 }
 
@@ -170,6 +158,8 @@ class _AuthCheckerState extends State<AuthChecker> {
         userDoc = await firebaseFunctions.getUserDoc(uid);
       }
 
+      await firebaseFunctions.saveFCMToken();
+
       if (mounted) {
         if (userDoc.exists) {
           final role = userDoc['role'] as String?;
@@ -219,6 +209,12 @@ class _AuthCheckerState extends State<AuthChecker> {
 
         if (ConnectionState.active == snapshot.connectionState &&
             snapshot.hasData) {
+          if (!snapshot.data!.emailVerified) {
+            return VerifyPage(
+              user: snapshot.data,
+            );
+          }
+
           if (userRole == null && isLoading) {
             getUserRole(
               snapshot.data!.uid,
@@ -262,7 +258,6 @@ class _AuthCheckerState extends State<AuthChecker> {
         } else {
           return const LoginPage();
         }
-        //  return const SizedBox.shrink();
       },
     );
   }

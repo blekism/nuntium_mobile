@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Eic/subtask_card.dart';
 import 'package:nuntium_mobile/Pages/Eic/assign_task_page.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class SubTaskView extends ConsumerStatefulWidget {
   final String topicId;
@@ -62,19 +63,27 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
                     ),
                     child: GestureDetector(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AssignTaskPage(
-                              topicId: widget.topicId,
-                              section: widget.section,
-                              sectionId: widget.sectionId,
+                        if (tasksView.value!.length >= 2) {
+                          Fluttertoast.showToast(
+                              msg: "Cannot assign more than 2 tasks in a topic",
+                              toastLength: Toast.LENGTH_SHORT,
+                              backgroundColor: const Color(0XFFD23737));
+                          print('no more tasks allowed to create');
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AssignTaskPage(
+                                topicId: widget.topicId,
+                                section: widget.section,
+                                sectionId: widget.sectionId,
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        }
                       },
                       child: DottedBorder(
-                        color: const Color(0XFF020B40),
+                        color: Colors.black,
                         borderType: BorderType.RRect,
                         radius: const Radius.circular(10),
                         strokeWidth: 2,
@@ -83,9 +92,17 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text('Create New Task'),
+                              Text(
+                                'Create New Task',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                ),
+                              ),
                               SizedBox(width: 5),
-                              Icon(Icons.add_circle_outline)
+                              Icon(
+                                Icons.add_circle_outline,
+                                color: Colors.black,
+                              )
                             ],
                           ),
                         ),

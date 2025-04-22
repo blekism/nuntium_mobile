@@ -123,6 +123,18 @@ class SectionCardTemplate extends StatelessWidget {
               );
             },
           ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withAlpha(100),
+                  const Color(0XFF020B40).withAlpha(100),
+                ],
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(10),
             child: Column(

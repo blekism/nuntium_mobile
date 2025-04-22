@@ -57,9 +57,11 @@ class SubtaskCard extends StatelessWidget {
                 case 'Done':
                   return const Color(0xFFBAD8B6);
                 case 'Returned':
-                  return const Color(0xFF6A9C64);
+                  return const Color(0xFFE48A69);
                 case 'Submitted':
                   return const Color(0xFFC6B9F9);
+                case 'Approved':
+                  return const Color(0xFF6A9C64);
                 default:
                   return const Color(0xFFDDE4FB);
               }
