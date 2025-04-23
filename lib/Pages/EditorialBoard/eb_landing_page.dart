@@ -52,6 +52,7 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
           TopicPage(
             sectionID: section.sectionId,
             sectionName: section.sectionName,
+            shouldShowAppbar: false,
             secEd: true,
           ),
           const CalendarPage(),

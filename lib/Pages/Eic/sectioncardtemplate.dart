@@ -34,6 +34,8 @@ class SectionCardTemplate extends StatelessWidget {
             builder: (context) => TopicPage(
               sectionID: sectionID,
               sectionName: sectionType,
+              secEd: true,
+              shouldShowAppbar: true,
             ),
           ),
         );

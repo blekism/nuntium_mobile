@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Eic/subtask_card.dart';
+import 'package:nuntium_mobile/models/taskmodel.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class MemberTasksPage extends ConsumerStatefulWidget {
@@ -19,9 +20,27 @@ class MemberTasksPage extends ConsumerStatefulWidget {
 class _MemberTasksPageState extends ConsumerState<MemberTasksPage> {
   String selectedSection = 'All';
 
+  void filteredSection(String section) {
+    setState(() {
+      selectedSection = section;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final memberTasksView = ref.watch(memberTasksProvider(widget.uid!));
+
+    List<TaskModel> filteredTopics = [];
+
+    if (memberTasksView.hasValue) {
+      if (selectedSection == 'All') {
+        filteredTopics = memberTasksView.value!;
+      } else {
+        filteredTopics = memberTasksView.value!
+            .where((topic) => topic.status == selectedSection)
+            .toList();
+      }
+    }
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
@@ -48,7 +67,7 @@ class _MemberTasksPageState extends ConsumerState<MemberTasksPage> {
         Expanded(
           child: memberTasksView.when(
             data: (memberTask) {
-              if (memberTask.isEmpty) {
+              if (filteredTopics.isEmpty) {
                 return const Center(
                   child: Text('No Tasks Yet. Good Job!'),
                 );
@@ -58,9 +77,9 @@ class _MemberTasksPageState extends ConsumerState<MemberTasksPage> {
                 padding: const EdgeInsets.all(15.0),
                 child: ListView.builder(
                   shrinkWrap: true,
-                  itemCount: memberTask.length,
+                  itemCount: filteredTopics.length,
                   itemBuilder: (context, index) {
-                    final item = memberTask[index];
+                    final item = filteredTopics[index];
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 13),
@@ -128,7 +147,7 @@ class _MemberTasksPageState extends ConsumerState<MemberTasksPage> {
               ),
               child: GestureDetector(
                 onTap: () {
-                  // filteredSection(sectionName);
+                  filteredSection(sectionName);
                 },
                 child: Padding(
                   padding: const EdgeInsets.only(
@@ -154,10 +173,10 @@ class _MemberTasksPageState extends ConsumerState<MemberTasksPage> {
 
 final List<Map<String, String>> pubSections = [
   {"section": "All"},
-  {"section": "pendingAPR"},
-  {"section": "pendingPST"},
   {"section": "To Do"},
   {"section": "Doing"},
   {"section": "Submitted"},
+  {"section": "Returned"},
+  {"section": "Approved"},
   {"section": "Done"},
 ];

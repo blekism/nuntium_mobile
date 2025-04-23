@@ -12,12 +12,14 @@ class TopicPage extends ConsumerStatefulWidget {
   final String? sectionID;
   final String? sectionName;
   final bool secEd;
+  final bool shouldShowAppbar;
 
   const TopicPage({
     super.key,
     this.sectionID,
     this.sectionName,
     this.secEd = false,
+    this.shouldShowAppbar = false,
   });
 
   @override
@@ -50,12 +52,12 @@ class _TopicPageState extends ConsumerState<TopicPage> {
     }
 
     return Scaffold(
-      appBar: widget.secEd == true
-          ? null
-          : CustomAppBar(
+      appBar: widget.shouldShowAppbar == true
+          ? CustomAppBar(
               appbarTitle: widget.sectionName,
               hasNavigated: false,
-            ),
+            )
+          : null,
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -87,42 +89,44 @@ class _TopicPageState extends ConsumerState<TopicPage> {
           const SizedBox(height: 20),
           _genreFilter(),
           const SizedBox(height: 15),
-          Container(
-            width: MediaQuery.of(context).size.width * .9,
-            height: MediaQuery.of(context).size.height * .1,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => CreateTaskPage(
-                              sectionID: widget.sectionID,
-                              sectionName: widget.sectionName,
-                            )));
-              },
-              child: DottedBorder(
-                color: const Color(0XFF020B40),
-                borderType: BorderType.RRect,
-                radius: const Radius.circular(10),
-                strokeWidth: 2,
-                child: const Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text('Create A New Topic'),
-                      SizedBox(width: 5),
-                      Icon(Icons.add_circle_outline)
-                    ],
+          widget.secEd == true
+              ? Container(
+                  width: MediaQuery.of(context).size.width * .9,
+                  height: MediaQuery.of(context).size.height * .1,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                ),
-              ),
-            ),
-          ),
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => CreateTaskPage(
+                                    sectionID: widget.sectionID,
+                                    sectionName: widget.sectionName,
+                                  )));
+                    },
+                    child: DottedBorder(
+                      color: const Color(0XFF020B40),
+                      borderType: BorderType.RRect,
+                      radius: const Radius.circular(10),
+                      strokeWidth: 2,
+                      child: const Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text('Create A New Topic'),
+                            SizedBox(width: 5),
+                            Icon(Icons.add_circle_outline)
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
           const SizedBox(height: 15),
           Expanded(
             child: viewTopics.when(

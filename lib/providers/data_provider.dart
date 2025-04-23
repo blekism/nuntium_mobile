@@ -12,6 +12,7 @@ import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
 import 'package:nuntium_mobile/models/topic_content_model.dart';
+import 'package:nuntium_mobile/models/user_section_model.dart';
 import 'package:nuntium_mobile/models/viewed_task.dart';
 
 final firebaseFunctions = FirebaseFunctions();
@@ -143,4 +144,9 @@ final singleViewTopicContent = StreamProvider.family
 final viewAllImageInParent = StreamProvider.family
     .autoDispose<List<String>, String>((ref, String topicId) {
   return firebaseFunctions.retrieveAllImages(topicId);
+});
+
+final userSectionProvider = FutureProvider.family
+    .autoDispose<UserSectionModel, String>((ref, String uid) {
+  return firebaseFunctions.getUserSection(uid);
 });

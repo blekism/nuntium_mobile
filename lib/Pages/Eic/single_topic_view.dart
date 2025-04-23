@@ -375,105 +375,145 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                               'Submitted' &&
                                           viewContent.writtenStatus ==
                                               'Submitted')
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            ElevatedButton(
-                                              onPressed: () async {
-                                                final confirm =
-                                                    await showDialog<bool>(
-                                                  context: context,
-                                                  builder:
-                                                      (BuildContext context) {
-                                                    return AlertDialog(
-                                                      title: const Text(
-                                                          'Confirm Approval'),
-                                                      content: const Text(
-                                                          'Are you sure you want to approve these works?'),
-                                                      actions: <Widget>[
-                                                        TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.of(
-                                                                      context)
-                                                                  .pop(false),
-                                                          child: const Text(
-                                                              'Cancel'),
-                                                        ),
-                                                        TextButton(
-                                                          onPressed: () async {
-                                                            Navigator.of(
-                                                                    context)
-                                                                .pop(true);
+                                        FutureBuilder<bool>(
+                                            future: canUserEdit,
+                                            builder: (BuildContext context,
+                                                AsyncSnapshot<bool> snapshot) {
+                                              if (snapshot.hasData) {
+                                                final userCanEdit =
+                                                    snapshot.data!;
 
-                                                            print(
-                                                                'works approved');
-                                                          },
-                                                          child: const Text(
-                                                              'Approve'),
-                                                        ),
-                                                      ],
-                                                    );
-                                                  },
-                                                );
+                                                return userCanEdit
+                                                    ? Row(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .center,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .center,
+                                                        children: [
+                                                          ElevatedButton(
+                                                            onPressed:
+                                                                () async {
+                                                              final confirm =
+                                                                  await showDialog<
+                                                                      bool>(
+                                                                context:
+                                                                    context,
+                                                                builder:
+                                                                    (BuildContext
+                                                                        context) {
+                                                                  return AlertDialog(
+                                                                    title: const Text(
+                                                                        'Confirm Approval'),
+                                                                    content:
+                                                                        const Text(
+                                                                            'Are you sure you want to approve these works?'),
+                                                                    actions: <Widget>[
+                                                                      TextButton(
+                                                                        onPressed:
+                                                                            () =>
+                                                                                Navigator.of(context).pop(false),
+                                                                        child: const Text(
+                                                                            'Cancel'),
+                                                                      ),
+                                                                      TextButton(
+                                                                        onPressed:
+                                                                            () async {
+                                                                          Navigator.of(context)
+                                                                              .pop(true);
 
-                                                if (confirm == true) {
-                                                  try {
-                                                    await firebaseFunctions
-                                                        .massApprove(
-                                                      widget.id,
-                                                      viewContent.pubmatId,
-                                                      viewContent.writingId,
-                                                    );
+                                                                          print(
+                                                                              'works approved');
+                                                                        },
+                                                                        child: const Text(
+                                                                            'Approve'),
+                                                                      ),
+                                                                    ],
+                                                                  );
+                                                                },
+                                                              );
 
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                            'Works approved successfully!'),
-                                                        backgroundColor:
-                                                            Colors.green,
-                                                      ),
-                                                    );
-                                                  } catch (error) {
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                            'Failed to approve works: $error'),
-                                                        backgroundColor:
-                                                            Colors.red,
-                                                      ),
-                                                    );
-                                                  }
-                                                }
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.green,
-                                                elevation: 10,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                ),
-                                              ),
-                                              child: const Align(
-                                                alignment: Alignment.center,
-                                                child: Text(
-                                                  'Approve',
-                                                  style: TextStyle(
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.w900,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                                              if (confirm ==
+                                                                  true) {
+                                                                try {
+                                                                  await firebaseFunctions
+                                                                      .massApprove(
+                                                                    widget.id,
+                                                                    viewContent
+                                                                        .pubmatId,
+                                                                    viewContent
+                                                                        .writingId,
+                                                                  );
+
+                                                                  ScaffoldMessenger.of(
+                                                                          context)
+                                                                      .showSnackBar(
+                                                                    const SnackBar(
+                                                                      content: Text(
+                                                                          'Works approved successfully!'),
+                                                                      backgroundColor:
+                                                                          Colors
+                                                                              .green,
+                                                                    ),
+                                                                  );
+                                                                } catch (error) {
+                                                                  ScaffoldMessenger.of(
+                                                                          context)
+                                                                      .showSnackBar(
+                                                                    SnackBar(
+                                                                      content: Text(
+                                                                          'Failed to approve works: $error'),
+                                                                      backgroundColor:
+                                                                          Colors
+                                                                              .red,
+                                                                    ),
+                                                                  );
+                                                                }
+                                                              }
+                                                            },
+                                                            style:
+                                                                ElevatedButton
+                                                                    .styleFrom(
+                                                              backgroundColor:
+                                                                  Colors.green,
+                                                              elevation: 10,
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            10),
+                                                              ),
+                                                            ),
+                                                            child: const Align(
+                                                              alignment:
+                                                                  Alignment
+                                                                      .center,
+                                                              child: Text(
+                                                                'Approve',
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 20,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w900,
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    : const SizedBox.shrink();
+                                              } else if (snapshot.hasError) {
+                                                return Text(
+                                                    'Error: ${snapshot.error}');
+                                              } else {
+                                                return const CircularProgressIndicator();
+                                              }
+                                            })
                                     ],
                                   );
                                 },
@@ -619,279 +659,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    if (topicView['status'] == 'pendingPST')
-                      const Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Text(
-                          'This Topic is PENDING FOR PUBLISHING',
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    if (topicView['status'] == 'pendingAPR')
-                      const Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Text(
-                          'This Topic is PENDING FOR APPROVAL',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 10),
-                    if (topicView['status'] == 'pendingAPR')
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: const Text('Confirm Approval'),
-                                    content: const Text(
-                                        'Are you sure you want to approve this topic?'),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(false),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () async {
-                                          Navigator.of(context).pop(true);
-
-                                          print('topic approved');
-                                        },
-                                        child: const Text('Approve'),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-
-                              if (confirm == true) {
-                                try {
-                                  await firebaseFunctions
-                                      .approveToCreate(widget.id);
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content:
-                                          Text('Topic approved successfully!'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                } catch (error) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Failed to approve this topic: $error'),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              elevation: 10,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: const Align(
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Approve',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: const Text('Confirm Rejection'),
-                                    content: const Text(
-                                        'Are you sure you want to reject this topic?'),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(false),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () async {
-                                          Navigator.of(context).pop(true);
-
-                                          print('topic declined');
-                                        },
-                                        child: const Text('Reject'),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-
-                              if (confirm == true) {
-                                try {
-                                  await firebaseFunctions
-                                      .rejectToCreate(widget.id);
-
-                                  ref.invalidate(topicDataProvider(widget.id));
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content:
-                                          Text('Topic rejected successfully!'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                } catch (error) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'Failed to reject topic: $error'),
-                                      backgroundColor: Colors.red,
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              elevation: 10,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: const Align(
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Reject',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    if (topicView['status'] == 'pendingPST')
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () async {
-                              showDialog<bool>(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: const Text('Confirm Approval'),
-                                    content: const Text(
-                                        'Are you sure you want to approve this topic?'),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(false),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () async {
-                                          Navigator.of(context).pop(true);
-                                          print('topic approved for posting');
-                                        },
-                                        child: const Text('Approve'),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              elevation: 10,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: const Align(
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Approve',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          ElevatedButton(
-                            onPressed: () async {
-                              showDialog<bool>(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: const Text('Confirm Rejection'),
-                                    content: const Text(
-                                        'Are you sure you want to reject this topic?'),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(false),
-                                        child: const Text('Cancel'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () async {
-                                          Navigator.of(context).pop(true);
-                                          print('topic declined');
-                                        },
-                                        child: const Text('Reject'),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              elevation: 10,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            child: const Align(
-                              alignment: Alignment.center,
-                              child: Text(
-                                'Reject',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _conditionalRenderApproval(canUserEdit, topicView)
                   ],
                 );
               },
@@ -901,6 +669,115 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
           ],
         ),
       ),
+    );
+  }
+
+  FutureBuilder<bool> _conditionalRenderApproval(
+      Future<bool> canUserEdit, Map<String, dynamic> topicView) {
+    return FutureBuilder<bool>(
+      future: canUserEdit,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        final bool userCanEdit = snapshot.data ?? false;
+        final String status = topicView['status'] ?? '';
+
+        List<Widget> widgets = [];
+
+        if (status == 'pendingPST') {
+          widgets.add(
+            const Align(
+              alignment: Alignment.bottomCenter,
+              child: Text(
+                'This Topic is PENDING FOR PUBLISHING',
+                style: TextStyle(color: Colors.green, fontSize: 15),
+              ),
+            ),
+          );
+        }
+
+        if (status == 'pendingAPR') {
+          widgets.add(
+            const Align(
+              alignment: Alignment.bottomCenter,
+              child: Text(
+                'This Topic is PENDING FOR APPROVAL',
+                style: TextStyle(color: Colors.red, fontSize: 15),
+              ),
+            ),
+          );
+
+          widgets.add(const SizedBox(height: 10));
+
+          if (userCanEdit) {
+            widgets.add(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Confirm Approval'),
+                            content: const Text(
+                                'Are you sure you want to approve this topic?'),
+                            actions: <Widget>[
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop(true);
+                                },
+                                child: const Text('Approve'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (confirm == true) {
+                        try {
+                          await firebaseFunctions.approveToCreate(widget.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Topic approved successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Approve'),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: widgets,
+        );
+      },
     );
   }
 

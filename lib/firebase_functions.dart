@@ -16,6 +16,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nuntium_mobile/models/featuredcard.dart';
 import 'package:nuntium_mobile/models/normalitem.dart';
 import 'package:nuntium_mobile/models/topic_content_model.dart';
+import 'package:nuntium_mobile/models/user_section_model.dart';
 import 'package:nuntium_mobile/models/viewed_task.dart';
 import 'package:http/http.dart' as http;
 
@@ -875,6 +876,31 @@ class FirebaseFunctions {
       return sectionSnapshot;
     } catch (e) {
       print('error fetching data $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<UserSectionModel> getUserSection(String uid) async {
+    try {
+      final DocumentSnapshot userDoc = await getUserInfo(uid);
+
+      if (userDoc.exists) {
+        final DocumentSnapshot section =
+            await db.collection('sections').doc(userDoc['section']).get();
+
+        return UserSectionModel(
+            uid: uid,
+            sectionId: userDoc['section'],
+            sectionName: section['sectionType']);
+      } else {
+        return UserSectionModel(
+          uid: uid,
+          sectionId: "",
+          sectionName: "",
+        );
+      }
+    } catch (e) {
+      print('error gettting user section data $e');
       return Future.error(e);
     }
   }

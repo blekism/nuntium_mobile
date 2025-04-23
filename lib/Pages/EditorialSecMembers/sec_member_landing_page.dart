@@ -1,10 +1,14 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
 import 'package:nuntium_mobile/Pages/EditorialSecMembers/member_tasks_page.dart';
+import 'package:nuntium_mobile/Pages/Eic/topicpage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
+import 'package:nuntium_mobile/providers/data_provider.dart';
 
-class SecMemberLandingPage extends StatefulWidget {
+class SecMemberLandingPage extends ConsumerStatefulWidget {
   final VoidCallback? onLogout;
   final String? userRole, uid;
 
@@ -16,24 +20,18 @@ class SecMemberLandingPage extends StatefulWidget {
   });
 
   @override
-  State<SecMemberLandingPage> createState() => _SecMemberLandingPageState();
+  ConsumerState<SecMemberLandingPage> createState() =>
+      _SecMemberLandingPageState();
 }
 
-class _SecMemberLandingPageState extends State<SecMemberLandingPage> {
-  late List<Widget> _screens;
+class _SecMemberLandingPageState extends ConsumerState<SecMemberLandingPage> {
   int _currentIndex = 0;
 
   @override
-  void initState() {
-    super.initState();
-    _screens = [
-      MemberTasksPage(uid: widget.uid),
-      const CalendarPage(),
-    ];
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final userSec =
+        ref.watch(userSectionProvider(FirebaseAuth.instance.currentUser!.uid));
+
     return Scaffold(
       appBar: const CustomAppBar(
         appbarTitle: 'Your Tasks',
@@ -44,9 +42,26 @@ class _SecMemberLandingPageState extends State<SecMemberLandingPage> {
         userRole: widget.userRole!,
         pageOrigin: 'section_writer',
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      body: userSec.when(
+        data: (userSec) {
+          return IndexedStack(
+            index: _currentIndex,
+            children: [
+              MemberTasksPage(uid: widget.uid),
+              TopicPage(
+                shouldShowAppbar: false,
+                secEd: false,
+                sectionID: userSec.sectionId,
+                sectionName: userSec.sectionName,
+              ),
+              const CalendarPage(),
+            ],
+          );
+        },
+        error: (error, stack) => Center(child: Text('Error: $error')),
+        loading: () => const Center(
+          child: CircularProgressIndicator(),
+        ),
       ),
       bottomNavigationBar: _bottomNavbar(),
     );
@@ -73,6 +88,14 @@ class _SecMemberLandingPageState extends State<SecMemberLandingPage> {
             height: iconSize,
           ),
           label: 'Home',
+        ),
+        BottomNavigationBarItem(
+          icon: Image.asset(
+            'assets/images/committee.png',
+            width: iconSize,
+            height: iconSize,
+          ),
+          label: 'Topics',
         ),
         BottomNavigationBarItem(
           icon: Image.asset(
