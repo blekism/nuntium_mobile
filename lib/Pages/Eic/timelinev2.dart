@@ -7,8 +7,8 @@ import 'package:step_progress_indicator/step_progress_indicator.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 
 class TimelineV2Page extends ConsumerStatefulWidget {
-  final String topicId, title, sectionName, deadline, member1Url, member2Url;
-  final int otherMembers, projectStep, totalSubtask;
+  final String topicId, title, sectionName, deadline;
+  final int projectStep, totalSubtask;
 
   const TimelineV2Page({
     super.key,
@@ -17,9 +17,6 @@ class TimelineV2Page extends ConsumerStatefulWidget {
     required this.sectionName,
     required this.deadline,
     required this.totalSubtask,
-    required this.member1Url,
-    required this.member2Url,
-    required this.otherMembers,
     required this.projectStep,
   });
 
@@ -69,47 +66,6 @@ class _TimelineV2PageState extends ConsumerState<TimelineV2Page> {
                   ),
                 ),
                 const SizedBox(height: 7),
-                SizedBox(
-                  child: Row(
-                    children: [
-                      widget.member1Url != ''
-                          ? CircleAvatar(
-                              radius: 20,
-                              backgroundImage: NetworkImage(widget.member1Url),
-                            )
-                          : const CircleAvatar(
-                              radius: 13,
-                              backgroundImage:
-                                  AssetImage('assets/images/nudasma.jpg'),
-                            ),
-                      const SizedBox(width: 4),
-                      widget.member2Url != ''
-                          ? CircleAvatar(
-                              radius: 20,
-                              backgroundImage: NetworkImage(widget.member2Url),
-                            )
-                          : const CircleAvatar(
-                              radius: 13,
-                              backgroundImage:
-                                  AssetImage('assets/images/nudasma.jpg'),
-                            ),
-                      const SizedBox(width: 4),
-                      widget.otherMembers > 0
-                          ? CircleAvatar(
-                              radius: 13,
-                              backgroundColor: Colors.white,
-                              child: Text(
-                                '+${widget.otherMembers}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 10),
                 StepProgressIndicator(
                   totalSteps: 6,

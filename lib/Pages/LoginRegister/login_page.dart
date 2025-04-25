@@ -157,28 +157,33 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/nudasma.jpg', // Replace with your image path
-              fit: BoxFit.cover,
-              width: double.infinity,
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/images/nudasma.jpg', // Replace with your image path
+                fit: BoxFit.cover,
+                width: double.infinity,
+              ),
             ),
-          ),
-          // Semi-transparent overlay color
-          Positioned.fill(
-            child: Container(
-              color: const Color(0xFF020B40)
-                  .withOpacity(0.4), // Adjust opacity as needed
+            // Semi-transparent overlay color
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFF020B40)
+                    .withOpacity(0.4), // Adjust opacity as needed
+              ),
             ),
-          ),
 
-          _loginFormContainer(context),
+            _loginFormContainer(context),
 
-          _isLoading ? const LoadingScreen() : const SizedBox.shrink(),
-        ],
+            _isLoading ? const LoadingScreen() : const SizedBox.shrink(),
+          ],
+        ),
       ),
     );
   }

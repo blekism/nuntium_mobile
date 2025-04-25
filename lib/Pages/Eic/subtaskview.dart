@@ -10,12 +10,15 @@ class SubTaskView extends ConsumerStatefulWidget {
   final String topicId;
   final String section;
   final String sectionId;
+  final String member1, member2;
 
   const SubTaskView({
     super.key,
     required this.topicId,
     required this.section,
     required this.sectionId,
+    required this.member1,
+    required this.member2,
   });
 
   @override

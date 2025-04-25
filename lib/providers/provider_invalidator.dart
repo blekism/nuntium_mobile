@@ -26,7 +26,6 @@ class ProviderInvalidator {
     ref.invalidate(memberListProvider);
     ref.invalidate(taskWrittenProvider);
     ref.invalidate(timelineProvider);
-    ref.invalidate(allSectionTasksProvider);
     ref.invalidate(retImagesProvider);
     ref.invalidate(singleViewTopicContent);
     ref.invalidate(viewAllImageInParent);

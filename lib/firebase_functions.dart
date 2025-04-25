@@ -945,66 +945,129 @@ class FirebaseFunctions {
   }
 
   Stream<List<Topic>> getTopics(String sectionId) {
-    return db
-        .collection('tasks')
-        .where('section', isEqualTo: sectionId)
-        .orderBy('deadline', descending: true)
-        .snapshots()
-        .asyncMap((snapshot) {
-      return Future.wait(snapshot.docs.map((topicDoc) async {
-        final topicData = topicDoc.data();
-        final deadline = topicDoc['deadline'] as Timestamp;
-        final dateString =
-            DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
+    if (sectionId != 'AhIBjLyTec3anoj3mYkz') {
+      return db
+          .collection('tasks')
+          .where('section', isEqualTo: sectionId)
+          .orderBy('deadline', descending: true)
+          .snapshots()
+          .asyncMap((snapshot) {
+        return Future.wait(snapshot.docs.map((topicDoc) async {
+          final topicData = topicDoc.data();
+          final deadline = topicDoc['deadline'] as Timestamp;
+          final dateString =
+              DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
 
-        final assignedTaskData =
-            await topicDoc.reference.collection('assigned_tasks').get();
+          final assignedTaskData =
+              await topicDoc.reference.collection('assigned_tasks').get();
 
-        List<Member> members = [];
+          List<Member> members = [];
 
-        if (assignedTaskData.docs.isNotEmpty) {
-          members = (await Future.wait(
-            assignedTaskData.docs.map((taskDoc) async {
-              final memberId = taskDoc['assignee_id'];
+          if (assignedTaskData.docs.isNotEmpty) {
+            members = (await Future.wait(
+              assignedTaskData.docs.map((taskDoc) async {
+                final memberId = taskDoc['assignee_id'];
 
-              if (memberId != null) {
-                final userDoc =
-                    await db.collection('users').doc(memberId).get();
+                if (memberId != null) {
+                  final userDoc =
+                      await db.collection('users').doc(memberId).get();
 
-                if (userDoc.exists) {
-                  return Member(
-                    id: userDoc.id,
-                    name: userDoc['username'] ?? '',
-                    imageUrl: userDoc['photoURL'] ?? '',
-                  );
+                  if (userDoc.exists) {
+                    return Member(
+                      id: userDoc.id,
+                      name: userDoc['username'] ?? '',
+                      imageUrl: userDoc['photoURL'] ?? '',
+                    );
+                  }
                 }
-              }
-              return null;
-            }),
-          ))
-              .where((member) => member != null)
-              .cast<Member>()
-              .toList();
-        }
+                return null;
+              }),
+            ))
+                .where((member) => member != null)
+                .cast<Member>()
+                .toList();
+          }
 
-        return Topic(
-          id: topicDoc.id,
-          title: topicData['title'] ?? '',
-          section: topicData['section'] ?? '',
-          status: topicData['status'] ?? '',
-          deadline: dateString,
-          priority: topicData['priority'] ?? '',
-          totalSubtask: topicData['total_subtask'] ?? '',
-          completedSubtask: topicData['completed_subtask'] ?? '',
-          otherMembers: topicData['otherMembers'],
-          members: members,
-          projectStep: topicData['projectStep'],
-        );
-      }).toList());
-    }).handleError((e) {
-      print('Error fetching topic for card with user info: $e');
-      return Future.error(e);
-    });
+          return Topic(
+            id: topicDoc.id,
+            title: topicData['title'] ?? '',
+            section: topicData['section'] ?? '',
+            status: topicData['status'] ?? '',
+            deadline: dateString,
+            priority: topicData['priority'] ?? '',
+            totalSubtask: topicData['total_subtask'] ?? '',
+            completedSubtask: topicData['completed_subtask'] ?? '',
+            otherMembers: topicData['otherMembers'],
+            members: members,
+            projectStep: topicData['projectStep'],
+          );
+        }).toList());
+      }).handleError((e) {
+        print('Error fetching topic for card with user info: $e');
+        return Future.error(e);
+      });
+    } else {
+      return db
+          .collection('tasks')
+          .where('section', isNotEqualTo: 'XDEPw2VPYdeFdKQRuRpA')
+          .orderBy('deadline', descending: true)
+          .snapshots()
+          .asyncMap((snapshot) {
+        return Future.wait(snapshot.docs.map((topicDoc) async {
+          final topicData = topicDoc.data();
+          final deadline = topicDoc['deadline'] as Timestamp;
+          final dateString =
+              DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
+
+          final assignedTaskData =
+              await topicDoc.reference.collection('assigned_tasks').get();
+
+          List<Member> members = [];
+
+          if (assignedTaskData.docs.isNotEmpty) {
+            members = (await Future.wait(
+              assignedTaskData.docs.map((taskDoc) async {
+                final memberId = taskDoc['assignee_id'];
+
+                if (memberId != null) {
+                  final userDoc =
+                      await db.collection('users').doc(memberId).get();
+
+                  if (userDoc.exists) {
+                    return Member(
+                      id: userDoc.id,
+                      name: userDoc['username'] ?? '',
+                      imageUrl: userDoc['photoURL'] ?? '',
+                    );
+                  }
+                }
+                return null;
+              }),
+            ))
+                .where((member) => member != null)
+                .cast<Member>()
+                .toList();
+          }
+
+          return Topic(
+            id: topicDoc.id,
+            title: topicData['title'] ?? '',
+            section: topicData['section'] ?? '',
+            status: topicData['status'] ?? '',
+            deadline: dateString,
+            priority: topicData['priority'] ?? '',
+            totalSubtask: topicData['total_subtask'] ?? '',
+            completedSubtask: topicData['completed_subtask'] ?? '',
+            otherMembers: topicData['otherMembers'],
+            members: members,
+            projectStep: topicData['projectStep'],
+          );
+        }).toList());
+      }).handleError((e) {
+        print('Error fetching topic for card with user info: $e');
+        return Future.error(e);
+      });
+    }
   }
 
   Stream<List<TaskModel>> getTasks(String topicId) {
@@ -1377,8 +1440,16 @@ class FirebaseFunctions {
           assigner: username['username'],
           assignee: subTaskSnap['assignee_id'],
           priority: priority ?? '',
+          assigneeName: assigneeSec['username'],
           canCaption: subTaskSnap['forCaption'],
           assigneeSec: assigneeSec['section'],
+          hasStarted: subTaskSnap['status'] == 'Doing',
+          projectStep: parentData['projectStep'],
+          totalSubtask: parentData['total_subtask'],
+          comments: subTaskSnap.data() != null
+              ? (subTaskSnap.data() as Map<String, dynamic>)['comment'] ??
+                  'No Comments yet'
+              : '',
           content: subTaskSnap.data() != null
               ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ??
                   'No Content'
@@ -1615,64 +1686,6 @@ class FirebaseFunctions {
           forCaption: canCaption,
         );
       }));
-    });
-  }
-
-  Stream<List<TaskModel>> getSectionTasks(String sectionId) {
-    // function for getting all tasks in a section
-    //yung getSectionTasks, replace with getSectionTopics (this is for contribs and sec writers para maka contribute sila sa ibang tasks)
-    return db
-        .collection('tasks')
-        .where('section', isEqualTo: sectionId)
-        .snapshots()
-        .asyncMap((taskSnapshot) async {
-      final List<TaskModel> allTasks = [];
-
-      for (final taskDoc in taskSnapshot.docs) {
-        final topicId = taskDoc.id;
-        final topicData = taskDoc.data();
-        final parentPriority = topicData['priority'] ?? '';
-        final parentSection = topicData['section'] ?? '';
-        final parentTitle = topicData['title'] ?? '';
-
-        // Fetch the assigned_tasks subcollection for this task
-        final assignedTasksSnap = await db
-            .collection('tasks')
-            .doc(topicId)
-            .collection('assigned_tasks')
-            .get();
-
-        for (final assignedDoc in assignedTasksSnap.docs) {
-          final taskData = assignedDoc.data();
-          final memberId = taskData['assignee_id'];
-          final tasktype = taskData['task_type'];
-          final title = taskData['taskname'];
-          final status = taskData['status'];
-          final canCaption = taskData['forCaption'];
-          final deadline = taskData['deadline'] as Timestamp;
-          final dateString =
-              DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
-
-          final userDoc = await db.collection('users').doc(memberId).get();
-          final imageUrl = userDoc.exists ? userDoc['photoURL'] : 'unknown';
-
-          allTasks.add(TaskModel(
-            id: assignedDoc.id,
-            title: title,
-            section: parentSection,
-            type: tasktype,
-            deadline: dateString,
-            priority: parentPriority,
-            assignee: imageUrl,
-            status: status,
-            parentId: topicId,
-            sectionName: parentTitle,
-            forCaption: canCaption,
-          ));
-        }
-      }
-
-      return allTasks;
     });
   }
 
@@ -1969,5 +1982,86 @@ class FirebaseFunctions {
       return Future.error(e);
     }
   }
+
+  Future<void> deleteTopic(String topicId) async {
+    try {
+      final topicRef =
+          FirebaseFirestore.instance.collection('tasks').doc(topicId);
+      final assignedTasksRef = topicRef.collection('assigned_tasks');
+      final timelineTaskRef = topicRef.collection('timeline');
+
+      // Delete all documents inside the 'assigned_tasks' subcollection
+      final assignedTasksSnapshot = await assignedTasksRef.get();
+      final timelineTaskSnapshot = await timelineTaskRef.get();
+      for (var doc in assignedTasksSnapshot.docs) {
+        await assignedTasksRef.doc(doc.id).delete();
+      }
+
+      for (var doc in timelineTaskSnapshot.docs) {
+        await timelineTaskRef.doc(doc.id).delete();
+      }
+
+      // Now delete the parent topic document
+      await topicRef.delete();
+
+      // system na ang logs nito
+
+      print('Topic and assigned tasks deleted successfully');
+    } catch (e) {
+      print('Error deleting topic and subcollection: $e');
+    }
+  }
+
+  Future<void> deleteAssignedTask(String topicId, String taskId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(topicId)
+          .collection('assigned_tasks')
+          .doc(taskId)
+          .delete();
+
+      await logInTimeline(
+        taskId,
+        'Assigned Task deleted',
+        'An assigned task was deleted',
+        'Deleted',
+      );
+
+      print('Assigned task deleted successfully');
+    } catch (e) {
+      print('Error deleting assigned task: $e');
+    }
+  }
+
+  Future<void> writeComment(
+    String topicId,
+    String taskId,
+    String comment,
+    String content,
+  ) async {
+    try {
+      final commentData = {
+        'comment': comment,
+        'userId': auth.currentUser!.uid,
+        'comment_at': FieldValue.serverTimestamp(),
+        'status': 'Returned'
+      };
+
+      await FirebaseFirestore.instance
+          .collection('tasks')
+          .doc(topicId)
+          .collection('assigned_tasks')
+          .doc(taskId)
+          .update(commentData);
+
+      await logInTimeline(topicId, comment, content, 'Commented');
+
+      print('Comment added successfully');
+    } catch (e) {
+      print('Error writing comment: $e');
+    }
+  }
+
   // TODO notification for announcements
 }

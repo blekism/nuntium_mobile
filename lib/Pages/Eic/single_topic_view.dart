@@ -41,6 +41,7 @@ class TopicSingleRead extends ConsumerStatefulWidget {
 class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
   final firebaseFunctions = FirebaseFunctions();
   bool showImageIsLoading = true;
+  late Future<bool> _canUserEditFuture;
 
   Future<void> deleteImage(int index, List<String> retrievedImages) async {
     try {
@@ -60,10 +61,15 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _canUserEditFuture =
+        firebaseFunctions.canUserEdit(firebaseFunctions.auth.currentUser!.uid);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final topicView = ref.watch(topicDataProvider(widget.id));
-    final canUserEdit =
-        firebaseFunctions.canUserEdit(firebaseFunctions.auth.currentUser!.uid);
     final taskContent = ref.watch(singleViewTopicContent(widget.id));
     final allImageView = ref.watch(viewAllImageInParent(widget.id));
 
@@ -121,7 +127,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                     widget.status == "Done"
                                 ? const SizedBox.shrink()
                                 : FutureBuilder<bool>(
-                                    future: canUserEdit,
+                                    future: _canUserEditFuture,
                                     builder: (BuildContext context,
                                         AsyncSnapshot<bool> snapshot) {
                                       if (snapshot.hasData) {
@@ -334,6 +340,27 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                         borderRadius: BorderRadius.circular(20),
                                         child: Image.network(
                                           viewContent.pubmatUrl,
+                                          loadingBuilder: (context, child,
+                                              loadingProgress) {
+                                            if (loadingProgress == null)
+                                              return child;
+                                            return Center(
+                                              child: CircularProgressIndicator(
+                                                value: loadingProgress
+                                                            .expectedTotalBytes !=
+                                                        null
+                                                    ? loadingProgress
+                                                            .cumulativeBytesLoaded /
+                                                        loadingProgress
+                                                            .expectedTotalBytes!
+                                                    : null,
+                                              ),
+                                            );
+                                          },
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Text('Failed to load image');
+                                          },
                                           fit: BoxFit.cover,
                                           alignment: Alignment.center,
                                           width: MediaQuery.of(context)
@@ -376,7 +403,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                           viewContent.writtenStatus ==
                                               'Submitted')
                                         FutureBuilder<bool>(
-                                            future: canUserEdit,
+                                            future: _canUserEditFuture,
                                             builder: (BuildContext context,
                                                 AsyncSnapshot<bool> snapshot) {
                                               if (snapshot.hasData) {
@@ -564,6 +591,8 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                           topicId: widget.id,
                                           section: widget.section,
                                           sectionId: widget.sectionId,
+                                          member1: widget.member1,
+                                          member2: widget.member2,
                                         ),
                                       );
                                     }
@@ -620,9 +649,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                         sectionName: widget.section,
                                         deadline: dateString,
                                         totalSubtask: totalSubtask,
-                                        member1Url: widget.member1,
-                                        member2Url: widget.member2,
-                                        otherMembers: widget.otherMember,
                                         projectStep: topicView['projectStep']),
                                   ),
                                 );
@@ -632,7 +658,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('Please login to comment'),
+                                    content: Text('Please login to view this'),
                                     duration: Duration(seconds: 2),
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -659,7 +685,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    _conditionalRenderApproval(canUserEdit, topicView)
+                    _conditionalRenderApproval(_canUserEditFuture, topicView)
                   ],
                 );
               },
@@ -765,7 +791,94 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                         }
                       }
                     },
-                    child: const Text('Approve'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      elevation: 10,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Align(
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Approve',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Confirm Rejection'),
+                            content: const Text(
+                                'Are you sure you want to reject this topic?'),
+                            actions: <Widget>[
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Cancel'),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  Navigator.of(context).pop(true);
+
+                                  print('topic declined');
+                                },
+                                child: const Text('Reject'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (confirm == true) {
+                        try {
+                          await firebaseFunctions.rejectToCreate(widget.id);
+
+                          ref.invalidate(topicDataProvider(widget.id));
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Topic rejected successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        } catch (error) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to reject topic: $error'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      elevation: 10,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Align(
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Reject',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

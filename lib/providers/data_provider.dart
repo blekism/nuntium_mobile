@@ -124,11 +124,6 @@ final timelineProvider = StreamProvider.family
   return firebaseFunctions.getTimelineItems(topicId);
 });
 
-final allSectionTasksProvider = StreamProvider.family
-    .autoDispose<List<TaskModel>, String>((ref, String topicId) {
-  return firebaseFunctions.getSectionTasks(topicId);
-});
-
 final retImagesProvider = StreamProvider.family
     .autoDispose<List<String>, (String, String)>((ref, ids) {
   final topicId = ids.$1;

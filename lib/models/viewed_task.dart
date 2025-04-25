@@ -9,8 +9,11 @@ class ViewedTask {
       content,
       headline,
       taskId,
-      assigneeSec;
-  final bool canCaption;
+      assigneeSec,
+      assigneeName,
+      comments;
+  final bool canCaption, hasStarted;
+  final int projectStep, totalSubtask;
 
   const ViewedTask({
     required this.title,
@@ -24,6 +27,11 @@ class ViewedTask {
     this.headline = '',
     required this.taskId,
     required this.assigneeSec,
+    required this.assigneeName,
+    required this.comments,
     this.canCaption = false,
+    required this.hasStarted,
+    required this.projectStep,
+    required this.totalSubtask,
   });
 }
