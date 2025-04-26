@@ -1,23 +1,28 @@
 import 'Package:flutter/material.dart';
 
 class LoadingScreen extends StatelessWidget {
-  const LoadingScreen({super.key});
+  final String? customMessage;
+
+  const LoadingScreen({
+    super.key,
+    this.customMessage,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0XFFD0D0D0).withOpacity(0.5),
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
+            const CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(Color(0XFF020B40)),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text(
-              'Loading...',
-              style: TextStyle(
+              customMessage ?? 'Loading...',
+              style: const TextStyle(
                 color: Color(0XFF020B40),
                 fontSize: 20,
               ),

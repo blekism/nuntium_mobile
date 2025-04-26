@@ -39,6 +39,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         return 'Reader';
       case 'eic':
         return 'Editor-In-Chief';
+      case 'Managing':
+        return 'Managing Editor';
+      case 'Associate':
+        return 'Associate Editor';
       default:
         return 'Unknown Role'; // fallback
     }

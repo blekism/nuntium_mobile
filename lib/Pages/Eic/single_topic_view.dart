@@ -210,7 +210,28 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 5),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildApprovalTile(
+                              context: context,
+                              approved: topicView['eicApproved'],
+                              role: 'Editor-In-Chief',
+                            ),
+                            _buildApprovalTile(
+                              context: context,
+                              approved: topicView['AssociateApproved'],
+                              role: 'Associate Editor',
+                            ),
+                            _buildApprovalTile(
+                              context: context,
+                              approved: topicView['ManagingApproved'],
+                              role: 'Managing Editor',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
                         const Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
@@ -699,7 +720,9 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
   }
 
   FutureBuilder<bool> _conditionalRenderApproval(
-      Future<bool> canUserEdit, Map<String, dynamic> topicView) {
+    Future<bool> canUserEdit,
+    Map<String, dynamic> topicView,
+  ) {
     return FutureBuilder<bool>(
       future: canUserEdit,
       builder: (context, snapshot) {
@@ -741,7 +764,9 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
 
           widgets.add(const SizedBox(height: 10));
 
-          if (userCanEdit) {
+          if (userCanEdit && topicView['role'] == 'eic' ||
+              topicView['role'] == 'Managing' ||
+              topicView['role'] == 'Associate') {
             widgets.add(
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1167,6 +1192,55 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildApprovalTile({
+    required BuildContext context,
+    required bool? approved,
+    required String role,
+  }) {
+    Widget leadingIcon;
+    Widget trailingIcon;
+    if (approved == true) {
+      leadingIcon = const Icon(Icons.check_circle, color: Colors.green);
+      trailingIcon = const SizedBox.shrink();
+    } else if (approved == false) {
+      trailingIcon = IconButton(
+        icon: const Icon(Icons.help_outline, color: Colors.grey),
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Approval Status Unknown'),
+              content: Text('The approval status for $role has not been set.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+      leadingIcon = const Icon(Icons.cancel, color: Colors.red);
+    } else {
+      leadingIcon = const Icon(Icons.help_outline, color: Colors.grey);
+      trailingIcon = const SizedBox.shrink();
+    }
+
+    return ListTile(
+      leading: leadingIcon,
+      title: Text(
+        '$role Approved',
+        style: const TextStyle(
+          color: Color(0xFF505050),
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+        ),
+      ),
+      trailing: trailingIcon,
     );
   }
 }

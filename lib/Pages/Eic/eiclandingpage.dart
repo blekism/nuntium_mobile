@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Eic/eichomepage.dart';
-import 'package:nuntium_mobile/Pages/SectionEditor/assigntasklogpage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';

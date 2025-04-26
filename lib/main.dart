@@ -247,6 +247,16 @@ class _AuthCheckerState extends State<AuthChecker> {
                 onLogout: _onSignOut,
                 userRole: userRole,
               );
+            case 'Managing':
+              return EicLandingPage(
+                onLogout: _onSignOut,
+                userRole: userRole,
+              );
+            case 'Associate':
+              return EicLandingPage(
+                onLogout: _onSignOut,
+                userRole: userRole,
+              );
             case 'section_editors':
               return EbLandingPage(
                 onLogout: _onSignOut,

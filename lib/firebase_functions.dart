@@ -19,6 +19,7 @@ import 'package:nuntium_mobile/models/topic_content_model.dart';
 import 'package:nuntium_mobile/models/user_section_model.dart';
 import 'package:nuntium_mobile/models/viewed_task.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
 
 class FirebaseFunctions {
   FirebaseFirestore db = FirebaseFirestore.instance;
@@ -870,7 +871,7 @@ class FirebaseFunctions {
           await db.collection('sections').where('sectionType', whereNotIn: [
         'Managing',
         'Associate',
-        'Editor-In-Chief',
+        'eic',
       ]).get();
 
       return sectionSnapshot;
@@ -914,10 +915,17 @@ class FirebaseFunctions {
         return;
       }
 
+      final userData = await getUserInfo(assignee);
+      String userRole = '';
+
+      if (userData.exists) {
+        userRole = userData['role'];
+      }
+
       DateTime parsedDeadline = DateFormat("d/M/yyyy h:mm a").parse(deadline);
       Timestamp deadlineTimestamp = Timestamp.fromDate(parsedDeadline);
 
-      await db.collection('tasks').add({
+      final Map<String, dynamic> topicData = {
         'assigned_by': assignee,
         'title': title,
         'deadline': deadlineTimestamp,
@@ -931,11 +939,25 @@ class FirebaseFunctions {
         'status': 'pendingAPR',
         'otherMembers': 0,
         'projectStep': 1,
-      }).then((docRef) async {
-        final dateString = formatTimestamp(Timestamp.now());
+        'eicApproved': false,
+        'ManagingApproved': false,
+        'AssociateApproved': false,
+      };
 
-        await logInTimeline(docRef.id, 'Task Created',
-            'Task was created at $dateString', 'Topic Created');
+      if (userRole == 'eic' ||
+          userRole == 'Managing' ||
+          userRole == 'Associate') {
+        topicData['${userRole}Approved'] = true;
+      }
+
+      await db.collection('tasks').add(topicData).then((docRef) async {
+        final dateString = formatTimestamp(Timestamp.now());
+        await logInTimeline(
+          docRef.id,
+          'Task Created',
+          'Task was created at $dateString',
+          'Topic Created',
+        );
       });
 
       print('topic created successfully');
@@ -1135,13 +1157,20 @@ class FirebaseFunctions {
       String userId = taskData['assigned_by'];
 
       DocumentSnapshot userDoc = await db.collection('users').doc(userId).get();
+      DocumentSnapshot currentUser = await getUserInfo(auth.currentUser!.uid);
 
       if (!userDoc.exists) {
         throw Exception("User not found");
       }
 
+      if (!currentUser.exists) {
+        throw Exception("User not found");
+      }
+
       Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
       taskData['userName'] = userData['username'];
+      taskData['role'] = currentUser['role'];
+      taskData['currentUser'] = currentUser['username'];
 
       return taskData;
     }).handleError((e) {
@@ -1244,19 +1273,38 @@ class FirebaseFunctions {
 
   Future<void> approveToCreate(String topicId) async {
     try {
-      await db.collection('tasks').doc(topicId).update({
-        'status': 'To Do',
-        'eicApproved': true,
-        'createApproved_at': Timestamp.now(),
-        'projectStep': FieldValue.increment(1),
-      });
+      final userDoc = await getUserInfo(auth.currentUser!.uid);
+      String userRole = '';
+
+      if (userDoc.exists) {
+        userRole = userDoc['role'];
+      } else {
+        userRole = 'unknown';
+      }
+
+      // Get the existing document first
+      final docSnapshot = await db.collection('tasks').doc(topicId).get();
+      if (!docSnapshot.exists) {
+        return;
+      }
+
+      Map<String, dynamic> updates = {
+        '${userRole}Approved': true,
+      };
+
+      // Apply updates
+      await db.collection('tasks').doc(topicId).update(updates);
 
       final dateString = formatTimestamp(Timestamp.now());
 
-      await logInTimeline(topicId, 'Topic Approved',
-          'Topic was Approved at $dateString', 'Approved');
+      await logInTimeline(
+        topicId,
+        'Topic Approved by $userRole',
+        'Topic was Approved at $dateString',
+        'Approved',
+      );
     } catch (e) {
-      print('error approving post $e');
+      print('Error approving topic: $e');
       return Future.error(e);
     }
   }
