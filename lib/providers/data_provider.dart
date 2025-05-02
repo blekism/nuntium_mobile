@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/models/comment.dart';
+import 'package:nuntium_mobile/models/historyparam.dart';
 import 'package:nuntium_mobile/models/member.dart';
 import 'package:nuntium_mobile/models/membermodel.dart';
 import 'package:nuntium_mobile/models/notif.dart';
@@ -144,4 +145,9 @@ final viewAllImageInParent = StreamProvider.family
 final userSectionProvider = FutureProvider.family
     .autoDispose<UserSectionModel, String>((ref, String uid) {
   return firebaseFunctions.getUserSection(uid);
+});
+
+final historyProvider = StreamProvider.family
+    .autoDispose<List<Topic>, String>((ref, String sectionId) {
+  return firebaseFunctions.getTopicHistory(sectionId);
 });

@@ -44,12 +44,10 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
   final ValueNotifier<String> _contentNotifier = ValueNotifier<String>('');
   bool showImageIsLoading = true;
   final ImageUploadService imageUploadService = ImageUploadService();
-  File? _selectedSingleImage;
-  bool _isUploading = false;
-  bool _uploadSuccess = false;
   late Future<bool> _canUserEditFuture;
   final TextEditingController _commentController = TextEditingController();
   bool isContentSubmitted = false;
+  bool wasSubmitPressed = false;
 
   @override
   void initState() {
@@ -179,64 +177,165 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
     }
   }
 
-  Future<void> _pickSingleImage() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+  Future<void> _uploadMultiPubmat(
+    StateSetter setModalState,
+    Map<String, double> uploadProgress,
+    List<String> uploadingImagePaths,
+  ) async {
+    List<String> imageUrls = [];
 
-    if (image != null) {
-      setState(() {
-        _selectedSingleImage = File(image.path);
-      });
-    }
-  }
+    for (final fileWrapper in controller.images) {
+      if (fileWrapper.hasPath) {
+        File file = File(fileWrapper.path!);
 
-  Future<String?> uploadSingleImage(File selectedImage) async {
-    try {
-      final String? userId = firebaseFunctions.auth.currentUser?.uid;
-      if (userId == null) {
-        print("User not logged in.");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User not logged in.")),
-        );
-        return null;
+        String fileExtension = file.path.split('.').last;
+        String fileName =
+            "${DateTime.now().millisecondsSinceEpoch}.$fileExtension";
+
+        Reference storageRef =
+            FirebaseStorage.instance.ref().child('images/$fileName');
+
+        UploadTask uploadTask = storageRef.putFile(file);
+
+        // Add the image path to the list of uploading images
+        uploadingImagePaths.add(fileWrapper.path!);
+
+        try {
+          // 1. Listen for upload progress (Stream)
+          uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+            double progress = snapshot.bytesTransferred.toDouble() /
+                snapshot.totalBytes.toDouble();
+
+            // Update the progress in the map
+            setModalState(() {
+              uploadProgress[fileWrapper.path!] = progress;
+            });
+
+            // Update the UI using setModalState
+            setModalState(() {});
+
+            print("Upload Progress: $progress");
+            // Update your UI with the progress (e.g., a progress bar)
+          }, onError: (error) {
+            print("Error listening to snapshot events: $error");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Error monitoring upload: $error")),
+            );
+            // Remove the image path from the list of uploading images in case of error
+            uploadingImagePaths.remove(fileWrapper.path!);
+            setModalState(() {}); // Update UI to remove progress indicator
+          }, onDone: () {
+            // Remove the image path from the list of uploading images when done
+            uploadingImagePaths.remove(fileWrapper.path!);
+            setModalState(() {}); // Update UI to remove progress indicator
+          });
+
+          // 2. Await the upload to complete (Future)
+          TaskSnapshot snapshot =
+              await uploadTask; // Or await uploadTask.whenComplete;
+
+          // 3. Get the download URL (after upload is complete)
+          String downloadURL = await snapshot.ref.getDownloadURL();
+          imageUrls.add(downloadURL);
+        } catch (e) {
+          print("Error uploading image: $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Image upload failed: $e")),
+          );
+          // Remove the image path from the list of uploading images in case of error
+          uploadingImagePaths.remove(fileWrapper.path!);
+          setModalState(() {}); // Update UI to remove progress indicator
+          return; // Or continue; if you want to try other images
+        }
       }
-
-      final storagePath =
-          'images/${widget.topicId}_${DateTime.now().millisecondsSinceEpoch}';
-
-      final Reference storageRef = FirebaseStorage.instance.ref(storagePath);
-
-      final UploadTask uploadTask = storageRef.putFile(selectedImage);
-
-      await uploadTask.whenComplete(() => print('Image uploaded'));
-
-      final String downloadURL = await storageRef.getDownloadURL();
-      print('File available at $downloadURL');
-      return downloadURL;
-    } catch (e) {
-      print("Error uploading image: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to upload image: $e")),
-      );
-      return null;
     }
+
+    print("Image URLs: $imageUrls");
+
+    await firebaseFunctions.pubmatMultiUpload(
+      widget.topicId,
+      widget.taskId,
+      imageUrls,
+    );
+    print("Images uploaded successfully!");
   }
 
-  Future<void> deleteImage(int index, List<String> retrievedImages) async {
-    try {
-      await firebaseFunctions.deleteImages(
-        index,
-        retrievedImages,
-        widget.topicId,
-        widget.taskId,
-      );
+  Future<void> deleteImage(
+    int index,
+    List<String> retrievedImages,
+    StateSetter setModalState, // Add StateSetter parameter
+  ) async {
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: const Text('Are you sure you want to delete this image?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
 
-      print('image deleted successfully');
-      setState(() {
+    if (confirm != true) {
+      return; // User cancelled
+    }
+
+    // Show loading indicator (optional, but good UX)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Call Firebase function to delete from storage and Firestore
+
+      widget.type == 'Pubmat'
+          ? await firebaseFunctions.deleteImageForPubmat(
+              index,
+              retrievedImages,
+              widget.topicId,
+              widget.taskId,
+            )
+          : await firebaseFunctions.deleteImages(
+              index,
+              retrievedImages,
+              widget.topicId,
+              widget.taskId,
+            );
+      ref.invalidate(singleViewTopicContent);
+
+      print('Image deleted successfully from backend');
+
+      // Update the local list AND trigger rebuild of the modal sheet
+      setModalState(() {
         retrievedImages.removeAt(index);
       });
+
+      // Invalidate the provider to ensure the main page also gets updated data next time
+      ref.invalidate(retImagesProvider((widget.topicId, widget.taskId)));
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Pop loading indicator
+      }
     } catch (e) {
       print("Error deleting image: $e");
+      if (mounted) {
+        Navigator.of(context).pop(); // Pop loading indicator
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error deleting image: $e")),
+        );
+      }
     }
   }
 
@@ -244,384 +343,406 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
   Widget build(BuildContext context) {
     final assignedTaskView =
         ref.watch(taskWrittenProvider((widget.topicId, widget.taskId)));
-
     final retImagesView =
         ref.watch(retImagesProvider((widget.topicId, widget.taskId)));
 
-    return Scaffold(
-      appBar: const CustomAppBar(
-        appbarTitle: 'Create Your Content',
-        hasNavigated: false,
-      ),
-      body: GestureDetector(
-        onTap: () {
-          FocusScope.of(context).unfocus();
-        },
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: SingleChildScrollView(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      assignedTaskView.when(
-                        data: (assignedTask) {
-                          if (_headlineController.text.isEmpty) {
-                            _headlineController.text = assignedTask.headline;
-                          }
-                          if (_contentNotifier.value.isEmpty) {
-                            _contentNotifier.value = assignedTask.content;
-                          }
-                          if (_contentController.text.isEmpty) {
-                            _contentController.text = assignedTask.content;
-                          }
+    final allImageView = ref.watch(viewAllImageInParent(widget.topicId));
 
-                          if (_commentController.text.isEmpty) {
-                            _commentController.text = assignedTask.comments;
-                          }
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        // If didPop is true, it means the pop happened for other reasons
+        if (didPop) {
+          return; // Pop already happened, do nothing.
+        }
 
-                          return Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Expanded(
-                                    child: Align(
+        bool isPotentiallyEditable = widget.status != "Submitted" &&
+            widget.status != "Approved" &&
+            widget.status != "Done";
+
+        // Determine if the user should be prompted:
+        // Prompt ONLY IF the task is potentially editable AND the submit button was NOT just pressed.
+        bool shouldPrompt = isPotentiallyEditable && !wasSubmitPressed;
+
+        if (shouldPrompt) {
+          final bool shouldDiscard = await _showDiscardConfirmationDialog();
+          if (shouldDiscard && mounted) {
+            // If the user confirmed discard, manually pop the route.
+            // We don't need to pass a specific result back here, but could if needed.
+            Navigator.of(context).pop();
+          }
+          // If shouldDiscard is false, do nothing, stay on the page.
+        } else {
+          // If no prompt is needed, allow the pop by manually popping.
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Scaffold(
+        appBar: const CustomAppBar(
+          appbarTitle: 'Create Your Content',
+          hasNavigated: false,
+        ),
+        body: GestureDetector(
+          onTap: () {
+            FocusScope.of(context).unfocus();
+          },
+          child: Stack(
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        assignedTaskView.when(
+                          data: (assignedTask) {
+                            if (_headlineController.text.isEmpty) {
+                              _headlineController.text = assignedTask.headline;
+                            }
+                            if (_contentNotifier.value.isEmpty) {
+                              _contentNotifier.value = assignedTask.content;
+                            }
+                            if (_contentController.text.isEmpty) {
+                              _contentController.text = assignedTask.content;
+                            }
+
+                            if (_commentController.text.isEmpty) {
+                              _commentController.text = assignedTask.comments;
+                            }
+
+                            return Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Expanded(
+                                      child: Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Task Title: ',
+                                          style: TextStyle(
+                                            color: Color(0xFF020B40),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    widget.status == "Approved" ||
+                                            widget.status == "Done"
+                                        ? const SizedBox.shrink()
+                                        : FutureBuilder<bool>(
+                                            future: _canUserEditFuture,
+                                            builder: (BuildContext context,
+                                                AsyncSnapshot<bool> snapshot) {
+                                              if (snapshot.hasData) {
+                                                final userCanEdit = snapshot
+                                                    .data!; // Safely unwrap the bool
+
+                                                return userCanEdit
+                                                    ? Align(
+                                                        alignment:
+                                                            Alignment.topRight,
+                                                        child: IconButton(
+                                                          onPressed: () {
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder:
+                                                                    (context) =>
+                                                                        AssignTaskPage(
+                                                                  isEditing:
+                                                                      true,
+                                                                  deadline:
+                                                                      assignedTask
+                                                                          .deadline,
+                                                                  member: assignedTask
+                                                                      .assignee,
+                                                                  taskname:
+                                                                      assignedTask
+                                                                          .title,
+                                                                  tasktype:
+                                                                      assignedTask
+                                                                          .tasktype,
+                                                                  sectionId:
+                                                                      assignedTask
+                                                                          .assigneeSec,
+                                                                  topicId: widget
+                                                                      .topicId,
+                                                                  taskId:
+                                                                      assignedTask
+                                                                          .taskId,
+                                                                ),
+                                                              ),
+                                                            );
+                                                          },
+                                                          icon: const Icon(
+                                                              Icons.edit),
+                                                        ),
+                                                      )
+                                                    : const SizedBox.shrink();
+                                              } else if (snapshot.hasError) {
+                                                return Text(
+                                                    'Error: ${snapshot.error}');
+                                              } else {
+                                                return const CircularProgressIndicator();
+                                              }
+                                            },
+                                          ),
+                                  ],
+                                ),
+                                const SizedBox(height: 7),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    assignedTask.title,
+                                    style: const TextStyle(
+                                      color: Color(0xFF020B40),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    ' ${widget.section} | ${assignedTask.deadline} ',
+                                    style: const TextStyle(
+                                      color: Color(0xFF505050),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    ' Created by: ${assignedTask.assigner}',
+                                    style: const TextStyle(
+                                      color: Color(0xFF505050),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                const Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Task Details: ',
+                                    style: TextStyle(
+                                      color: Color(0xFF020B40),
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    assignedTask.details,
+                                    style: const TextStyle(
+                                      color: Color(0xFF020B40),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 7),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Align(
                                       alignment: Alignment.centerLeft,
                                       child: Text(
-                                        'Task Title: ',
-                                        style: TextStyle(
+                                        'Assigned To: ${assignedTask.assigneeName}',
+                                        style: const TextStyle(
                                           color: Color(0xFF020B40),
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  widget.status == "Approved" ||
-                                          widget.status == "Done"
-                                      ? const SizedBox.shrink()
-                                      : FutureBuilder<bool>(
-                                          future: _canUserEditFuture,
-                                          builder: (BuildContext context,
-                                              AsyncSnapshot<bool> snapshot) {
-                                            if (snapshot.hasData) {
-                                              final userCanEdit = snapshot
-                                                  .data!; // Safely unwrap the bool
-
-                                              return userCanEdit
-                                                  ? Align(
-                                                      alignment:
-                                                          Alignment.topRight,
-                                                      child: IconButton(
-                                                        onPressed: () {
-                                                          print(
-                                                              'editing this ${assignedTask.deadline}');
-                                                          print(
-                                                              'editing this ${assignedTask.assignee}');
-                                                          print(
-                                                              'editing this ${assignedTask.title}');
-                                                          print(
-                                                              'editing this ${assignedTask.tasktype}');
-                                                          Navigator.push(
-                                                            context,
-                                                            MaterialPageRoute(
-                                                              builder: (context) =>
-                                                                  AssignTaskPage(
-                                                                isEditing: true,
-                                                                deadline:
-                                                                    assignedTask
-                                                                        .deadline,
-                                                                member:
-                                                                    assignedTask
-                                                                        .assignee,
-                                                                taskname:
-                                                                    assignedTask
-                                                                        .title,
-                                                                tasktype:
-                                                                    assignedTask
-                                                                        .tasktype,
-                                                                sectionId:
-                                                                    assignedTask
-                                                                        .assigneeSec,
-                                                                topicId: widget
-                                                                    .topicId,
-                                                                taskId:
-                                                                    assignedTask
-                                                                        .taskId,
-                                                              ),
-                                                            ),
-                                                          );
-                                                        },
-                                                        icon: const Icon(
-                                                            Icons.edit),
-                                                      ),
-                                                    )
-                                                  : const SizedBox.shrink();
-                                            } else if (snapshot.hasError) {
-                                              return Text(
-                                                  'Error: ${snapshot.error}'); // Handle error appropriately
-                                            } else {
-                                              return const CircularProgressIndicator(); // Show loading indicator
-                                            }
+                                    _timelineButton(context, assignedTask),
+                                  ],
+                                ),
+                                const SizedBox(height: 15),
+                                assignedTask.hasStarted
+                                    ? Column(
+                                        children: [
+                                          switch (widget.type) {
+                                            'Writing' => _headlineLabel(),
+                                            _ => const SizedBox.shrink()
                                           },
-                                        ),
-                                ],
-                              ),
-                              const SizedBox(height: 7),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  assignedTask.title,
-                                  style: const TextStyle(
-                                    color: Color(0xFF020B40),
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 7),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  ' ${widget.section} | ${assignedTask.deadline} ',
-                                  style: const TextStyle(
-                                    color: Color(0xFF505050),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 7),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  ' Created by: ${assignedTask.assigner} | ${assignedTask.priority}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF505050),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              const Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'Task Details: ',
-                                  style: TextStyle(
-                                    color: Color(0xFF020B40),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 7),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  assignedTask.details,
-                                  style: const TextStyle(
-                                    color: Color(0xFF020B40),
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 7),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'Assigned To: ${assignedTask.assigneeName}',
-                                  style: const TextStyle(
-                                    color: Color(0xFF020B40),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 15),
-                              assignedTask.hasStarted
-                                  ? Column(
-                                      children: [
-                                        switch (widget.type) {
-                                          'Writing' => _headlineLabel(),
-                                          _ => const SizedBox.shrink()
-                                        },
-                                        assignedTask.canCaption
-                                            ? _captionLabel()
-                                            : const SizedBox.shrink(),
-                                        const SizedBox(height: 7),
-                                        switch (widget.type) {
-                                          'Writing' => _headlineInput(),
-                                          _ => const SizedBox.shrink()
-                                        },
-                                        assignedTask.canCaption
-                                            ? _captionInput()
-                                            : const SizedBox.shrink(),
-                                        const SizedBox(height: 8),
-                                        const Align(
-                                          alignment: Alignment.topLeft,
-                                          child: Text(
-                                            'Content',
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 15,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 7),
-                                        switch (widget.type) {
-                                          'Writing' => _writingInput(),
-                                          'Photography' => _buildImageInput(
-                                              context,
-                                              retImagesView,
-                                            ),
-                                          'Pubmat' => _pubmatImageInput(
-                                              assignedTask, context),
-                                          _ => const SizedBox.shrink(),
-                                        },
-                                        const SizedBox(height: 10),
-                                        Align(
-                                          alignment: Alignment.topLeft,
-                                          child: Text(
-                                            '${widget.section} Editor Comments',
-                                            style: const TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 15,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        _commentContainer(),
-                                        const SizedBox(height: 15),
-                                        _timelineButton(context, assignedTask),
-                                        const SizedBox(height: 15),
-                                        _bottomButtons(),
-                                        const SizedBox(height: 10),
-                                        _bottomButtonsApproval(),
-                                      ],
-                                    )
-                                  : Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        const Text(
-                                            'Task has not been started.'),
-                                        const SizedBox(height: 15),
-                                        ElevatedButton(
-                                          onPressed: () async {
-                                            await firebaseFunctions.startTask(
-                                                widget.topicId, widget.taskId);
-                                            ref.invalidate(taskWrittenProvider);
-
-                                            print('call task start shiii');
+                                          assignedTask.canCaption
+                                              ? _captionLabel()
+                                              : const SizedBox.shrink(),
+                                          const SizedBox(height: 7),
+                                          switch (widget.type) {
+                                            'Writing' => _headlineInput(),
+                                            _ => const SizedBox.shrink()
                                           },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                const Color(0XFF020B40),
-                                            elevation: 10,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
+                                          assignedTask.canCaption
+                                              ? _captionInput()
+                                              : const SizedBox.shrink(),
+                                          const SizedBox(height: 8),
+                                          const Align(
+                                            alignment: Alignment.topLeft,
+                                            child: Text(
+                                              'Content',
+                                              style: TextStyle(
+                                                color: Colors.black,
+                                                fontSize: 15,
+                                              ),
                                             ),
                                           ),
-                                          child: const Text(
-                                            'Start task now',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
+                                          const SizedBox(height: 7),
+                                          switch (widget.type) {
+                                            'Writing' => _writingInput(),
+                                            'Photography' => _buildImageInput(
+                                                context,
+                                                allImageView,
+                                              ),
+                                            'Pubmat' => _buildImageInput(
+                                                context,
+                                                retImagesView,
+                                              ),
+                                            _ => const SizedBox.shrink(),
+                                          },
+                                          const SizedBox(height: 10),
+                                          Align(
+                                            alignment: Alignment.topLeft,
+                                            child: Text(
+                                              '${widget.section} Editor Comments',
+                                              style: const TextStyle(
+                                                color: Colors.black,
+                                                fontSize: 15,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    )
-                            ],
-                          );
-                        },
-                        error: (error, stack) =>
-                            Center(child: Text('Error: $error')),
-                        loading: () => const Center(
-                          child: CircularProgressIndicator(),
+                                          const SizedBox(height: 10),
+                                          _commentContainer(),
+                                          const SizedBox(height: 15),
+                                          assignedTask.canCaption ||
+                                                  widget.type == 'Writing'
+                                              ? _bottomButtons()
+                                              : const SizedBox.shrink(),
+                                          const SizedBox(height: 10),
+                                          _bottomButtonsApproval(),
+                                        ],
+                                      )
+                                    : Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          const Text(
+                                              'Task has not been started.'),
+                                          const SizedBox(height: 15),
+                                          ElevatedButton(
+                                            onPressed: () async {
+                                              await firebaseFunctions.startTask(
+                                                  widget.topicId,
+                                                  widget.taskId);
+                                              ref.invalidate(
+                                                  taskWrittenProvider);
+
+                                              print('call task start shiii');
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  const Color(0XFF020B40),
+                                              elevation: 10,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'Start task now',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                              ],
+                            );
+                          },
+                          error: (error, stack) =>
+                              Center(child: Text('Error: $error')),
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            isContentSubmitted
-                ? const LoadingScreen(
-                    customMessage:
-                        'Please wait while we process your submission...',
-                  )
-                : const SizedBox.shrink(),
-          ],
+              isContentSubmitted
+                  ? const LoadingScreen(
+                      customMessage:
+                          'Please wait while we process your submission...',
+                    )
+                  : const SizedBox.shrink(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  SizedBox _timelineButton(BuildContext context, ViewedTask assignedTask) {
-    return SizedBox(
-      height: 60,
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: FirebaseAuth.instance.currentUser != null
-            ? () async {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => TimelineV2Page(
-                      topicId: widget.topicId,
-                      title: assignedTask.title,
-                      sectionName: widget.section,
-                      deadline: assignedTask.deadline,
-                      totalSubtask: assignedTask.totalSubtask,
-                      projectStep: assignedTask.projectStep,
-                    ),
-                  ),
-                );
-              }
-            : () async {
-                print('di nakalogin pano nangyari yon');
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please login to view this'),
-                    duration: Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0XFFD4AF37),
-          elevation: 10,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: const Align(
-          alignment: Alignment.center,
-          child: Text(
-            'View the Timeline',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: Color(0XFF020B40),
-            ),
-          ),
-        ),
+  IconButton _timelineButton(BuildContext context, ViewedTask assignedTask) {
+    return IconButton(
+      icon: const Icon(
+        Icons.history,
+        color: Color(0xFF020B40),
       ),
+      onPressed: FirebaseAuth.instance.currentUser != null
+          ? () async {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TimelineV2Page(
+                    topicId: widget.topicId,
+                    title: assignedTask.title,
+                    sectionName: widget.section,
+                    deadline: assignedTask.deadline,
+                    totalSubtask: assignedTask.totalSubtask,
+                    projectStep: assignedTask.projectStep,
+                  ),
+                ),
+              );
+            }
+          : () async {
+              print('di nakalogin pano nangyari yon');
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please login to view this'),
+                  duration: Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
     );
   }
 
@@ -644,7 +765,9 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
             decoration: InputDecoration(
               filled: true,
               fillColor: const Color(0XFFF5F5F5),
-              labelText: 'Comments',
+              labelText: userCanEdit
+                  ? 'Leave your comments here and return the work for revision.'
+                  : "Comments about your work from your section editor will be placed here.",
               labelStyle: const TextStyle(
                 color: Color(0xFF020B40),
                 fontSize: 12,
@@ -678,7 +801,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                             return AlertDialog(
                               title: const Text('Confirm Action'),
                               content: const Text(
-                                'Are you sure you want to return this task to the writer with your comments?',
+                                'Are you sure you want to return this task to the creator with your comments?',
                               ),
                               actions: [
                                 TextButton(
@@ -810,7 +933,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                           },
                           child: switch (widget.type) {
                             'Writing' => const Text('Submit'),
-                            'Photography' => const Text('Submit the Caption'),
+                            'Photography' => const Text('Submit'),
                             'Pubmat' => const Text('Submit'),
                             _ => const SizedBox.shrink()
                           },
@@ -826,6 +949,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                       case 'Writing':
                         setState(() {
                           isContentSubmitted = true;
+                          wasSubmitPressed = true;
                         });
                         await firebaseFunctions.submitSubTaskContent(
                           widget.topicId,
@@ -836,42 +960,6 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                         break;
                       case 'Photography':
                         print('call caption submission');
-                        break;
-                      case 'Pubmat':
-                        setState(() {
-                          _isUploading = true;
-                          _uploadSuccess = false;
-                        });
-                        if (_selectedSingleImage != null) {
-                          final imageUrl =
-                              await uploadSingleImage(_selectedSingleImage!);
-                          if (imageUrl != null) {
-                            // Now you have the imageUrl, you can save it to Firestore or use it as needed
-                            // call firebase function to save the pubmat url
-                            await firebaseFunctions.pubmatImageUpload(
-                              widget.topicId,
-                              widget.taskId,
-                              imageUrl,
-                            );
-                            setState(() {
-                              _isUploading = false;
-                              _uploadSuccess = true;
-                            });
-                          } else {
-                            // Handle the error case where the image upload failed
-                            print('Image upload failed');
-                            setState(() {
-                              _isUploading = false;
-                              _uploadSuccess = false;
-                            });
-                          }
-                        } else {
-                          print('No image selected');
-                          setState(() {
-                            _isUploading = false;
-                            _uploadSuccess = false;
-                          });
-                        }
                         break;
                     }
 
@@ -914,208 +1002,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        SizedBox(
-          height: 60,
-          child: ElevatedButton(
-            onPressed: () async {
-              showDialog<bool>(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: const Text('Confirm Discard'),
-                    content: const Text(
-                        'Are you sure you want to discard this task? Any unsaved changes will be lost.'),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text('Discard'),
-                      ),
-                    ],
-                  );
-                },
-              ).then((value) {
-                if (value == true) {
-                  // Handle discard logic here, e.g., navigate back
-                  Navigator.pop(context);
-                }
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0XFFDDDDDD),
-              elevation: 10,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Align(
-              alignment: Alignment.center,
-              child: Text(
-                'Discard',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0XFF020B40),
-                ),
-              ),
-            ),
-          ),
-        ),
       ],
-    );
-  }
-
-  Align _pubmatImageInput(ViewedTask assignedTask, BuildContext context) {
-    return Align(
-      alignment: Alignment.center,
-      child: GestureDetector(
-        onTap: () async {
-          print('image selection opened');
-
-          assignedTask.content != '' && assignedTask.content.startsWith('http')
-              ? print('may image na tanga')
-              : await _pickSingleImage();
-        },
-        child: Align(
-          alignment: Alignment.center,
-          child: assignedTask.content != '' &&
-                  assignedTask.content.startsWith('http')
-              ? AspectRatio(
-                  aspectRatio: 1,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Stack(
-                      children: [
-                        Image.network(
-                          assignedTask.content,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Text('Failed to load image');
-                          },
-                        ),
-                        widget.status == 'Approved' || widget.status == 'Done'
-                            ? const SizedBox.shrink()
-                            : Positioned(
-                                top: 8,
-                                left: 8,
-                                child: GestureDetector(
-                                  onTap: () async {
-                                    setState(() {
-                                      _selectedSingleImage = null;
-                                    });
-
-                                    await firebaseFunctions.deleteImage(
-                                      widget.topicId,
-                                      widget.taskId,
-                                      assignedTask.content,
-                                    );
-
-                                    ref.invalidate(taskWrittenProvider);
-                                  },
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.5),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(4.0),
-                                      child: Icon(
-                                        Icons.close,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                      ],
-                    ),
-                  ),
-                )
-              : _selectedSingleImage == null
-                  ? Container(
-                      height: MediaQuery.of(context).size.height * .3,
-                      width: MediaQuery.of(context).size.width * .85,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: DottedBorder(
-                        color: const Color(0XFF020B40),
-                        borderType: BorderType.RRect,
-                        radius: const Radius.circular(10),
-                        strokeWidth: 2,
-                        child: const Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text('Select your pubmat image'),
-                              SizedBox(width: 5),
-                              Icon(Icons.add_circle_outline)
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  : _isUploading
-                      ? const CircularProgressIndicator()
-                      : ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Stack(
-                            children: [
-                              Image.file(
-                                _selectedSingleImage!,
-                                width: MediaQuery.of(context).size.width * .85,
-                                height: MediaQuery.of(context).size.height * .3,
-                                fit: BoxFit.cover,
-                              ),
-                              widget.status == 'Approved' ||
-                                      widget.status == 'Done'
-                                  ? const SizedBox.shrink()
-                                  : Positioned(
-                                      top: 8,
-                                      left: 8,
-                                      child: GestureDetector(
-                                        onTap: () async {
-                                          setState(() {
-                                            _selectedSingleImage = null;
-                                          });
-
-                                          await firebaseFunctions.deleteImage(
-                                            widget.topicId,
-                                            widget.taskId,
-                                            assignedTask.content,
-                                          );
-
-                                          ref.invalidate(taskWrittenProvider);
-                                        },
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color:
-                                                Colors.black.withOpacity(0.5),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(4.0),
-                                            child: Icon(
-                                              Icons.close,
-                                              color: Colors.white,
-                                              size: 20,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                            ],
-                          ),
-                        ),
-        ),
-      ),
     );
   }
 
@@ -1227,6 +1114,32 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
     );
   }
 
+  Future<bool> _showDiscardConfirmationDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Discard Changes?'),
+          content: const Text(
+              'Are you sure you want to leave? Any unsaved changes will be lost.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false), // Stay on page
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true), // Leave page
+              child: const Text('Discard'),
+            ),
+          ],
+        );
+      },
+    );
+    // If the dialog is dismissed by tapping outside, result will be null.
+    // Treat null as 'false' (don't pop).
+    return result ?? false;
+  }
+
   Row _adminButtoms() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -1234,8 +1147,57 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
       children: [
         ElevatedButton(
           onPressed: () async {
-            print('submission accepted');
-            await firebaseFunctions.seApprove(widget.topicId, widget.taskId);
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Confirm Approval'),
+                  content: const Text(
+                      'Are you sure you want to approve this submission?'),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false), // No
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true), // Yes
+                      child: const Text('Approve'),
+                    ),
+                  ],
+                );
+              },
+            );
+
+            if (confirm == true) {
+              try {
+                print('submission accepted');
+                await firebaseFunctions.seApprove(
+                    widget.topicId, widget.taskId);
+                ref.invalidate(taskWrittenProvider);
+
+                // Show success SnackBar
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Submission approved successfully!'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } catch (error) {
+                // Show failure SnackBar
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to approve submission: $error'),
+                      backgroundColor: Colors.red,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              }
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
@@ -1248,28 +1210,6 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
           ),
           child: const Text(
             'Accept',
-            style: TextStyle(
-              color: Colors.white, // White text color
-              fontWeight: FontWeight.w700, // Bold text
-            ),
-          ),
-        ),
-        SizedBox(width: MediaQuery.of(context).size.width * .1),
-        ElevatedButton(
-          onPressed: () {
-            print('submission rejected');
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10), // Rounded corners
-            ),
-            elevation: 10, // Add elevation for shadow
-            padding: const EdgeInsets.symmetric(
-                vertical: 15.0, horizontal: 20.0), // Padding for the button
-          ),
-          child: const Text(
-            'Reject',
             style: TextStyle(
               color: Colors.white, // White text color
               fontWeight: FontWeight.w700, // Bold text
@@ -1487,9 +1427,15 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                             onPressed: () async {
                               setState(() {
                                 isUploading = true;
+                                wasSubmitPressed = true;
                               });
-                              _uploadImages(setModalState, uploadProgress,
-                                  uploadingImagePaths);
+                              widget.type == 'Photography'
+                                  ? await _uploadImages(setModalState,
+                                      uploadProgress, uploadingImagePaths)
+                                  : await _uploadMultiPubmat(setModalState,
+                                      uploadProgress, uploadingImagePaths);
+
+                              ref.invalidate(singleViewTopicContent);
 
                               print('uploading images');
                               // Call your Firebase Storage upload function here
@@ -1524,31 +1470,14 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
 
   void _showImageSection(BuildContext context, bool isLoading,
       AsyncValue<List<String>> retImagesView) async {
-    // Make it async
-    // Show loading dialog immediately when the bottom sheet is opened
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text("Checking for similar images..."),
-            ],
-          ),
-        );
-      },
-    );
+    // Get the image URLs first
+    List<String> imagesToShow = retImagesView.asData?.value ?? [];
 
-    // Get the image URLs
-    List<String> imagesToShow = [];
-    retImagesView.whenData((data) {
-      if (data.isEmpty) {
-        // If the list is empty, immediately close the dialog and show the bottom sheet
-        Navigator.of(context).pop();
+    // --- Conditional Similarity Check ---
+    if (widget.type == 'Photography') {
+      // Only show loading and check similarity for Photography
+      if (imagesToShow.isEmpty) {
+        // If no images, just show the empty grid directly
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
@@ -1558,71 +1487,78 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           builder: (modalContext) {
+            // Pass empty data and empty map
             return _buildImageGrid(modalContext, const AsyncValue.data([]), {});
           },
         );
-      } else {
-        imagesToShow = data;
-        // Perform the similarity check
-        final imageUploadService = ImageUploadService();
+        return; // Exit early
+      }
 
-        imageUploadService
-            .findSimilarExistingImages(imagesToShow)
-            .then((similarImagesMap) {
-          Navigator.of(context).pop();
+      // Show loading dialog for similarity check
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text("Checking for similar images..."),
+              ],
+            ),
+          );
+        },
+      );
 
-          // Show the similarity dialog if similar images are found and the widget is still mounted
-          if (similarImagesMap.isNotEmpty && mounted) {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: const Text("Similar Images Found"),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: similarImagesMap.entries.map((entry) {
-                        final currentImageUrl = entry.key;
-                        final similarUrls = entry.value;
+      // Perform the similarity check
+      final imageUploadService = ImageUploadService();
+      try {
+        // Add try-finally to ensure dialog is popped
+        final similarImagesMap =
+            await imageUploadService.findSimilarExistingImages(imagesToShow);
 
-                        print("Image URL: $currentImageUrl");
-                        if (similarUrls.isNotEmpty) {
-                          for (final url in similarUrls) {
-                            print("Similar Image URL: $url");
-                          }
-                        }
+        if (mounted) {
+          // Check if widget is still mounted before popping dialog
+          Navigator.of(context).pop(); // Pop the loading dialog
+        } else {
+          return; // Don't proceed if widget is unmounted
+        }
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                  "Image: ${currentImageUrl.split('/').last.substring(0, 15)}..."),
-                              if (similarUrls.isNotEmpty)
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text("Similar to:"),
-                                    ...similarUrls.map((url) => Text(
-                                        "- ${url.split('/').last.substring(0, 15)}...")),
-                                  ],
-                                )
-                              else
-                                const Text(
-                                    "No similar images found for this image."),
-                            ],
-                          ),
-                        );
+        // Show the similarity dialog if similar images are found
+        if (similarImagesMap.isNotEmpty && mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              final bool hasSimilarImages =
+                  similarImagesMap.values.any((urls) => urls.isNotEmpty);
+
+              return AlertDialog(
+                title: const Text("Similar Images Found"),
+                content: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hasSimilarImages
+                            ? "Similar images were found!"
+                            : "No similar images found for this image.",
+                      ),
+                      const SizedBox(height: 16),
+                      ...similarImagesMap.entries.map((entry) {
+                        // You can show other UI here if needed per entry
+                        return const SizedBox(); // Placeholder
                       }).toList(),
-                    ),
+                    ],
                   ),
-                  actions: <Widget>[
-                    TextButton(
-                      child: const Text("OK"),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        // Now show the bottom modal sheet with the images
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text("OK"),
+                    onPressed: () {
+                      if (mounted) {
+                        Navigator.of(context).pop(); // Close dialog
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
@@ -1637,140 +1573,205 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                 modalContext, retImagesView, similarImagesMap);
                           },
                         );
-                      },
-                    ),
-                  ],
-                );
-              },
-            );
-          } else {
-            // If no similar images found, immediately show the bottom modal sheet
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              isDismissible: true,
-              backgroundColor: Colors.white,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              builder: (modalContext) {
-                return _buildImageGrid(
-                    modalContext, retImagesView, similarImagesMap);
-              },
-            );
-          }
-        });
+                      }
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        } else if (mounted) {
+          // If no similar images found, immediately show the bottom modal sheet
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            isDismissible: true,
+            backgroundColor: Colors.white,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            builder: (modalContext) {
+              // Pass the empty map as no similar images were found
+              return _buildImageGrid(modalContext, retImagesView, {});
+            },
+          );
+        }
+      } catch (e) {
+        print("Error during similarity check: $e");
+        if (mounted) {
+          Navigator.of(context)
+              .pop(); // Ensure loading dialog is popped on error
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Error checking similarity: $e")));
+          // Optionally show the grid anyway, or handle error differently
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            isDismissible: true,
+            backgroundColor: Colors.white,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            builder: (modalContext) {
+              // Pass empty map on error
+              return _buildImageGrid(modalContext, retImagesView, {});
+            },
+          );
+        }
       }
-    });
+    } else {
+      // --- If type is NOT Photography ---
+      // Directly show the bottom sheet without similarity check
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        isDismissible: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (modalContext) {
+          // Pass the retrieved images and an empty map for similar images
+          return _buildImageGrid(modalContext, retImagesView, {});
+        },
+      );
+    }
   }
 
   Widget _buildImageGrid(
-      BuildContext context,
+      BuildContext modalContext, // Use the modal's context
       AsyncValue<List<String>> retImagesView,
       Map<String, List<String>> similarImagesMap) {
     return FractionallySizedBox(
       heightFactor: 0.80,
       child: Padding(
         padding: const EdgeInsets.all(10.0),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 10),
-              width: 50,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.grey[400],
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            Expanded(
-              child: retImagesView.when(
-                data: (retImages) {
-                  if (retImages.isEmpty) {
-                    return const Center(child: Text('No images found'));
-                  }
-                  return GridView.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 1,
-                    ),
-                    itemCount: retImages.length,
-                    itemBuilder: (context, index) {
-                      final imageUrl = retImages[index];
-                      final isSimilar = similarImagesMap.containsKey(imageUrl);
-                      return Stack(
-                        children: [
-                          GestureDetector(
-                            onTap: () =>
-                                _openFullScreen(context, index, retImages),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                imageUrl,
-                                fit: BoxFit.cover,
+        // Use StatefulBuilder to get a specific setState for the modal content
+        child: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 10),
+                  width: 50,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                Expanded(
+                  child: retImagesView.when(
+                    data: (retImages) {
+                      // This list will be modified by deleteImage
+                      if (retImages.isEmpty) {
+                        return const Center(child: Text('No images found'));
+                      }
+                      return GridView.builder(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 1,
+                        ),
+                        itemCount: retImages.length,
+                        itemBuilder: (context, index) {
+                          final imageUrl = retImages[index];
+                          final isSimilar =
+                              similarImagesMap.containsKey(imageUrl);
+                          return Stack(
+                            children: [
+                              GestureDetector(
+                                onTap: () => _openFullScreen(modalContext,
+                                    index, retImages), // Use modalContext
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    // Add error and loading builders for robustness
+                                    loadingBuilder: (context, child, progress) {
+                                      return progress == null
+                                          ? child
+                                          : const Center(
+                                              child:
+                                                  CircularProgressIndicator());
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Center(
+                                          child: Icon(Icons.error,
+                                              color: Colors.red));
+                                    },
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 5,
-                            right: 5,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Container(
+                              Positioned(
+                                top: 5,
+                                right: 5,
+                                child: Container(
+                                  // Simplified the Stack for the button
                                   decoration: BoxDecoration(
                                     color: Colors.black.withOpacity(0.5),
                                     shape: BoxShape.circle,
                                   ),
-                                  padding: const EdgeInsets.all(2),
+                                  // Removed inner Stack, padding adjusted on IconButton directly
                                   child: IconButton(
+                                    padding: EdgeInsets
+                                        .zero, // Adjust padding if needed
+                                    constraints:
+                                        const BoxConstraints(), // Remove default constraints
                                     icon: const Icon(
                                       Icons.delete_rounded,
                                       color: Colors.white,
                                       size: 20,
                                     ),
                                     onPressed: () async {
-                                      // Handle delete functionality
+                                      // Pass the setModalState to deleteImage
                                       await deleteImage(
                                         index,
-                                        retImages,
+                                        retImages, // Pass the current list
+                                        setModalState, // Pass the modal's setState
                                       );
-                                      print('Photo at index $index deleted');
+                                      print(
+                                          'Delete button pressed for index $index');
+                                      // No need to print 'deleted' here, deleteImage handles it
                                     },
                                   ),
                                 ),
-                                if (isSimilar)
-                                  Positioned(
-                                    bottom: 5,
-                                    left: 5,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange.withOpacity(0.8),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Text(
-                                        'Similar',
-                                        style: TextStyle(
-                                            color: Colors.white, fontSize: 10),
-                                      ),
+                              ),
+                              if (isSimilar &&
+                                  widget.type ==
+                                      'Photography') // Check type here too
+                                Positioned(
+                                  bottom: 5,
+                                  left: 5,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withOpacity(0.8),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      'Similar',
+                                      style: TextStyle(
+                                          color: Colors.white, fontSize: 10),
                                     ),
                                   ),
-                              ],
-                            ),
-                          ),
-                        ],
+                                ),
+                            ],
+                          );
+                        },
                       );
                     },
-                  );
-                },
-                error: (error, stack) => Center(child: Text('Error: $error')),
-                loading: () => const Center(child: CircularProgressIndicator()),
-              ),
-            ),
-          ],
+                    error: (error, stack) =>
+                        Center(child: Text('Error: $error')),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

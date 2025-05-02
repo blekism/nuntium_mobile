@@ -163,7 +163,7 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: FeaturedPostCard(
-                    imageAsset: topic.imageUrl,
+                    imageAsset: topic.imageUrl[0],
                     sectionType: topic.section,
                     articleTitle: topic.title,
                     postID: topic.id,
@@ -196,7 +196,7 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                       padding: const EdgeInsets.only(
                           left: 16.0, right: 16.0, bottom: 16),
                       child: NormalPostCard(
-                        imageAsset: topic.imageUrl,
+                        imageAsset: topic.imageUrl[0],
                         sectionType: topic.section,
                         articleTitle: topic.title,
                         postID: topic.id,
@@ -229,7 +229,7 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                   padding: const EdgeInsets.only(
                       left: 16.0, right: 16.0, bottom: 16),
                   child: NormalPostCard(
-                    imageAsset: topic.imageUrl,
+                    imageAsset: topic.imageUrl[0],
                     sectionType: topic.section,
                     articleTitle: topic.title,
                     postID: topic.id,
@@ -258,7 +258,7 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                   padding: const EdgeInsets.only(
                       left: 16.0, right: 16.0, bottom: 16),
                   child: NormalPostCard(
-                    imageAsset: topic.imageUrl,
+                    imageAsset: topic.imageUrl[0],
                     sectionType: topic.section,
                     articleTitle: topic.title,
                     postID: topic.id,

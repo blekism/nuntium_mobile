@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
+import 'package:nuntium_mobile/Pages/Eic/historypage.dart';
 import 'package:nuntium_mobile/Pages/Eic/topicpage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
@@ -56,6 +57,7 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
             secEd: true,
           ),
           const CalendarPage(),
+          TopicHistoryPage(sectionId: section.sectionId),
         ];
 
         sectionData = section;
@@ -72,8 +74,13 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        appbarTitle: 'Homepage',
+      appBar: CustomAppBar(
+        appbarTitle: switch (_currentIndex) {
+          0 => 'Homepage',
+          1 => 'Calendar',
+          2 => 'History',
+          _ => '',
+        },
         hasNavigated: false,
       ),
       drawer: Appdrawer(
@@ -122,6 +129,14 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
             height: iconSize,
           ),
           label: 'Calendar',
+        ),
+        BottomNavigationBarItem(
+          icon: Image.asset(
+            'assets/images/history.png',
+            width: iconSize,
+            height: iconSize,
+          ),
+          label: 'History',
         ),
       ],
     );

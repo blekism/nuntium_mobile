@@ -9,7 +9,6 @@ class ParentTopicCard extends StatefulWidget {
   final String section;
   final String status;
   final String deadline;
-  final String priority;
   final int totalSubtask;
   final int completedSubtask;
   final String member1, member2;
@@ -24,7 +23,6 @@ class ParentTopicCard extends StatefulWidget {
       required this.section,
       required this.status,
       required this.deadline,
-      required this.priority,
       required this.totalSubtask,
       required this.completedSubtask,
       required this.member1,
@@ -249,50 +247,6 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
                               ),
                               child: Text(
                                 widget.status,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color:
-                                      Color(0xFF020B40), // dark navy text color
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 7),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: (() {
-                                  switch (widget.priority) {
-                                    case 'High Priority':
-                                      return const Color(
-                                          0xFFFFE0E0); // light red
-                                    case 'Medium Priority':
-                                      return const Color(
-                                          0xFFFFF8E0); // light yellow
-                                    case 'Low Priority':
-                                      return const Color(
-                                          0xFFE0FFE0); // light green
-                                    default:
-                                      return const Color(
-                                          0xFFDDE4FB); // default blue
-                                  }
-                                })(),
-                                borderRadius: BorderRadius.circular(32),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withAlpha(10),
-                                    offset: const Offset(0, 4),
-                                    blurRadius: 10,
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                widget.priority,
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,

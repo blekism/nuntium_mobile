@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nuntium_mobile/Pages/Eic/eichomepage.dart';
+import 'package:nuntium_mobile/Pages/Eic/historypage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
@@ -24,13 +25,19 @@ class _EicLandingPage extends State<EicLandingPage> {
   final List<Widget> _screens = [
     const EicHomepage(),
     const CalendarPage(),
+    const TopicHistoryPage(sectionId: 'All'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomAppBar(
-        appbarTitle: 'Homepage',
+      appBar: CustomAppBar(
+        appbarTitle: switch (_currentIndex) {
+          0 => 'Homepage',
+          1 => 'Calendar',
+          2 => 'History',
+          _ => '',
+        },
         hasNavigated: false,
       ),
       drawer: Appdrawer(
@@ -75,6 +82,14 @@ class _EicLandingPage extends State<EicLandingPage> {
             height: iconSize,
           ),
           label: 'Calendar',
+        ),
+        BottomNavigationBarItem(
+          icon: Image.asset(
+            'assets/images/history.png',
+            width: iconSize,
+            height: iconSize,
+          ),
+          label: 'History',
         ),
       ],
     );

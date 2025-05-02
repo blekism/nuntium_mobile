@@ -210,6 +210,7 @@ class _LoginPageState extends State<LoginPage> {
                       color: Color(0XFFF9F9F9),
                       borderRadius: BorderRadius.only(
                         topRight: Radius.circular(50),
+                        topLeft: Radius.circular(50),
                       ),
                     ),
                     child: Padding(

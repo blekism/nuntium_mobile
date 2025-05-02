@@ -5,13 +5,13 @@ class ViewedTask {
       deadline,
       assigner,
       assignee,
-      priority,
       content,
       headline,
       taskId,
       assigneeSec,
       assigneeName,
-      comments;
+      comments,
+      status;
   final bool canCaption, hasStarted;
   final int projectStep, totalSubtask;
 
@@ -22,7 +22,6 @@ class ViewedTask {
     required this.deadline,
     required this.assigner,
     required this.assignee,
-    required this.priority,
     this.content = '',
     this.headline = '',
     required this.taskId,
@@ -33,5 +32,6 @@ class ViewedTask {
     required this.hasStarted,
     required this.projectStep,
     required this.totalSubtask,
+    required this.status,
   });
 }

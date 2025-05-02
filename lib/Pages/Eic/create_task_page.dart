@@ -10,7 +10,7 @@ class CreateTaskPage extends ConsumerStatefulWidget {
   final String? sectionID;
   final String? sectionName;
   //params for update/edit after this comment
-  final String? topicId, deadline, details, priority, title;
+  final String? topicId, deadline, details, title;
   final bool isEditing;
 
   const CreateTaskPage({
@@ -20,7 +20,6 @@ class CreateTaskPage extends ConsumerStatefulWidget {
     this.topicId,
     this.deadline,
     this.details,
-    this.priority,
     this.title,
     this.isEditing = false,
   });
@@ -36,7 +35,6 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
   final TextEditingController _deadlineController = TextEditingController();
   final TextEditingController _sectionController = TextEditingController();
   String? _selectedSectionID;
-  String? _selectedPriority;
   bool _didInitDropdown = false;
   bool isUpdateSuccess = false;
 
@@ -94,7 +92,6 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
       _titleController.text = widget.title!;
       _detailController.text = widget.details!;
       _deadlineController.text = widget.deadline!;
-      _selectedPriority = widget.priority!;
     }
   }
 
@@ -213,65 +210,6 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
                           return 'Please enter the deadline';
                         }
 
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 7),
-                    const Align(
-                      alignment: Alignment.topLeft,
-                      child: Text(
-                        'Priority',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    DropdownButtonFormField<String>(
-                      value: _selectedPriority,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedPriority = newValue!;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: const Color(0XFFF5F5F5),
-                        labelText: 'Priority',
-                        labelStyle: const TextStyle(
-                          color: Color(0xFF020B40),
-                          fontSize: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        focusedBorder: const OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Color(0XFF020B40),
-                          ),
-                        ),
-                      ),
-                      style: const TextStyle(
-                        color: Colors.white, // Text color white
-                      ),
-                      items: <String>[
-                        'High Priority',
-                        'Medium Priority',
-                        'Low Priority',
-                      ].map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(
-                            value,
-                            style: const TextStyle(color: Colors.black),
-                          ),
-                        );
-                      }).toList(),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select Topic priority';
-                        }
                         return null;
                       },
                     ),
@@ -434,7 +372,6 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
                                         FirebaseAuth.instance.currentUser!.uid,
                                         _titleController.text,
                                         _deadlineController.text,
-                                        _selectedPriority,
                                         _detailController.text,
                                         _selectedSectionID,
                                       );
@@ -519,7 +456,6 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
                                         _titleController.text,
                                         _detailController.text,
                                         _deadlineController.text,
-                                        _selectedPriority,
                                       );
 
                                       ScaffoldMessenger.of(context)

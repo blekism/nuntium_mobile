@@ -142,7 +142,6 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
                                     section: widget.section,
                                     type: item.type,
                                     deadline: item.deadline,
-                                    priority: item.priority,
                                     status: item.status,
                                     topicId: widget.topicId,
                                     sectionId: widget.sectionId,

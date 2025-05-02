@@ -272,7 +272,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                 padding: const EdgeInsets.only(
                                     left: 16.0, right: 16.0, bottom: 16),
                                 child: NormalPostCard(
-                                  imageAsset: item.imageUrl,
+                                  imageAsset: item.imageUrl[0],
                                   sectionType: item.section,
                                   articleTitle: item.title,
                                   postID: item.id,

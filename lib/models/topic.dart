@@ -7,12 +7,12 @@ class Topic {
     required this.section,
     required this.status,
     required this.deadline,
-    required this.priority,
     required this.totalSubtask,
     required this.completedSubtask,
     this.members = const [],
     this.otherMembers = 0,
     required this.projectStep,
+    this.sectionName,
   });
 
   final String id;
@@ -20,10 +20,10 @@ class Topic {
   final String section;
   final String status;
   final String deadline;
-  final String priority;
   final int totalSubtask;
   final int completedSubtask;
   final List<Member> members;
   final int otherMembers;
   final int projectStep;
+  final String? sectionName;
 }

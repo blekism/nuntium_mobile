@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:nuntium_mobile/Pages/Eic/historypage.dart';
 import 'package:nuntium_mobile/Pages/Homepage/aboutpage.dart';
 import 'package:nuntium_mobile/Pages/Homepage/homepage.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/profilepage.dart';
@@ -117,11 +118,18 @@ class _AppdrawerState extends ConsumerState<Appdrawer> {
                   },
                 )
               : const SizedBox.shrink(),
-          widget.userRole != 'reader'
+          widget.userRole != 'reader' &&
+                  FirebaseAuth.instance.currentUser != null
               ? ListTile(
                   title: const Text('History'),
                   onTap: () {
-                    Navigator.pushNamed(context, '/historypage');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => TopicHistoryPage(
+                                userId: FirebaseAuth.instance.currentUser!.uid,
+                              )),
+                    );
                   },
                 )
               : const SizedBox.shrink(),

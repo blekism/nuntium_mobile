@@ -7,5 +7,6 @@ class FeaturedItem {
     required this.datePosted,
   });
 
-  final String id, imageUrl, section, title, datePosted;
+  final String id, section, title, datePosted;
+  final List<String> imageUrl;
 }

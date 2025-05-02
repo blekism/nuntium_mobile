@@ -18,7 +18,7 @@ class MemberTasksPage extends ConsumerStatefulWidget {
 }
 
 class _MemberTasksPageState extends ConsumerState<MemberTasksPage> {
-  String selectedSection = 'All';
+  String selectedSection = 'To Do';
 
   void filteredSection(String section) {
     setState(() {
@@ -73,15 +73,14 @@ class _MemberTasksPageState extends ConsumerState<MemberTasksPage> {
                 );
               }
 
-              return Padding(
-                padding: const EdgeInsets.all(15.0),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: filteredTopics.length,
-                  itemBuilder: (context, index) {
-                    final item = filteredTopics[index];
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: filteredTopics.length,
+                itemBuilder: (context, index) {
+                  final item = filteredTopics[index];
 
-                    return Padding(
+                  return Center(
+                    child: Padding(
                       padding: const EdgeInsets.only(bottom: 13),
                       child: SubtaskCard(
                         id: item.id,
@@ -90,14 +89,13 @@ class _MemberTasksPageState extends ConsumerState<MemberTasksPage> {
                         section: item.sectionName,
                         type: item.type,
                         deadline: item.deadline,
-                        priority: item.priority,
                         status: item.status,
                         topicId: item.parentId,
                         sectionId: item.section,
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               );
             },
             error: (error, stack) => Center(child: Text('Error: $error')),

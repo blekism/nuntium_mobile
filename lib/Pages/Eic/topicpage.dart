@@ -54,7 +54,7 @@ class _TopicPageState extends ConsumerState<TopicPage> {
     return Scaffold(
       appBar: widget.shouldShowAppbar == true
           ? CustomAppBar(
-              appbarTitle: widget.sectionName,
+              appbarTitle: '${widget.sectionName} Topics',
               hasNavigated: false,
             )
           : null,
@@ -63,30 +63,6 @@ class _TopicPageState extends ConsumerState<TopicPage> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const SizedBox(height: 15),
-          Text(
-            '${widget.sectionName} Topics',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.only(left: 15),
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: Text(
-                'Welcome Back ${FirebaseAuth.instance.currentUser!.displayName}!',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
           _genreFilter(),
           const SizedBox(height: 15),
           widget.secEd == true
@@ -159,7 +135,6 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                           section: widget.sectionName!,
                           status: item.status,
                           deadline: item.deadline,
-                          priority: item.priority,
                           totalSubtask: item.totalSubtask,
                           completedSubtask: item.completedSubtask,
                           member1: member1Image,
@@ -250,5 +225,4 @@ final List<Map<String, String>> pubSections = [
   {"section": "pendingPST"},
   {"section": "To Do"},
   {"section": "Doing"},
-  {"section": "Done"},
 ];

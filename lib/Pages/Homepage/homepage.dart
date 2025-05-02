@@ -70,6 +70,13 @@ class _HomepageState extends State<Homepage> {
     }
   }
 
+  void _navigateToIndex(int index) {
+    // Keep the general function if needed elsewhere
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -94,7 +101,7 @@ class _HomepageState extends State<Homepage> {
     _checkNewUser();
 
     _screens = [
-      const HomeScreen(),
+      HomeScreen(onNavigate: () => _navigateToIndex(1)),
       const DiscoverPage(),
       SavedPage(
         userRole: widget.userRole ?? 'none',
@@ -165,7 +172,9 @@ class _HomepageState extends State<Homepage> {
 }
 
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback onNavigate;
+
+  const HomeScreen({super.key, required this.onNavigate});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -180,37 +189,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final featuredCards = ref.watch(featuredCardProvider);
     final normalCards = ref.watch(normalCardProvider);
     User? currentUser = _auth.currentUser;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final pageViewHeight = screenHeight * 0.35;
 
     return Center(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(15),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'Featured',
-                  style: TextStyle(
-                    fontSize: 28,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w800,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(15),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Featured',
+                    style: TextStyle(
+                      fontSize: 28,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Container(
-            child: featuredCards.when(
-              data: (featuredCards) {
-                if (featuredCards.isEmpty) {
-                  return const Center(
-                      child: Text('No featured items available'));
-                }
-                return Expanded(
-                  child: PageView.builder(
+            SizedBox(
+              height: pageViewHeight,
+              child: featuredCards.when(
+                data: (featuredCards) {
+                  if (featuredCards.isEmpty) {
+                    return const Center(
+                        child: Text('No featured items available'));
+                  }
+                  return PageView.builder(
                       controller: _pageController,
                       itemCount: featuredCards.length,
                       itemBuilder: (context, index) {
@@ -219,7 +231,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0),
                           child: FeaturedPostCard(
-                            imageAsset: item.imageUrl,
+                            imageAsset: item.imageUrl[0],
                             sectionType: item.section,
                             articleTitle: item.title,
                             postID: item.id,
@@ -229,25 +241,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             isTermly: false,
                           ),
                         );
-                      }),
-                );
-              },
-              loading: () => FeaturedPostCard(
-                isLoading: true,
-                isTermly: false,
+                      });
+                },
+                loading: () => FeaturedPostCard(
+                  isLoading: true,
+                  isTermly: false,
+                ),
+                error: (error, stack) => Center(child: Text('Error: $error')),
               ),
-              error: (error, stack) => Center(child: Text('Error: $error')),
             ),
-          ),
 
-          const SizedBox(height: 13),
-          const Padding(
-            padding: EdgeInsets.all(15),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
+            const SizedBox(height: 13),
+            const Padding(
+              padding: EdgeInsets.all(15),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
                   'Latest',
                   style: TextStyle(
                     fontSize: 28,
@@ -255,37 +264,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-          Container(
-            child: normalCards.when(
+            normalCards.when(
               data: (normalCards) {
                 if (normalCards.isEmpty) {
                   return const Center(child: Text('No normal items available'));
                 }
-                return Expanded(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: normalCards.length,
-                    itemBuilder: (context, index) {
-                      final item = normalCards[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                            left: 16.0, right: 16.0, bottom: 16),
-                        child: NormalPostCard(
-                          imageAsset: item.imageUrl,
-                          sectionType: item.section,
-                          articleTitle: item.title,
-                          postID: item.id,
-                          isAuthenticated: currentUser != null,
-                          datePosted: item.datePosted,
-                          isLoading: false,
-                          isTermly: false,
-                        ),
-                      );
-                    },
-                  ),
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: normalCards.length,
+                  itemBuilder: (context, index) {
+                    final item = normalCards[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(
+                          left: 16.0, right: 16.0, bottom: 16),
+                      child: NormalPostCard(
+                        imageAsset: item.imageUrl[0],
+                        sectionType: item.section,
+                        articleTitle: item.title,
+                        postID: item.id,
+                        isAuthenticated: currentUser != null,
+                        datePosted: item.datePosted,
+                        isLoading: false,
+                        isTermly: false,
+                      ),
+                    );
+                  },
                 );
               },
               loading: () => SizedBox(
@@ -296,11 +302,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   )),
               error: (error, stack) => Center(child: Text('Error: $error')),
             ),
-          ),
-          // userIsNew
-          //     ? const Text('Welcome New user!')
-          //     : const Text('Welcome Back!'),
-        ],
+
+            Padding(
+              // Add the TextButton after the normalCards section
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: TextButton(
+                onPressed: () {
+                  widget.onNavigate();
+                },
+                child: const Text(
+                  'View more articles',
+                  style: TextStyle(
+                    color: Color(0xFF020B40), // Match your theme/style
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+
+            // userIsNew
+            //     ? const Text('Welcome New user!')
+            //     : const Text('Welcome Back!'),
+          ],
+        ),
       ),
     );
   }

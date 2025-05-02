@@ -23,6 +23,7 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
   final firebaseFunctions = FirebaseFunctions();
   bool isLiked = false;
   bool isBookmarked = false;
+  final PageController _pageController = PageController(viewportFraction: 0.9);
 
   @override
   void initState() {
@@ -372,17 +373,52 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
     );
   }
 
-  ClipRRect _articleImage(
+  SizedBox _articleImage(
       Map<String, dynamic> articleView, BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: Image.network(
-        articleView['image'],
-        fit: BoxFit.cover,
-        alignment: Alignment.center,
-        width: MediaQuery.of(context).size.width * .8,
-        height: MediaQuery.of(context).size.height * .35,
-      ),
+    // Safely access the 'images' field
+    final List<String> images =
+        (articleView['images'] as List<dynamic>?)?.cast<String>() ??
+            []; // Default to an empty list if 'images' is null or not a list
+
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * .35,
+      child: images.isNotEmpty
+          ? PageView.builder(
+              itemCount: images.length,
+              controller: _pageController,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.network(
+                      images[index],
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Text('Failed to load image');
+                      },
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      width: MediaQuery.of(context).size.width * .8,
+                      height: MediaQuery.of(context).size.height * .35,
+                    ),
+                  ),
+                );
+              },
+            )
+          : const Center(
+              child: Text('No images available'),
+            ),
     );
   }
 

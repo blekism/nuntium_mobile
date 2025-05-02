@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
 import 'package:nuntium_mobile/Pages/EditorialSecMembers/member_tasks_page.dart';
-import 'package:nuntium_mobile/Pages/Eic/topicpage.dart';
+import 'package:nuntium_mobile/Pages/Eic/historypage.dart';
+// import 'package:nuntium_mobile/Pages/Eic/topicpage.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
@@ -33,8 +34,13 @@ class _SecMemberLandingPageState extends ConsumerState<SecMemberLandingPage> {
         ref.watch(userSectionProvider(FirebaseAuth.instance.currentUser!.uid));
 
     return Scaffold(
-      appBar: const CustomAppBar(
-        appbarTitle: 'Your Tasks',
+      appBar: CustomAppBar(
+        appbarTitle: switch (_currentIndex) {
+          0 => 'Your Tasks',
+          1 => 'Calendar',
+          2 => 'Section History',
+          _ => '',
+        },
         hasNavigated: false,
       ),
       drawer: Appdrawer(
@@ -48,13 +54,8 @@ class _SecMemberLandingPageState extends ConsumerState<SecMemberLandingPage> {
             index: _currentIndex,
             children: [
               MemberTasksPage(uid: widget.uid),
-              TopicPage(
-                shouldShowAppbar: false,
-                secEd: false,
-                sectionID: userSec.sectionId,
-                sectionName: userSec.sectionName,
-              ),
               const CalendarPage(),
+              TopicHistoryPage(sectionId: userSec.sectionId),
             ],
           );
         },
@@ -91,19 +92,19 @@ class _SecMemberLandingPageState extends ConsumerState<SecMemberLandingPage> {
         ),
         BottomNavigationBarItem(
           icon: Image.asset(
-            'assets/images/committee.png',
-            width: iconSize,
-            height: iconSize,
-          ),
-          label: 'Topics',
-        ),
-        BottomNavigationBarItem(
-          icon: Image.asset(
             'assets/images/calendar.png',
             width: iconSize,
             height: iconSize,
           ),
           label: 'Calendar',
+        ),
+        BottomNavigationBarItem(
+          icon: Image.asset(
+            'assets/images/history.png',
+            width: iconSize,
+            height: iconSize,
+          ),
+          label: 'History',
         ),
       ],
     );

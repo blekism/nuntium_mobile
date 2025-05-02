@@ -19,7 +19,6 @@ import 'package:nuntium_mobile/models/topic_content_model.dart';
 import 'package:nuntium_mobile/models/user_section_model.dart';
 import 'package:nuntium_mobile/models/viewed_task.dart';
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart';
 
 class FirebaseFunctions {
   FirebaseFirestore db = FirebaseFirestore.instance;
@@ -135,7 +134,6 @@ class FirebaseFunctions {
             section: topicData['section'] ?? '',
             status: topicData['status'] ?? '',
             deadline: topicData['deadline'] ?? '',
-            priority: topicData['priority'] ?? '',
             totalSubtask: topicData['totalTasks'] ?? '',
             completedSubtask: topicData['completedTasks'] ?? '',
             members: members,
@@ -158,7 +156,7 @@ class FirebaseFunctions {
 
         return FeaturedItem(
           id: doc.id,
-          imageUrl: doc['image'],
+          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
           section: doc['section'],
           title: doc['title'],
           datePosted: dateString,
@@ -181,7 +179,7 @@ class FirebaseFunctions {
 
         return NormalItem(
           id: doc.id,
-          imageUrl: doc['image'],
+          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
           section: doc['section'],
           title: doc['title'],
           datePosted: dateString,
@@ -203,7 +201,7 @@ class FirebaseFunctions {
 
         return NormalItem(
           id: doc.id,
-          imageUrl: doc['image'],
+          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
           section: doc['section'],
           title: doc['title'],
           datePosted: dateString,
@@ -231,7 +229,18 @@ class FirebaseFunctions {
               await db.collection('posts').doc(postId).get();
 
           if (postSnapshot.exists && postSnapshot.data() != null) {
-            posts.add(maptoNormalItem(postSnapshot));
+            final data = postSnapshot.data() as Map<String, dynamic>;
+            final datePosted = data['datePosted'] as Timestamp?;
+            final dateString = datePosted?.toDate().toString() ?? '';
+
+            posts.add(NormalItem(
+              id: postSnapshot.id,
+              imageUrl:
+                  (data['images'] as List<dynamic>?)?.cast<String>() ?? [],
+              section: data['section'] ?? '',
+              title: data['title'] ?? '',
+              datePosted: dateString,
+            ));
           }
         }
 
@@ -261,7 +270,18 @@ class FirebaseFunctions {
               await db.collection('posts').doc(postId).get();
 
           if (postSnapshot.exists && postSnapshot.data() != null) {
-            posts.add(maptoNormalItem(postSnapshot));
+            final data = postSnapshot.data() as Map<String, dynamic>;
+            final datePosted = data['datePosted'] as Timestamp?;
+            final dateString = datePosted?.toDate().toString() ?? '';
+
+            posts.add(NormalItem(
+              id: postSnapshot.id,
+              imageUrl:
+                  (data['images'] as List<dynamic>?)?.cast<String>() ?? [],
+              section: data['section'] ?? '',
+              title: data['title'] ?? '',
+              datePosted: dateString,
+            ));
           }
         }
 
@@ -654,26 +674,50 @@ class FirebaseFunctions {
     }
   }
 
-  Future<List<NormalItem>> yourWorks() {
-    return db
-        .collection('posts')
-        .where('authors', arrayContains: auth.currentUser!.uid)
-        .orderBy('datePosted', descending: true)
-        .get()
-        .then((QuerySnapshot snapshot) {
-      return snapshot.docs.map((doc) {
-        final datePosted = doc['datePosted'] as Timestamp;
-        final dateString = datePosted.toDate().toString();
+  Future<List<NormalItem>> yourWorks() async {
+    final userId = auth.currentUser!.uid;
 
-        return NormalItem(
-          id: doc.id,
-          imageUrl: doc['image'],
-          section: doc['section'],
-          title: doc['title'],
-          datePosted: dateString,
-        );
-      }).toList();
+    // 1. Fetch posts where the user is the writing author
+    final writingAuthorQuery = db
+        .collection('posts')
+        .where('writingAuthor', isEqualTo: userId)
+        .orderBy('datePosted', descending: true)
+        .get();
+
+    // 2. Fetch posts where the user is the pubmat author
+    final pubmatAuthorQuery = db
+        .collection('posts')
+        .where('pubmatAuthor', isEqualTo: userId)
+        .orderBy('datePosted', descending: true)
+        .get();
+
+    // 3. Wait for both
+    final results = await Future.wait([writingAuthorQuery, pubmatAuthorQuery]);
+
+    // 4. Merge and dedupe
+    final allDocs = [...results[0].docs, ...results[1].docs];
+    final uniqueDocs = {
+      for (var doc in allDocs) doc.id: doc,
+    }.values.toList();
+
+    // 5. Sort (optional but good UX)
+    uniqueDocs.sort((a, b) {
+      final aDate = (a['datePosted'] as Timestamp).toDate();
+      final bDate = (b['datePosted'] as Timestamp).toDate();
+      return bDate.compareTo(aDate);
     });
+
+    // 6. Convert to your model
+    return uniqueDocs.map((doc) {
+      final datePosted = doc['datePosted'] as Timestamp;
+      return NormalItem(
+        id: doc.id,
+        imageUrl: doc['image'],
+        section: doc['section'],
+        title: doc['title'],
+        datePosted: datePosted.toDate().toString(),
+      );
+    }).toList();
   }
 
   Future<void> submitApplication(String selectedSection) async {
@@ -714,7 +758,7 @@ class FirebaseFunctions {
 
         return NormalItem(
           id: doc.id,
-          imageUrl: doc['image'],
+          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
           section: doc['section'],
           title: doc['title'],
           datePosted: dateString,
@@ -736,7 +780,7 @@ class FirebaseFunctions {
 
         return NormalItem(
           id: doc.id,
-          imageUrl: doc['image'],
+          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
           section: doc['section'],
           title: doc['title'],
           datePosted: dateString,
@@ -872,6 +916,7 @@ class FirebaseFunctions {
         'Managing',
         'Associate',
         'eic',
+        'Committee',
       ]).get();
 
       return sectionSnapshot;
@@ -908,7 +953,7 @@ class FirebaseFunctions {
 
 //starting here ang need ng logging sa timeline
   Future<void> createTopic(
-      String assignee, title, deadline, priority, details, section) async {
+      String assignee, title, deadline, details, section) async {
     try {
       if (auth.currentUser == null) {
         print("user not logged in");
@@ -929,7 +974,6 @@ class FirebaseFunctions {
         'assigned_by': assignee,
         'title': title,
         'deadline': deadlineTimestamp,
-        'priority': priority,
         'details': details,
         'completed_subtask': 0,
         'total_subtask': 0,
@@ -939,15 +983,12 @@ class FirebaseFunctions {
         'status': 'pendingAPR',
         'otherMembers': 0,
         'projectStep': 1,
-        'eicApproved': false,
-        'ManagingApproved': false,
-        'AssociateApproved': false,
       };
 
-      if (userRole == 'eic' ||
-          userRole == 'Managing' ||
-          userRole == 'Associate') {
+      if (userRole == 'Managing' || userRole == 'Associate') {
         topicData['${userRole}Approved'] = true;
+      } else if (userRole == 'section_editors') {
+        topicData['SEApproved'] = true;
       }
 
       await db.collection('tasks').add(topicData).then((docRef) async {
@@ -971,6 +1012,7 @@ class FirebaseFunctions {
       return db
           .collection('tasks')
           .where('section', isEqualTo: sectionId)
+          .where('status', isNotEqualTo: 'Done')
           .orderBy('deadline', descending: true)
           .snapshots()
           .asyncMap((snapshot) {
@@ -1016,7 +1058,6 @@ class FirebaseFunctions {
             section: topicData['section'] ?? '',
             status: topicData['status'] ?? '',
             deadline: dateString,
-            priority: topicData['priority'] ?? '',
             totalSubtask: topicData['total_subtask'] ?? '',
             completedSubtask: topicData['completed_subtask'] ?? '',
             otherMembers: topicData['otherMembers'],
@@ -1077,7 +1118,6 @@ class FirebaseFunctions {
             section: topicData['section'] ?? '',
             status: topicData['status'] ?? '',
             deadline: dateString,
-            priority: topicData['priority'] ?? '',
             totalSubtask: topicData['total_subtask'] ?? '',
             completedSubtask: topicData['completed_subtask'] ?? '',
             otherMembers: topicData['otherMembers'],
@@ -1090,6 +1130,100 @@ class FirebaseFunctions {
         return Future.error(e);
       });
     }
+  }
+
+  Stream<List<Topic>> getTopicHistory(String sectionId) {
+    Query query = db.collection('tasks');
+
+    if (sectionId != 'All') {
+      // history view for eic, managing, associate
+      query = query.where('section', isEqualTo: sectionId);
+    }
+    // For 'All', we don't add a section filter, effectively getting all tasks.
+    // We always order by deadline.
+    query = query.where('status', isEqualTo: 'Done');
+    query = query.orderBy('deadline', descending: true);
+
+    return query.snapshots().asyncMap((snapshot) async {
+      // Fetch all section names first to minimize reads inside the loop
+      final sectionIds = snapshot.docs
+          .map((doc) => doc['section'] as String?)
+          .where((id) => id != null)
+          .toSet();
+      final sectionNames = <String, String>{};
+      if (sectionIds.isNotEmpty) {
+        final sectionDocs = await db
+            .collection('sections')
+            .where(FieldPath.documentId, whereIn: sectionIds.toList())
+            .get();
+        for (var doc in sectionDocs.docs) {
+          // Assuming the field name for the section name is 'sectionType'
+          sectionNames[doc.id] = doc.data()['sectionType'] as String? ?? doc.id;
+        }
+      }
+
+      return Future.wait(snapshot.docs.map((topicDoc) async {
+        final topicData =
+            topicDoc.data() as Map<String, dynamic>; // Cast to Map
+        final deadline = topicDoc['deadline'] as Timestamp;
+        final dateString =
+            DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
+        final topicSectionId = topicData['section'] as String? ?? '';
+
+        // Get section name from the pre-fetched map, fallback to ID
+        final sectionName = sectionNames[topicSectionId] ?? topicSectionId;
+
+        final assignedTaskData =
+            await topicDoc.reference.collection('assigned_tasks').get();
+
+        List<Member> members = [];
+
+        if (assignedTaskData.docs.isNotEmpty) {
+          members = (await Future.wait(
+            assignedTaskData.docs.map((taskDoc) async {
+              final memberId = taskDoc['assignee_id'];
+
+              if (memberId != null) {
+                final userDoc =
+                    await db.collection('users').doc(memberId).get();
+
+                if (userDoc.exists) {
+                  return Member(
+                    id: userDoc.id,
+                    name: userDoc['username'] ?? '',
+                    imageUrl: userDoc['photoURL'] ?? '',
+                  );
+                }
+              }
+              return null;
+            }),
+          ))
+              .where((member) => member != null)
+              .cast<Member>()
+              .toList();
+        }
+
+        return Topic(
+          id: topicDoc.id,
+          title: topicData['title'] ?? '',
+          section: topicSectionId, // Keep the original section ID here
+          sectionName: sectionName, // Add the fetched section name
+          status: topicData['status'] ?? '',
+          deadline: dateString,
+          // Ensure correct type casting or provide default values
+          totalSubtask: (topicData['total_subtask'] as num?)?.toInt() ?? 0,
+          completedSubtask:
+              (topicData['completed_subtask'] as num?)?.toInt() ?? 0,
+          otherMembers: (topicData['otherMembers'] as num?)?.toInt() ?? 0,
+          members: members,
+          projectStep: (topicData['projectStep'] as num?)?.toInt() ?? 0,
+        );
+      }).toList());
+    }).handleError((e) {
+      print('Error fetching topic history: $e');
+      // Consider returning an empty list or rethrowing a more specific error
+      return <Topic>[]; // Return empty list on error
+    });
   }
 
   Stream<List<TaskModel>> getTasks(String topicId) {
@@ -1107,7 +1241,6 @@ class FirebaseFunctions {
       }
 
       final topicData = topicDoc.data() as Map<String, dynamic>;
-      final parentPriority = topicData['priority'] as String? ?? '';
       final parentSection = topicData['section'] as String? ?? '';
 
       return Future.wait(snapshot.docs.map((taskDoc) async {
@@ -1134,7 +1267,6 @@ class FirebaseFunctions {
           section: parentSection,
           type: tasktype,
           deadline: dateString,
-          priority: parentPriority,
           assignee: imageUrl,
           status: status,
           forCaption: canCaption,
@@ -1187,7 +1319,7 @@ class FirebaseFunctions {
         print('parent does not exist');
         return TopicContentModel(
           topicId: topicId,
-          pubmatUrl: '',
+          pubmatUrls: [],
           headline: '',
           writtenContent: '',
           pubmatId: '',
@@ -1206,7 +1338,7 @@ class FirebaseFunctions {
           print('no assigned tasks');
           return TopicContentModel(
             topicId: topicId,
-            pubmatUrl: '',
+            pubmatUrls: [],
             headline: '',
             writtenContent: '',
             pubmatId: '',
@@ -1217,7 +1349,7 @@ class FirebaseFunctions {
         }
 
         final docs = childSnapshot.docs;
-        String pubmatUrl = '';
+        List<String> pubmatUrls = [];
         String writtenContent = '';
         String headline = '';
         String writingId = '';
@@ -1231,23 +1363,26 @@ class FirebaseFunctions {
 
           final taskType = data['task_type'] as String?;
 
-          if (taskType == 'Pubmat' && data.containsKey('content')) {
-            pubmatUrl = data['content'] as String? ?? '';
-            writingId = docId;
+          if (taskType == 'Pubmat' && data.containsKey('images')) {
+            final dynamic imagesData = data['images'];
+            if (imagesData is List) {
+              pubmatUrls = imagesData.cast<String>().toList();
+            }
+            pubmatId = docId;
             pubmatStatus = data['status'] ?? '';
           } else if (taskType == 'Writing' &&
               data.containsKey('content') &&
               data.containsKey('headline')) {
             writtenContent = data['content'] as String? ?? '';
             headline = data['headline'] as String? ?? '';
-            pubmatId = docId;
+            writingId = docId;
             writtenStatus = data['status'] ?? '';
           }
         }
 
         return TopicContentModel(
           topicId: topicId,
-          pubmatUrl: pubmatUrl,
+          pubmatUrls: pubmatUrls,
           headline: headline,
           writtenContent: writtenContent,
           pubmatId: pubmatId,
@@ -1260,7 +1395,7 @@ class FirebaseFunctions {
       // section is 'XDEPw2VPYdeFdKQRuRpA', fallback empty content
       return TopicContentModel(
         topicId: topicId,
-        pubmatUrl: '',
+        pubmatUrls: [],
         headline: '',
         writtenContent: '',
         pubmatId: '',
@@ -1280,12 +1415,6 @@ class FirebaseFunctions {
         userRole = userDoc['role'];
       } else {
         userRole = 'unknown';
-      }
-
-      // Get the existing document first
-      final docSnapshot = await db.collection('tasks').doc(topicId).get();
-      if (!docSnapshot.exists) {
-        return;
       }
 
       Map<String, dynamic> updates = {
@@ -1309,11 +1438,42 @@ class FirebaseFunctions {
     }
   }
 
-  Future<void> rejectToCreate(String topicId) async {
+  Future<void> updateToPost(String topicId) async {
+    try {
+      final parentRef = db.collection('tasks').doc(topicId);
+      final userDoc = await getUserInfo(auth.currentUser!.uid);
+      String userRole = '';
+
+      if (userDoc.exists) {
+        userRole = userDoc['role'];
+      } else {
+        userRole = 'unknown';
+      }
+
+      if (userRole == 'section_editors') {
+        userRole = 'SE';
+      }
+
+      await parentRef.update({'${userRole}ApprovedPST': true});
+
+      await logInTimeline(
+        topicId,
+        'Topic Published',
+        'Topic has been published for readers',
+        'Published',
+      );
+    } catch (e) {
+      print('error updating for post: $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> rejectToCreate(String topicId, reason, role) async {
     try {
       await db.collection('tasks').doc(topicId).update({
         'status': 'rejected',
-        'reason': 'rejected',
+        '${role}Approved': false,
+        '${role}Rejected': reason,
         'rejected_at': Timestamp.now(),
       });
 
@@ -1457,7 +1617,7 @@ class FirebaseFunctions {
   Future<ViewedTask> taskContentWritten(String topicId, String taskId) async {
     // this is for viewing. not necessary to log
     try {
-      String? description, priority;
+      String? description;
 
       final parentDocref = db.collection('tasks').doc(topicId);
 
@@ -1470,7 +1630,6 @@ class FirebaseFunctions {
         final parentData = parentSnap.data() as Map<String, dynamic>;
 
         description = parentData['details'];
-        priority = parentData['priority'];
 
         final username = await getUserInfo(parentSnap['assigned_by']);
         final assigneeSec = await getUserInfo(subTaskSnap['assignee_id']);
@@ -1487,13 +1646,13 @@ class FirebaseFunctions {
           deadline: deadline,
           assigner: username['username'],
           assignee: subTaskSnap['assignee_id'],
-          priority: priority ?? '',
           assigneeName: assigneeSec['username'],
           canCaption: subTaskSnap['forCaption'],
           assigneeSec: assigneeSec['section'],
-          hasStarted: subTaskSnap['status'] == 'Doing',
+          hasStarted: subTaskSnap['status'] != 'To Do',
           projectStep: parentData['projectStep'],
           totalSubtask: parentData['total_subtask'],
+          status: subTaskSnap['status'],
           comments: subTaskSnap.data() != null
               ? (subTaskSnap.data() as Map<String, dynamic>)['comment'] ??
                   'No Comments yet'
@@ -1562,7 +1721,6 @@ class FirebaseFunctions {
     newTitle,
     newDetail,
     newDeadline,
-    newPriority,
   ) async {
     try {
       DateTime parsedDeadline =
@@ -1575,7 +1733,6 @@ class FirebaseFunctions {
         'updated_at': Timestamp.now(),
         'updated_by': auth.currentUser!.uid,
         'deadline': deadlineTimestamp,
-        'priority': newPriority,
         //reason why di included yung section sa pwede iupdate is because it would not make sense to update from one section to another
         //since may assigned members na para jan.
         //much better to just delete the topic if nagkamali rather than changing the section
@@ -1695,7 +1852,6 @@ class FirebaseFunctions {
             section: '',
             type: '',
             deadline: '',
-            priority: '',
             assignee: '',
             status: '',
             parentId: '',
@@ -1704,7 +1860,6 @@ class FirebaseFunctions {
         }
 
         final topicData = topicDoc.data() as Map<String, dynamic>;
-        final parentPriority = topicData['priority'] as String? ?? '';
         final parentSection = topicData['section'] as String? ?? '';
 
         final deadline = taskData['deadline'] as Timestamp;
@@ -1726,7 +1881,6 @@ class FirebaseFunctions {
           section: parentSection,
           type: tasktype,
           deadline: dateString,
-          priority: parentPriority,
           assignee: imageUrl,
           status: status,
           parentId: parentId,
@@ -1774,6 +1928,7 @@ class FirebaseFunctions {
       });
 
       await dbref.update({
+        'doing_at': Timestamp.now(),
         'status': 'Doing',
       });
 
@@ -1805,7 +1960,6 @@ class FirebaseFunctions {
 
     await dbref.collection('assigned_tasks').doc(taskId).update({
       'submittedAt': Timestamp.now(),
-      'images': FieldValue.arrayUnion(imageUrls),
       'content': 'Images uploaded',
       'status': 'Submitted',
     });
@@ -1824,6 +1978,25 @@ class FirebaseFunctions {
     await dbref.collection('assigned_tasks').doc(taskId).update({
       'submittedAt': Timestamp.now(),
       'content': imageUrl,
+      'status': 'Submitted',
+    });
+
+    await logInTimeline(
+      topicId,
+      'Task Submitted',
+      'Images uploaded',
+      'Task Submitted',
+    );
+  }
+
+  Future<void> pubmatMultiUpload(
+      String topicId, taskId, List<String> imageUrls) async {
+    final dbref = db.collection('tasks').doc(topicId);
+
+    await dbref.collection('assigned_tasks').doc(taskId).update({
+      'submittedAt': Timestamp.now(),
+      'images': FieldValue.arrayUnion(imageUrls),
+      'content': 'Pubmat Images uploaded',
       'status': 'Submitted',
     });
 
@@ -1885,12 +2058,7 @@ class FirebaseFunctions {
 
       await storageRef.delete();
 
-      await db
-          .collection('tasks')
-          .doc(topicId)
-          .collection('assigned_tasks')
-          .doc(taskId)
-          .update({
+      await db.collection('tasks').doc(topicId).update({
         'images': FieldValue.arrayRemove([retrievedImages[index]]),
       });
 
@@ -1923,6 +2091,16 @@ class FirebaseFunctions {
 
       await storageRef.delete();
 
+      final collection = FirebaseFirestore.instance.collection('image_hashes');
+
+      final querySnapshot =
+          await collection.where('url', isEqualTo: imageUrl).get();
+
+      for (var doc in querySnapshot.docs) {
+        await doc.reference.delete();
+        print('Deleted document: ${doc.id}');
+      }
+
       await db.collection('tasks').doc(topicId).update({
         'images': FieldValue.arrayRemove([retrievedImages[index]]),
       });
@@ -1939,8 +2117,11 @@ class FirebaseFunctions {
     }
   }
 
-  Future<void> deleteImage(String topicId, taskId, imageUrl) async {
+  Future<void> deleteImageForPubmat(
+      int index, List<String> retrievedImages, String topicId, taskId) async {
     try {
+      String imageUrl = retrievedImages[index];
+
       Reference storageRef = FirebaseStorage.instance.refFromURL(imageUrl);
 
       await storageRef.delete();
@@ -1951,7 +2132,8 @@ class FirebaseFunctions {
           .collection('assigned_tasks')
           .doc(taskId)
           .update({
-        'content': FieldValue.delete(),
+        'images': FieldValue.arrayRemove([retrievedImages[index]]),
+        'testdeleted': true,
       });
 
       await logInTimeline(
@@ -1969,39 +2151,19 @@ class FirebaseFunctions {
   Future<void> massApprove(String topicId, pubmatId, writingId) async {
     try {
       final parentRef = db.collection('tasks').doc(topicId);
-      final userInfo = await getUserInfo(auth.currentUser!.uid);
+      // final userInfo = await getUserInfo(auth.currentUser!.uid);
       final batch = db.batch();
 
       batch.update(parentRef.collection('assigned_tasks').doc(pubmatId), {
         'status': 'Approved',
         'approvedAt': Timestamp.now(),
-        'approved_by': auth.currentUser!.uid,
+        // 'approved_by': auth.currentUser!.uid,
       });
 
       batch.update(parentRef.collection('assigned_tasks').doc(writingId), {
         'status': 'Approved',
         'approvedAt': Timestamp.now(),
-        'approved_by': auth.currentUser!.uid,
       });
-
-      if (userInfo.exists && userInfo['role'] == 'section_editors') {
-        batch.update(parentRef, {
-          'status': 'pendingPST',
-          'projectStep': FieldValue.increment(1),
-          'completedApproved_at': Timestamp.now(),
-        });
-      } else {
-        batch.update(parentRef, {
-          'status': 'pendingPST',
-          'projectStep': FieldValue.increment(2),
-          'completedApproved_at': Timestamp.now(),
-        });
-
-        batch.update(parentRef, {
-          '${userInfo['role']}Approved': true,
-          '${userInfo['role']}Approved_at': Timestamp.now(),
-        });
-      }
 
       await logInTimeline(
         topicId,
@@ -2015,13 +2177,6 @@ class FirebaseFunctions {
         'Written task approved',
         'Written content approved and ready for management approval',
         'Approved',
-      );
-
-      await logInTimeline(
-        topicId,
-        'Topic ready for management approval',
-        'Topic approved and ready for management approval',
-        'Pending',
       );
 
       await batch.commit();

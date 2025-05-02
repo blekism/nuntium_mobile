@@ -8,5 +8,6 @@ class NormalItem {
     this.pdfUrl = '',
   });
 
-  final String id, imageUrl, section, title, datePosted, pdfUrl;
+  final String id, section, title, datePosted, pdfUrl;
+  final List<String> imageUrl;
 }

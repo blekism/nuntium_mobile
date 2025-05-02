@@ -9,7 +9,6 @@ class SubtaskCard extends StatefulWidget {
       section,
       type,
       deadline,
-      priority,
       status,
       topicId,
       sectionId;
@@ -22,7 +21,6 @@ class SubtaskCard extends StatefulWidget {
     required this.section,
     required this.type,
     required this.deadline,
-    required this.priority,
     required this.status,
     required this.topicId,
     required this.sectionId,
@@ -115,36 +113,6 @@ class _SubtaskCardState extends State<SubtaskCard> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: (() {
-                                switch (widget.priority) {
-                                  case 'High Priority':
-                                    return const Color(0xFFD23737); // light red
-                                  case 'Medium Priority':
-                                    return const Color(0xFFE4BD3D)
-                                        .withAlpha(80); // light yellow
-                                  case 'Low Priority':
-                                    return const Color(
-                                        0xFF6A9C64); // light green
-                                  default:
-                                    return const Color(
-                                        0xFFDDE4FB); // default blue
-                                }
-                              })(),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              widget.priority,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 5),
                           Container(
                             width: MediaQuery.of(context).size.width * .4,
                             padding: const EdgeInsets.symmetric(
