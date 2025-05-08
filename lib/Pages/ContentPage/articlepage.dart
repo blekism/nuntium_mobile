@@ -9,10 +9,12 @@ import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class ArticlePage extends ConsumerStatefulWidget {
   final String? postId;
+  final bool isPosted;
 
   const ArticlePage({
     super.key,
     this.postId,
+    this.isPosted = true,
   });
 
   @override
@@ -23,7 +25,9 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
   final firebaseFunctions = FirebaseFunctions();
   bool isLiked = false;
   bool isBookmarked = false;
+  int _totalLikes = 0;
   final PageController _pageController = PageController(viewportFraction: 0.9);
+  bool _postActionInitiated = false;
 
   @override
   void initState() {
@@ -49,7 +53,7 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
 
     return Scaffold(
       appBar: const CustomAppBar(
-        appbarTitle: 'NUVation',
+        appbarTitle: 'Luminary',
         hasNavigated: false,
       ),
       body: articleView.when(
@@ -62,7 +66,11 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
 
           final datePosted =
               articleView['datePosted'] ?? 'date unknown' as Timestamp;
-          final dateString = datePosted.toDate().toString();
+          final dateString = firebaseFunctions.formatTimestamp(datePosted);
+
+          setState(() {
+            _totalLikes = articleView['totalLikes'];
+          });
 
           return SingleChildScrollView(
             child: Padding(
@@ -109,6 +117,42 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
+      floatingActionButton: widget.isPosted == false &&
+              !_postActionInitiated // Modify condition here
+          ? FloatingActionButton.extended(
+              onPressed: () async {
+                // Make onPressed async
+                if (widget.postId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Error: Post ID is missing.')),
+                  );
+                  return;
+                }
+                setState(() {
+                  _postActionInitiated = true; // Hide FAB immediately
+                });
+                try {
+                  await firebaseFunctions.approveInstantPost(widget.postId!);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Article submitted for posting!')),
+                  );
+                } catch (e) {
+                  print('Error approving post: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to approve post: $e')),
+                  );
+                  setState(() {
+                    _postActionInitiated = false;
+                  });
+                }
+              },
+              label: const Text('Post Article'),
+              icon: const Icon(Icons.send),
+              backgroundColor: Colors.white, // As per user's visible code
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -190,6 +234,13 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
               if (FirebaseAuth.instance.currentUser != null) {
                 setState(() {
                   isLiked = !isLiked;
+                  if (isLiked) {
+                    _totalLikes++; // Increment state variable
+                  } else {
+                    _totalLikes--; // Decrement state variable
+                    // Ensure likes don't go below zero locally
+                    if (_totalLikes < 0) _totalLikes = 0;
+                  }
                 });
                 if (isLiked) {
                   await firebaseFunctions.likeArticle(widget.postId!);
@@ -229,7 +280,7 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
                       ),
                 const SizedBox(width: 8), // Adds spacing between icon and text
                 Text(
-                  articleView['totalLikes'].toString(),
+                  _totalLikes.toString(),
                   style: const TextStyle(
                     color: Color(0XFF020B40),
                     fontSize: 16,

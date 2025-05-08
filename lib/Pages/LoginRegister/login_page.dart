@@ -198,13 +198,13 @@ class _LoginPageState extends State<LoginPage> {
                 Align(
                   alignment: Alignment.topCenter,
                   child: Container(
-                    height: MediaQuery.of(context).size.height * 0.2,
+                    height: MediaQuery.of(context).size.height * 0.15,
                   ),
                 ),
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
-                    height: MediaQuery.of(context).size.height * 0.8,
+                    height: MediaQuery.of(context).size.height * 0.85,
                     width: double.infinity,
                     decoration: const BoxDecoration(
                       color: Color(0XFFF9F9F9),
@@ -223,7 +223,7 @@ class _LoginPageState extends State<LoginPage> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const Text(
-                              'Readable',
+                              'Luminary',
                               style: TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.w600,
@@ -314,7 +314,9 @@ class _LoginPageState extends State<LoginPage> {
                                 },
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * .01),
                             SizedBox(
                               height: 60,
                               width: double.infinity,

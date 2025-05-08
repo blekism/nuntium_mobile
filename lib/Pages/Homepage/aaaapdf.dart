@@ -1,23 +1,35 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:nuntium_mobile/Pages/customappbar.dart';
+import 'package:nuntium_mobile/firebase_functions.dart';
+import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'package:path_provider/path_provider.dart';
 
-class PdfViewerScreen extends StatefulWidget {
+class PdfViewerScreen extends ConsumerStatefulWidget {
+  final String postId;
   final String pdfUrl; // Pass the URL of the PDF file.
+  final bool isPosted;
 
-  const PdfViewerScreen({super.key, required this.pdfUrl});
+  const PdfViewerScreen({
+    super.key,
+    required this.pdfUrl,
+    required this.postId,
+    required this.isPosted,
+  });
 
   @override
   PdfViewerScreenState createState() => PdfViewerScreenState();
 }
 
-class PdfViewerScreenState extends State<PdfViewerScreen> {
+class PdfViewerScreenState extends ConsumerState<PdfViewerScreen> {
   String? localFilePath;
   int currentPage = 0;
   int totalPages = 0;
+  final firebaseFunctions = FirebaseFunctions();
+  bool _postActionInitiated = false;
 
   @override
   void initState() {
@@ -44,7 +56,7 @@ class PdfViewerScreenState extends State<PdfViewerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const CustomAppBar(
-        appbarTitle: 'PDF Viewer',
+        appbarTitle: 'Luminary',
         hasNavigated: false,
       ),
       body: localFilePath != null
@@ -103,6 +115,42 @@ class PdfViewerScreenState extends State<PdfViewerScreen> {
                 ],
               ),
             ),
+      floatingActionButton: widget.isPosted == false &&
+              !_postActionInitiated // Modify condition here
+          ? FloatingActionButton.extended(
+              onPressed: () async {
+                // Make onPressed async
+                if (widget.postId.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Error: Post ID is missing.')),
+                  );
+                  return;
+                }
+                setState(() {
+                  _postActionInitiated = true; // Hide FAB immediately
+                });
+                try {
+                  await firebaseFunctions.approveInstantPost(widget.postId);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Article submitted for posting!')),
+                  );
+                } catch (e) {
+                  print('Error approving post: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to approve post: $e')),
+                  );
+                  setState(() {
+                    _postActionInitiated = false;
+                  });
+                }
+              },
+              label: const Text('Post Article'),
+              icon: const Icon(Icons.send),
+              backgroundColor: Colors.white, // As per user's visible code
+            )
+          : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }

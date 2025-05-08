@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
@@ -79,12 +78,13 @@ class FirebaseFunctions {
     final dateString = datePosted.toDate().toString();
 
     return NormalItem(
-      id: doc.id,
-      imageUrl: data['image'] ?? 'no image',
-      section: data['section'] ?? 'no section',
-      title: data['title'] ?? 'no title',
-      datePosted: dateString,
-    );
+        id: doc.id,
+        imageUrl: data['image'] ?? 'no image',
+        section: data['section'] ?? 'no section',
+        title: data['title'] ?? 'no title',
+        datePosted: dateString,
+        pageType: doc['pageType'],
+        isPosted: !doc['needsApproval']);
   }
 
   Stream<List<Topic>> streamTopics(String sectionId) {
@@ -146,21 +146,23 @@ class FirebaseFunctions {
     return db
         .collection('posts')
         .where('isFeatured', isEqualTo: true)
+        .where('needsApproval', isEqualTo: false)
         .orderBy('datePosted', descending: true)
         .limit(5)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final datePosted = doc['datePosted'] as Timestamp;
-        final dateString = datePosted.toDate().toString();
+        final dateString = formatTimestamp(datePosted);
 
         return FeaturedItem(
-          id: doc.id,
-          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
-          section: doc['section'],
-          title: doc['title'],
-          datePosted: dateString,
-        );
+            id: doc.id,
+            imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
+            section: doc['section'],
+            title: doc['title'],
+            datePosted: dateString,
+            pageType: doc['pageType'],
+            isPosted: !doc['needsApproval']);
       }).toList();
     });
   }
@@ -169,21 +171,23 @@ class FirebaseFunctions {
     return db
         .collection('posts')
         .where('isFeatured', isEqualTo: false)
+        .where('needsApproval', isEqualTo: false)
         .orderBy('datePosted', descending: true)
         .limit(5)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final datePosted = doc['datePosted'] as Timestamp;
-        final dateString = datePosted.toDate().toString();
+        final dateString = formatTimestamp(datePosted);
 
         return NormalItem(
-          id: doc.id,
-          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
-          section: doc['section'],
-          title: doc['title'],
-          datePosted: dateString,
-        );
+            id: doc.id,
+            imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
+            section: doc['section'],
+            title: doc['title'],
+            datePosted: dateString,
+            pageType: doc['pageType'],
+            isPosted: !doc['needsApproval']);
       }).toList();
     });
   }
@@ -191,21 +195,50 @@ class FirebaseFunctions {
   Stream<List<NormalItem>> streamForDiscover() {
     return db
         .collection('posts')
-        .where('isArticle', isEqualTo: true)
+        .where('pageType', isNotEqualTo: 'termly')
+        .where('needsApproval', isEqualTo: false)
         .orderBy('datePosted', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
         final datePosted = doc['datePosted'] as Timestamp;
-        final dateString = datePosted.toDate().toString();
+        final dateString = formatTimestamp(datePosted);
 
         return NormalItem(
-          id: doc.id,
-          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
-          section: doc['section'],
-          title: doc['title'],
-          datePosted: dateString,
-        );
+            id: doc.id,
+            imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
+            section: doc['section'],
+            title: doc['title'],
+            datePosted: dateString,
+            pageType: doc['pageType'],
+            isPosted: !doc['needsApproval']);
+      }).toList();
+    });
+  }
+
+  Stream<List<NormalItem>> streamForPostApprovals() {
+    return db
+        .collection('posts')
+        .where('needsApproval', isEqualTo: true)
+        .orderBy('datePosted', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data(); // Get data as a map
+        final datePosted = doc['datePosted'] as Timestamp;
+        final dateString = formatTimestamp(datePosted);
+        final String pdfUrl =
+            data.containsKey('pdfUrl') ? (data['pdfUrl'] as String? ?? '') : '';
+
+        return NormalItem(
+            id: doc.id,
+            imageUrl: (data['images'] as List<dynamic>?)?.cast<String>() ?? [],
+            section: data['section'],
+            title: data['title'],
+            datePosted: dateString,
+            pageType: data['pageType'],
+            pdfUrl: pdfUrl,
+            isPosted: !data['needsApproval']);
       }).toList();
     });
   }
@@ -231,16 +264,17 @@ class FirebaseFunctions {
           if (postSnapshot.exists && postSnapshot.data() != null) {
             final data = postSnapshot.data() as Map<String, dynamic>;
             final datePosted = data['datePosted'] as Timestamp?;
-            final dateString = datePosted?.toDate().toString() ?? '';
+            final dateString = formatTimestamp(datePosted!);
 
             posts.add(NormalItem(
-              id: postSnapshot.id,
-              imageUrl:
-                  (data['images'] as List<dynamic>?)?.cast<String>() ?? [],
-              section: data['section'] ?? '',
-              title: data['title'] ?? '',
-              datePosted: dateString,
-            ));
+                id: postSnapshot.id,
+                imageUrl:
+                    (data['images'] as List<dynamic>?)?.cast<String>() ?? [],
+                section: data['section'] ?? '',
+                title: data['title'] ?? '',
+                datePosted: dateString,
+                pageType: data['pageType'],
+                isPosted: !data['needsApproval']));
           }
         }
 
@@ -272,16 +306,17 @@ class FirebaseFunctions {
           if (postSnapshot.exists && postSnapshot.data() != null) {
             final data = postSnapshot.data() as Map<String, dynamic>;
             final datePosted = data['datePosted'] as Timestamp?;
-            final dateString = datePosted?.toDate().toString() ?? '';
+            final dateString = formatTimestamp(datePosted!);
 
             posts.add(NormalItem(
-              id: postSnapshot.id,
-              imageUrl:
-                  (data['images'] as List<dynamic>?)?.cast<String>() ?? [],
-              section: data['section'] ?? '',
-              title: data['title'] ?? '',
-              datePosted: dateString,
-            ));
+                id: postSnapshot.id,
+                imageUrl:
+                    (data['images'] as List<dynamic>?)?.cast<String>() ?? [],
+                section: data['section'] ?? '',
+                title: data['title'] ?? '',
+                datePosted: dateString,
+                pageType: data['pageType'],
+                isPosted: !data['needsApproval']));
           }
         }
 
@@ -710,13 +745,16 @@ class FirebaseFunctions {
     // 6. Convert to your model
     return uniqueDocs.map((doc) {
       final datePosted = doc['datePosted'] as Timestamp;
+      final dateString = formatTimestamp(datePosted);
+
       return NormalItem(
-        id: doc.id,
-        imageUrl: doc['image'],
-        section: doc['section'],
-        title: doc['title'],
-        datePosted: datePosted.toDate().toString(),
-      );
+          id: doc.id,
+          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
+          section: doc['section'],
+          title: doc['title'],
+          datePosted: dateString,
+          pageType: doc['pageType'],
+          isPosted: !doc['needsApproval']);
     }).toList();
   }
 
@@ -754,16 +792,17 @@ class FirebaseFunctions {
         .map((snapshots) {
       return snapshots.docs.map((doc) {
         final datePosted = doc['datePosted'] as Timestamp;
-        final dateString = datePosted.toDate().toString();
+        final dateString = formatTimestamp(datePosted);
 
         return NormalItem(
-          id: doc.id,
-          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
-          section: doc['section'],
-          title: doc['title'],
-          datePosted: dateString,
-          pdfUrl: doc['pdfUrl'],
-        );
+            id: doc.id,
+            imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
+            section: doc['section'],
+            title: doc['title'],
+            datePosted: dateString,
+            pdfUrl: doc['pdfUrl'],
+            pageType: doc['pageType'],
+            isPosted: !doc['needsApproval']);
       }).toList();
     });
   }
@@ -772,20 +811,22 @@ class FirebaseFunctions {
     return db
         .collection('posts')
         .where('isTermly', isEqualTo: true)
+        .where('needsApproval', isEqualTo: false)
         .snapshots()
         .map((snapshots) {
       return snapshots.docs.map((doc) {
         final datePosted = doc['datePosted'] as Timestamp;
-        final dateString = datePosted.toDate().toString();
+        final dateString = formatTimestamp(datePosted);
 
         return NormalItem(
-          id: doc.id,
-          imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
-          section: doc['section'],
-          title: doc['title'],
-          datePosted: dateString,
-          pdfUrl: doc['pdfUrl'],
-        );
+            id: doc.id,
+            imageUrl: (doc['images'] as List<dynamic>?)?.cast<String>() ?? [],
+            section: doc['section'],
+            title: doc['title'],
+            datePosted: dateString,
+            pdfUrl: doc['pdfUrl'],
+            pageType: doc['pageType'],
+            isPosted: !doc['needsApproval']);
       }).toList();
     });
   }
@@ -874,8 +915,9 @@ class FirebaseFunctions {
     return db
         .collection('posts')
         .where('isAnnouncement', isEqualTo: false)
+        // .where('needsApproval', isEqualTo: false)
         .orderBy('datePosted', descending: true)
-        .limit(20)
+        .limit(10)
         .snapshots()
         .asyncMap((snapshot) async {
       final userId = auth.currentUser?.uid;
@@ -891,15 +933,29 @@ class FirebaseFunctions {
       }
 
       return snapshot.docs.map((doc) {
-        final datePosted = doc['datePosted'] as Timestamp;
-        final dateString = datePosted.toDate().toString();
+        final data = doc.data(); // Get data as a map
+        final datePosted = data['datePosted'] as Timestamp;
+        final dateString = formatTimestamp(datePosted);
         final notificationId = doc.id;
+
+        // Check for 'isTermly' field, default to false if not present or null
+        final bool isTermly = data.containsKey('isTermly')
+            ? (data['isTermly'] as bool? ?? false)
+            : false;
+        // Check for 'pdfUrl' field, default to empty string if not present or null
+        final String pdfUrl =
+            data.containsKey('pdfUrl') ? (data['pdfUrl'] as String? ?? '') : '';
+
         return NotifItem(
           id: notificationId,
-          imageUrl: doc['image'],
-          section: doc['section'],
+          postId: doc.id,
+          imageUrl: (data['images'] as List<dynamic>?)?.cast<String>() ?? [],
+          section: data['section'] ??
+              'Unknown Section', // Provide default for section
           datePosted: dateString,
-          headline: doc['title'],
+          headline: data['title'] ?? 'No Title', // Provide default for title
+          isTermly: isTermly, // Use the determined value
+          pdfUrl: pdfUrl, // Use the determined value
           isRead: readNotificationIds.contains(notificationId),
         );
       }).toList();
@@ -1326,41 +1382,61 @@ class FirebaseFunctions {
           writingId: '',
           pubmatStatus: '',
           writtenStatus: '',
+          caption: '',
         );
       }
 
-      if (parentDoc['section'] != 'XDEPw2VPYdeFdKQRuRpA') {
-        final childCollection = parentRef.collection('assigned_tasks');
+      final section = parentDoc['section'];
+      final childCollection = parentRef.collection('assigned_tasks');
+      final childSnapshot = await childCollection.get();
 
-        final childSnapshot = await childCollection.get();
+      if (childSnapshot.docs.isEmpty) {
+        print('no assigned tasks');
+        return TopicContentModel(
+          topicId: topicId,
+          pubmatUrls: [],
+          headline: '',
+          writtenContent: '',
+          pubmatId: '',
+          writingId: '',
+          pubmatStatus: '',
+          writtenStatus: '',
+          caption: '',
+        );
+      }
 
-        if (childSnapshot.docs.isEmpty) {
-          print('no assigned tasks');
-          return TopicContentModel(
-            topicId: topicId,
-            pubmatUrls: [],
-            headline: '',
-            writtenContent: '',
-            pubmatId: '',
-            writingId: '',
-            pubmatStatus: '',
-            writtenStatus: '',
-          );
+      List<String> pubmatUrls = [];
+      String writtenContent = '';
+      String headline = '';
+      String writingId = '';
+      String pubmatId = '';
+      String pubmatStatus = '';
+      String writtenStatus = '';
+      String caption = '';
+
+      final docs = childSnapshot.docs;
+
+      if (section == 'XDEPw2VPYdeFdKQRuRpA') {
+        // Pull images from parent
+        final dynamic parentImages = parentDoc['images'];
+        if (parentImages is List) {
+          pubmatUrls = parentImages.cast<String>().toList();
+          // print('pubat urls: ${pubmatUrls}');
         }
 
-        final docs = childSnapshot.docs;
-        List<String> pubmatUrls = [];
-        String writtenContent = '';
-        String headline = '';
-        String writingId = '';
-        String pubmatId = '';
-        String pubmatStatus = '';
-        String writtenStatus = '';
-
+        // Only one of the subtasks will contain a caption
+        for (final doc in docs) {
+          final data = doc.data();
+          if (data.containsKey('caption') && caption.isEmpty) {
+            caption = data['caption'] ?? '';
+            break; // Stop as soon as caption is found
+          }
+        }
+      } else {
+        // Regular Pubmat/Writing task extraction
         for (final doc in docs) {
           final data = doc.data();
           final docId = doc.id;
-
           final taskType = data['task_type'] as String?;
 
           if (taskType == 'Pubmat' && data.containsKey('images')) {
@@ -1379,29 +1455,18 @@ class FirebaseFunctions {
             writtenStatus = data['status'] ?? '';
           }
         }
-
-        return TopicContentModel(
-          topicId: topicId,
-          pubmatUrls: pubmatUrls,
-          headline: headline,
-          writtenContent: writtenContent,
-          pubmatId: pubmatId,
-          writingId: writingId,
-          pubmatStatus: pubmatStatus,
-          writtenStatus: writtenStatus,
-        );
       }
 
-      // section is 'XDEPw2VPYdeFdKQRuRpA', fallback empty content
       return TopicContentModel(
         topicId: topicId,
-        pubmatUrls: [],
-        headline: '',
-        writtenContent: '',
-        pubmatId: '',
-        writingId: '',
-        pubmatStatus: '',
-        writtenStatus: '',
+        pubmatUrls: pubmatUrls,
+        headline: headline,
+        writtenContent: writtenContent,
+        pubmatId: pubmatId,
+        writingId: writingId,
+        pubmatStatus: pubmatStatus,
+        writtenStatus: writtenStatus,
+        caption: caption,
       );
     });
   }
@@ -2263,6 +2328,128 @@ class FirebaseFunctions {
       print('Comment added successfully');
     } catch (e) {
       print('Error writing comment: $e');
+    }
+  }
+
+  Future<void> instantPost(
+      List<String> pubmatUrls, String headline, content, section) async {
+    try {
+      String cleanedData = await processData(content);
+      DocumentSnapshot secDoc = await getSectionDoc(section);
+      String sectionName = '';
+      if (secDoc.exists) {
+        sectionName = secDoc['sectionType'];
+      }
+
+      await db.collection('posts').add({
+        'content': cleanedData,
+        'datePosted': Timestamp.now(),
+        'images': FieldValue.arrayUnion(pubmatUrls),
+        'isAnnouncement': false,
+        'pageType': 'article',
+        'isFeatured': false,
+        'pubmatAuthor': auth.currentUser!.uid,
+        'writingAuthor': auth.currentUser!.uid,
+        'section': sectionName,
+        'title': headline,
+        'totalBookmarks': 0,
+        'totalComments': 0,
+        'totalLikes': 0,
+        'totalViews': 0,
+        'needsApproval': true,
+      });
+      print('post created successfully');
+    } catch (e) {
+      print('error ka bro: $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> instantPhotoPost(
+      List<String> pubmatUrls, String caption, section) async {
+    try {
+      String cleanedData = await processData(caption);
+      DocumentSnapshot secDoc = await getSectionDoc(section);
+      String sectionName = '';
+      if (secDoc.exists) {
+        sectionName = secDoc['sectionType'];
+      }
+
+      await db.collection('posts').add({
+        'content': cleanedData,
+        'datePosted': Timestamp.now(),
+        'images': FieldValue.arrayUnion(pubmatUrls),
+        'isAnnouncement': false,
+        'pageType': 'photography',
+        'isFeatured': false,
+        'photoAuthor': auth.currentUser!.uid,
+        'section': sectionName,
+        'title': 'IN PHOTOS',
+        'totalBookmarks': 0,
+        'totalComments': 0,
+        'totalLikes': 0,
+        'totalViews': 0,
+        'needsApproval': true,
+      });
+      print('post created successfully');
+    } catch (e) {
+      print('error ka bro: $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<DocumentSnapshot> getSectionDoc(String sectionId) async {
+    try {
+      DocumentSnapshot sectionDoc =
+          await db.collection('sections').doc(sectionId).get();
+      if (!sectionDoc.exists) {
+        // Consider how you want to handle non-existent sections.
+        // Throwing an exception might be appropriate if the caller expects it to exist.
+        throw Exception('Section with ID $sectionId not found.');
+      }
+      return sectionDoc;
+    } catch (e) {
+      print('Error fetching section document for ID $sectionId: $e');
+      // Re-throw the error to allow the caller to handle it.
+      throw Exception('Failed to fetch section document: $e');
+    }
+  }
+
+  Future<void> postTermly(
+      String pdfUrl, String imageUrl, String type, String title) async {
+    try {
+      if (pdfUrl.isEmpty || imageUrl.isEmpty || type.isEmpty || title.isEmpty) {
+        throw Exception(
+            'one of the fields are empty. please ensure that all fields are filled first');
+      } else {
+        await db.collection('posts').add({
+          'datePosted': Timestamp.now(),
+          'images': FieldValue.arrayUnion([imageUrl]),
+          'isAnnouncement': false,
+          'isTermly': true,
+          'pageType': 'termly',
+          'pdfUrl': pdfUrl,
+          'section': type,
+          'termlyFeatured': false,
+          'title': title,
+          'totalViews': 0,
+          'needsApproval': true,
+        });
+      }
+    } catch (e) {
+      print('error uploading post $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<void> approveInstantPost(String postId) async {
+    try {
+      await db.collection('posts').doc(postId).update({
+        'needsApproval': false,
+      });
+    } catch (e) {
+      print('error ka ya eh: $e');
+      return Future.error(e);
     }
   }
 

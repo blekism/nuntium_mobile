@@ -35,7 +35,7 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
   final TextEditingController _deadlineController = TextEditingController();
   final TextEditingController _sectionController = TextEditingController();
   String? _selectedSectionID;
-  bool _didInitDropdown = false;
+  // bool _didInitDropdown = false;
   bool isUpdateSuccess = false;
 
   DateTime? _selectedDateTime;
@@ -84,6 +84,7 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
     super.initState();
     print('creating topic for: ${widget.sectionID} and ${widget.sectionName}');
     if (widget.sectionID != null) {
+      _selectedSectionID = widget.sectionID;
       _sectionController.text = widget.sectionName!;
     }
 
@@ -229,34 +230,42 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
                     const SizedBox(height: 7),
                     widget.isEditing == false
                         ? sections.when(
-                            data: (sections) {
-                              final docs = sections.docs;
-
-                              // Set initial value once, only when data is loaded
-                              if (!_didInitDropdown &&
-                                  widget.sectionID != null) {
-                                final exists = docs
-                                    .any((doc) => doc.id == widget.sectionID);
-                                if (exists) {
-                                  _selectedSectionID = widget.sectionID;
-                                }
-                                _didInitDropdown = true;
-                              }
+                            data: (sectionsSnapshot) {
+                              final docs = sectionsSnapshot.docs;
+                              final bool isReadOnlyDueToPreselection =
+                                  widget.sectionID != null;
 
                               return DropdownButtonFormField(
                                 value: _selectedSectionID,
-                                items: docs.map((doc) {
-                                  final data =
-                                      doc.data() as Map<String, dynamic>;
-                                  final name = data['sectionType'] ?? 'unknown';
-                                  return DropdownMenuItem<String>(
-                                    value: doc.id,
-                                    child: Text(name),
-                                  );
-                                }).toList(),
+                                items: isReadOnlyDueToPreselection &&
+                                        widget.sectionName != null &&
+                                        _selectedSectionID != null
+                                    ? [
+                                        // If read-only and sectionName is available, show only that item.
+                                        // The value must match _selectedSectionID.
+                                        DropdownMenuItem<String>(
+                                          value:
+                                              _selectedSectionID!, // This is widget.sectionID
+                                          child: Text(widget.sectionName!),
+                                        ),
+                                      ]
+                                    : docs.map((doc) {
+                                        // If editable, show all sections.
+                                        final data =
+                                            doc.data() as Map<String, dynamic>;
+                                        final name =
+                                            data['sectionType'] ?? 'unknown';
+                                        return DropdownMenuItem<String>(
+                                          value: doc.id,
+                                          child: Text(name),
+                                        );
+                                      }).toList(),
                                 decoration: InputDecoration(
                                   filled: true,
-                                  fillColor: const Color(0XFFF5F5F5),
+                                  fillColor: isReadOnlyDueToPreselection
+                                      ? Colors
+                                          .grey[300] // Visual cue for read-only
+                                      : const Color(0XFFF5F5F5),
                                   labelText: 'Section',
                                   labelStyle: const TextStyle(
                                     color: Color(0xFF020B40),
@@ -271,11 +280,13 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
                                     ),
                                   ),
                                 ),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedSectionID = value;
-                                  });
-                                },
+                                onChanged: isReadOnlyDueToPreselection
+                                    ? null // Makes the dropdown read-only
+                                    : (value) {
+                                        setState(() {
+                                          _selectedSectionID = value.toString();
+                                        });
+                                      },
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please select Topic section';

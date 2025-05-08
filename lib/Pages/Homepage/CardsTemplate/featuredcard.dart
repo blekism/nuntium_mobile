@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
+import 'package:nuntium_mobile/Pages/ContentPage/photojournpage.dart';
 import 'package:nuntium_mobile/Pages/Homepage/aaaapdf.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/providers/read_provider.dart';
@@ -14,8 +15,10 @@ class FeaturedPostCard extends ConsumerWidget {
   final String? postID;
   final bool isLoading;
   final bool? isAuthenticated;
-  final bool isTermly;
+  // final bool isTermly;
   final String? pdfUrl;
+  final String? forPage;
+  final bool isPosted;
 
   FeaturedPostCard({
     super.key,
@@ -26,52 +29,82 @@ class FeaturedPostCard extends ConsumerWidget {
     this.postID,
     this.isLoading = false,
     this.isAuthenticated,
-    required this.isTermly,
+    // required this.isTermly,
     this.pdfUrl,
+    required this.forPage,
+    required this.isPosted,
   });
 
   final firebaseFunctions = FirebaseFunctions();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bool isRead;
-    if (firebaseFunctions.auth.currentUser != null) {
-      final readStatus = ref.watch(savedPostsProvider);
-      isRead = readStatus.contains(postID);
-    } else {
-      isRead = false;
-    }
-
     return GestureDetector(
       onTap: isLoading
           ? null
-          : isTermly != true
-              ? () {
-                  final notifier = ref.read(savedPostsProvider.notifier);
-                  print('Navigating to content page from featured');
+          : () {
+              // Start of onTap logic
+              final notifier = ref.read(savedPostsProvider.notifier);
+              switch (forPage) {
+                case 'article':
+                  print('Navigating to content page from normal (article)');
                   Navigator.push(
                       context,
                       MaterialPageRoute(
                           builder: (context) => ArticlePage(
                                 postId: postID!,
+                                isPosted: isPosted,
                               )));
-                  isAuthenticated == true
-                      ? notifier.markAsRead(postID!, isLoading)
-                      : null;
-                }
-              : () {
-                  final notifier = ref.read(savedPostsProvider.notifier);
-                  print('Navigating to content page from featured');
+                  if (isAuthenticated == true &&
+                      postID != null &&
+                      isPosted == true) {
+                    notifier.markAsRead(postID!, isLoading);
+                  }
+                  break; // Don't forget break!
+                case 'termly':
+                  print('Navigating to PDF viewer from normal (termly)');
+                  // Ensure pdfUrl is not null before navigating
+                  if (pdfUrl != null) {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => PdfViewerScreen(
+                                  pdfUrl: pdfUrl!,
+                                  postId: postID!,
+                                  isPosted: isPosted,
+                                )));
+                    if (isAuthenticated == true &&
+                        postID != null &&
+                        isPosted == true) {
+                      notifier.markAsRead(postID!, isLoading);
+                    }
+                  } else {
+                    print('Error: pdfUrl is null for termly post $postID');
+                    // Optionally show a snackbar or message to the user
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Could not open PDF: URL missing.')));
+                  }
+                  break; // Don't forget break!
+                case 'photography':
+                  print('Photography post tapped. Post ID: $postID');
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => PdfViewerScreen(
-                                pdfUrl: pdfUrl!,
+                          builder: (context) => PhotoJournPage(
+                                postId: postID!,
+                                isPosted: isPosted,
                               )));
-                  isAuthenticated == true
-                      ? notifier.markAsRead(postID!, isLoading)
-                      : null;
-                },
+                  if (isAuthenticated == true &&
+                      postID != null &&
+                      isPosted == true) {
+                    notifier.markAsRead(postID!, isLoading);
+                  }
+                  break; // Don't forget break!
+                default:
+                  print('Unknown page type: $forPage');
+                // Handle unexpected cases or do nothing
+              }
+            },
       child: Container(
         width: MediaQuery.of(context).size.width * .8,
         height: MediaQuery.of(context).size.height * .35,
@@ -91,7 +124,7 @@ class FeaturedPostCard extends ConsumerWidget {
           borderRadius: BorderRadius.circular(15),
           child: isLoading
               ? _buildShimmerEffect() // Show shimmer when loading
-              : _buildContent(context, isRead),
+              : _buildContent(context),
         ),
       ),
     );
@@ -144,9 +177,9 @@ class FeaturedPostCard extends ConsumerWidget {
   }
 
   /// **🔹 Actual Content**
-  Widget _buildContent(BuildContext context, bool isRead) {
+  Widget _buildContent(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width; // Get screen width
-    final titleFontSmall = (screenWidth * 0.06).clamp(11.0, 13.0);
+    final titleFontSmall = (screenWidth * 0.06).clamp(11.0, 15.0);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -202,7 +235,7 @@ class FeaturedPostCard extends ConsumerWidget {
                 child: Text(
                   sectionType!,
                   style: TextStyle(
-                    color: isRead ? Colors.grey[400] : Colors.white,
+                    color: Colors.white,
                     fontSize: titleFontSmall,
                     fontWeight: FontWeight.w400,
                   ),
@@ -215,9 +248,9 @@ class FeaturedPostCard extends ConsumerWidget {
                   Text(
                     articleTitle!,
                     style: TextStyle(
-                      color: isRead ? Colors.grey[400] : Colors.white,
+                      color: Colors.white,
                       fontSize: titleFontSmall,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w800,
                     ),
                     softWrap: true,
                     maxLines: 2,
@@ -227,11 +260,9 @@ class FeaturedPostCard extends ConsumerWidget {
                   Text(
                     timePosted!,
                     style: TextStyle(
-                      color: isRead
-                          ? Colors.grey[400]
-                          : Colors.white.withValues(alpha: 0.3),
+                      color: Colors.white,
                       fontSize: titleFontSmall,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ],

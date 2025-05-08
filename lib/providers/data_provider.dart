@@ -1,9 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/models/comment.dart';
-import 'package:nuntium_mobile/models/historyparam.dart';
 import 'package:nuntium_mobile/models/member.dart';
 import 'package:nuntium_mobile/models/membermodel.dart';
 import 'package:nuntium_mobile/models/notif.dart';
@@ -35,6 +33,11 @@ final normalCardProvider = StreamProvider.autoDispose<List<NormalItem>>((ref) {
 final discoverContentProvider =
     StreamProvider.autoDispose<List<NormalItem>>((ref) {
   return firebaseFunctions.streamForDiscover();
+});
+
+final postsForApprovalProvider =
+    StreamProvider.autoDispose<List<NormalItem>>((ref) {
+  return firebaseFunctions.streamForPostApprovals();
 });
 
 final bookmarkContentProvider =

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Homepage/notificationpage.dart';
@@ -64,7 +65,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           centerTitle: true,
           actions: [
-            hasNavigated == false
+            hasNavigated == false && FirebaseAuth.instance.currentUser != null
                 ? IconButton(
                     icon: Stack(
                       children: [

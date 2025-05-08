@@ -31,6 +31,7 @@ class ProviderInvalidator {
     ref.invalidate(viewAllImageInParent);
     ref.invalidate(userSectionProvider);
     ref.invalidate(historyProvider);
+    ref.invalidate(postsForApprovalProvider);
 
     print('all providers have been invalidated');
   }

@@ -103,6 +103,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               color: Color(0XFFF9F9F9),
                               borderRadius: BorderRadius.only(
                                 topLeft: Radius.circular(50),
+                                topRight: Radius.circular(50),
                               ),
                             ),
                             child: Padding(
@@ -115,7 +116,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     const Text(
-                                      'Readable',
+                                      'Luminary',
                                       style: TextStyle(
                                         fontSize: 32,
                                         fontWeight: FontWeight.w600,

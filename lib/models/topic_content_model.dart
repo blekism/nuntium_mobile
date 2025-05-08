@@ -5,7 +5,8 @@ class TopicContentModel {
       headline,
       pubmatStatus,
       writtenStatus,
-      writtenContent;
+      writtenContent,
+      caption;
   final List<String> pubmatUrls;
 
   const TopicContentModel({
@@ -17,5 +18,6 @@ class TopicContentModel {
     required this.writtenContent,
     required this.pubmatStatus,
     required this.writtenStatus,
+    this.caption = '',
   });
 }

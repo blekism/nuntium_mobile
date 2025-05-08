@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
 import 'package:nuntium_mobile/Pages/Eic/historypage.dart';
+import 'package:nuntium_mobile/Pages/Eic/instacreate.dart';
 import 'package:nuntium_mobile/Pages/Eic/topicpage.dart';
+import 'package:nuntium_mobile/Pages/Eic/upload_termly.dart';
 import 'package:nuntium_mobile/Pages/appdrawer.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
@@ -26,6 +28,7 @@ class EbLandingPage extends ConsumerStatefulWidget {
 class _EbLandingPageState extends ConsumerState<EbLandingPage> {
   late final FirebaseFunctions firebaseFunctions;
   EbSectionModel? sectionData;
+  String? sectionId;
   bool isLoading = true;
   String? errorMessage;
   List<Widget> _screens = [];
@@ -61,6 +64,7 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
         ];
 
         sectionData = section;
+        sectionId = section.sectionId;
         isLoading = false;
       });
     } catch (e) {
@@ -97,6 +101,12 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
                   children: _screens,
                 ),
       bottomNavigationBar: _bottomNavbar(),
+      floatingActionButton: isLoading
+          ? FloatingActionButton(
+              onPressed: () {},
+              child: const Icon(Icons.cancel),
+            )
+          : _adminFab(context, sectionId!),
     );
   }
 
@@ -139,6 +149,77 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
           label: 'History',
         ),
       ],
+    );
+  }
+
+  FloatingActionButton _adminFab(BuildContext context, String creatorSection) {
+    return FloatingActionButton(
+      onPressed: () {
+        print('fab pressed');
+        // Show a bottom sheet with options
+        showModalBottomSheet(
+          context: context,
+          builder: (BuildContext context) {
+            return Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Wrap(
+                // Use Wrap for simple layout
+                children: <Widget>[
+                  ListTile(
+                    leading:
+                        const Icon(Icons.add_circle_outline), // Example Icon 1
+                    title: const Text('Article post'),
+                    onTap: () {
+                      Navigator.pop(context); // Close the bottom sheet
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const InstantCreate(
+                            pageType: 'article',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.photo_album), // Example Icon 2
+                    title: const Text('Photojourn post'),
+                    onTap: () {
+                      Navigator.pop(context); // Close the bottom sheet
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const InstantCreate(
+                            pageType: 'photography',
+                          ),
+                        ),
+                      );
+                      // Example: Navigate to another page
+                      // Navigator.push(context, MaterialPageRoute(builder: (context) => const AnotherPage()));
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.edit_note), // Example Icon 2
+                    title: const Text('Upload Termly'),
+                    onTap: () {
+                      Navigator.pop(context); // Close the bottom sheet
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UploadTermlyPage(),
+                        ),
+                      );
+                      // Example: Navigate to another page
+                      // Navigator.push(context, MaterialPageRoute(builder: (context) => const AnotherPage()));
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+      child: const Icon(Icons.add), // Changed child to a standard icon
     );
   }
 }

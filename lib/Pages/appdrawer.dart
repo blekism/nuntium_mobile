@@ -6,6 +6,8 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nuntium_mobile/Pages/Eic/historypage.dart';
 import 'package:nuntium_mobile/Pages/Homepage/aboutpage.dart';
 import 'package:nuntium_mobile/Pages/Homepage/homepage.dart';
+import 'package:nuntium_mobile/Pages/Homepage/readhistory.dart';
+import 'package:nuntium_mobile/Pages/Homepage/savedpostspage.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/profilepage.dart';
 import 'package:nuntium_mobile/providers/provider_invalidator.dart';
 
@@ -100,6 +102,8 @@ class _AppdrawerState extends ConsumerState<Appdrawer> {
           ListTile(
             title: const Text('Profile'),
             onTap: () {
+              Navigator.pop(context);
+
               _auth.currentUser != null
                   ? Navigator.push(context,
                       MaterialPageRoute(builder: (context) {
@@ -107,7 +111,12 @@ class _AppdrawerState extends ConsumerState<Appdrawer> {
                         onLogout: widget.onLogout,
                       );
                     }))
-                  : null;
+                  : ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please log in to continue'),
+                        backgroundColor: Colors.black,
+                      ),
+                    );
             },
           ),
           widget.userRole == 'reader'
@@ -121,7 +130,7 @@ class _AppdrawerState extends ConsumerState<Appdrawer> {
           widget.userRole != 'reader' &&
                   FirebaseAuth.instance.currentUser != null
               ? ListTile(
-                  title: const Text('History'),
+                  title: const Text('Work History'),
                   onTap: () {
                     Navigator.push(
                       context,
@@ -133,6 +142,48 @@ class _AppdrawerState extends ConsumerState<Appdrawer> {
                   },
                 )
               : const SizedBox.shrink(),
+          ListTile(
+            title: const Text('Read History'),
+            onTap: () {
+              Navigator.pop(context);
+              _auth.currentUser != null
+                  ? Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HistoryPage(
+                          userRole: widget.userRole,
+                        ),
+                      ),
+                    )
+                  : ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please log in to continue'),
+                        backgroundColor: Colors.black,
+                      ),
+                    );
+            },
+          ),
+          ListTile(
+            title: const Text('Bookmarks'),
+            onTap: () {
+              Navigator.pop(context);
+              _auth.currentUser != null
+                  ? Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SavedPage(
+                          userRole: widget.userRole,
+                        ),
+                      ),
+                    )
+                  : ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please log in to continue'),
+                        backgroundColor: Colors.black,
+                      ),
+                    );
+            },
+          ),
           widget.userRole != 'reader'
               ? _changeButtonPerRole(widget.pageOrigin!)
               : const SizedBox.shrink(),

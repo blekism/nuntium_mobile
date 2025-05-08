@@ -7,7 +7,7 @@
 
 
     <application
-        android:label="nuntium_mobile"
+        android:label="Luminary"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

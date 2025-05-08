@@ -79,44 +79,49 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
     final List<NormalItem> filteredBySearch =
         _filterArticles(widget.shownTopics);
 
-    return Center(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(15),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Align(
-                  alignment: Alignment.topLeft,
-                  child: Text(
-                    widget.pageName,
-                    style: const TextStyle(
-                      color: Colors.black,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Center(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(15),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: Text(
+                      widget.pageName,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          widget.pageName == 'Discover' || widget.pageName == 'Archive'
-              ? SearchWidget(
-                  searchController: _searchController,
-                )
-              : const SizedBox.shrink(),
-          const SizedBox(height: 15),
-          widget.pageName != 'Archive'
-              ? _genreFilter()
-              : const SizedBox.shrink(),
-          const SizedBox(height: 20),
-          _mainContent(
-            filteredBySearch,
-            currentUser,
-            widget.termlyFeatured ?? [],
-          ),
-        ],
+            widget.pageName == 'Discover' || widget.pageName == 'Archive'
+                ? SearchWidget(
+                    searchController: _searchController,
+                  )
+                : const SizedBox.shrink(),
+            const SizedBox(height: 15),
+            widget.pageName != 'Archive'
+                ? _genreFilter()
+                : const SizedBox.shrink(),
+            const SizedBox(height: 20),
+            _mainContent(
+              filteredBySearch,
+              currentUser,
+              widget.termlyFeatured ?? [],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -152,6 +157,20 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
         child: SingleChildScrollView(
       child: Column(
         children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 15, bottom: 10),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Featured Issues',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
           SizedBox(
             height: MediaQuery.of(context).size.height * .5,
             child: PageView.builder(
@@ -170,19 +189,31 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                     isAuthenticated: currentUser != null,
                     timePosted: topic.datePosted,
                     isLoading: false,
-                    isTermly: true,
+                    forPage: topic.pageType,
                     pdfUrl: topic.pdfUrl,
+                    isPosted: topic.isPosted,
                   ),
                 );
               },
             ),
           ),
-          const SizedBox(height: 10),
-          const Text(
-            'Additional Information',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          const SizedBox(height: 15),
+          _divider(context),
+          const Padding(
+            padding: EdgeInsets.only(left: 15, bottom: 10),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'All Issues',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ),
-          _genreFilter(),
+          _termlyFilter(),
           const SizedBox(height: 10),
           filteredTopics.isEmpty
               ? const Center(child: Text('No posts available'))
@@ -203,8 +234,9 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                         isAuthenticated: currentUser != null,
                         datePosted: topic.datePosted,
                         isLoading: false,
-                        isTermly: true,
+                        forPage: topic.pageType,
                         pdfUrl: topic.pdfUrl,
+                        isPosted: topic.isPosted,
                       ),
                     );
                   },
@@ -236,7 +268,8 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                     isAuthenticated: currentUser != null,
                     datePosted: topic.datePosted,
                     isLoading: false,
-                    isTermly: false,
+                    forPage: topic.pageType,
+                    isPosted: topic.isPosted,
                   ),
                 );
               },
@@ -265,7 +298,8 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
                     isAuthenticated: currentUser != null,
                     datePosted: topic.datePosted,
                     isLoading: false,
-                    isTermly: false,
+                    forPage: topic.pageType,
+                    isPosted: topic.isPosted,
                   ),
                 );
               },
@@ -331,6 +365,77 @@ class _SeeMorePageTemplateState extends State<SeeMorePageTemplate> {
       ),
     );
   }
+
+  SizedBox _termlyFilter() {
+    return SizedBox(
+      height: 50,
+      child: ListView.separated(
+        itemCount: termlySections.length,
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.only(
+          left: 10,
+          right: 10,
+        ),
+        separatorBuilder: (context, index) => const SizedBox(
+          width: 13,
+        ),
+        itemBuilder: (context, index) {
+          String sectionName = termlySections[index]['section'] ?? 'All';
+          bool isSelected = selectedSection == sectionName;
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Container(
+              alignment: Alignment.center,
+              height: 30,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: isSelected
+                    ? const Color(0XFF020B40)
+                    : const Color(0xffF5F5F5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: GestureDetector(
+                onTap: () {
+                  filteredSection(sectionName);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                      bottom: 4, top: 2, left: 8, right: 8),
+                  child: Text(
+                    termlySections[index]['section'] ?? 'Null',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w400,
+                      color:
+                          isSelected ? const Color(0XFFD4AF37) : Colors.black,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Container _divider(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      width: MediaQuery.of(context).size.width * .85,
+      height: 5,
+      decoration: BoxDecoration(
+        color: Colors.grey[400],
+        borderRadius: BorderRadius.circular(10),
+      ),
+    );
+  }
 }
 
 final List<Map<String, String>> pubSections = [
@@ -341,7 +446,7 @@ final List<Map<String, String>> pubSections = [
   {"section": "Scitech"},
   {"section": "Feature"},
   {"section": "Literary"},
-  {"section": "Photography"},
+  {"section": "Photojournalism"},
 ];
 
 final List<Map<String, String>> termlySections = [

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Homepage/CardsTemplate/normalpost.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset.dart';
+import 'package:nuntium_mobile/models/normalitem.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 
@@ -186,15 +187,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           fontWeight: FontWeight.w800,
                           fontSize: 20),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Editor In Chief 2024-2025',
-                      style: const TextStyle(
-                        color: Color(0XFF020B40),
-                        fontWeight: FontWeight.w500,
-                        fontSize: 15,
-                      ),
-                    ),
                     const Divider(
                       indent: 80,
                       endIndent: 80,
@@ -239,62 +231,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ),
                     ),
                     const SizedBox(height: 40),
-                    const Align(
-                      alignment: Alignment.topLeft,
-                      child: Text(
-                        'Published Works',
-                        style: TextStyle(
-                            color: Color(0XFF020B40),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 18),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Divider(
-                      indent: 20,
-                      endIndent: 20,
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      child: yourWorks.when(
-                        data: (yourWorks) {
-                          if (yourWorks.isEmpty) {
-                            return const Center(
-                                child: Text('Start Contributing now!'));
-                          }
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: yourWorks.length,
-                            itemBuilder: (context, index) {
-                              final item = yourWorks[index];
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                    left: 16.0, right: 16.0, bottom: 16),
-                                child: NormalPostCard(
-                                  imageAsset: item.imageUrl[0],
-                                  sectionType: item.section,
-                                  articleTitle: item.title,
-                                  postID: item.id,
-                                  isAuthenticated: currentUser != null,
-                                  datePosted: item.datePosted,
-                                  isLoading: false,
-                                  isTermly: false,
-                                ),
-                              );
-                            },
-                          );
-                        },
-                        loading: () => SizedBox(
-                            height: MediaQuery.of(context).size.height * .15,
-                            child: NormalPostCard(
-                              isLoading: true,
-                              isTermly: false,
-                            )),
-                        error: (error, stack) =>
-                            Center(child: Text('Error: $error')),
-                      ),
-                    ),
+                    userProfile['role'] == 'reader'
+                        ? const SizedBox.shrink()
+                        : _memberContributions(yourWorks, currentUser, context)
                   ],
                 ),
               ),
@@ -306,6 +245,70 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
         ),
       ),
+    );
+  }
+
+  Column _memberContributions(AsyncValue<List<NormalItem>> yourWorks,
+      User currentUser, BuildContext context) {
+    return Column(
+      children: [
+        const Align(
+          alignment: Alignment.topLeft,
+          child: Text(
+            'Published Works',
+            style: TextStyle(
+                color: Color(0XFF020B40),
+                fontWeight: FontWeight.w800,
+                fontSize: 18),
+          ),
+        ),
+        const SizedBox(height: 10),
+        const Divider(
+          indent: 20,
+          endIndent: 20,
+        ),
+        const SizedBox(height: 10),
+        Container(
+          child: yourWorks.when(
+            data: (yourWorks) {
+              if (yourWorks.isEmpty) {
+                return const Center(child: Text('Start Contributing now!'));
+              }
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: yourWorks.length,
+                itemBuilder: (context, index) {
+                  final item = yourWorks[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(
+                        left: 16.0, right: 16.0, bottom: 16),
+                    child: NormalPostCard(
+                      imageAsset: item.imageUrl[0],
+                      sectionType: item.section,
+                      articleTitle: item.title,
+                      postID: item.id,
+                      isAuthenticated: currentUser != null,
+                      datePosted: item.datePosted,
+                      isLoading: false,
+                      forPage: item.pageType,
+                      isPosted: item.isPosted,
+                    ),
+                  );
+                },
+              );
+            },
+            loading: () => SizedBox(
+                height: MediaQuery.of(context).size.height * .15,
+                child: NormalPostCard(
+                  isLoading: true,
+                  forPage: '',
+                  isPosted: false,
+                )),
+            error: (error, stack) => Center(child: Text('Error: $error')),
+          ),
+        ),
+      ],
     );
   }
 

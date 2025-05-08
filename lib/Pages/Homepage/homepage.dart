@@ -103,13 +103,7 @@ class _HomepageState extends State<Homepage> {
     _screens = [
       HomeScreen(onNavigate: () => _navigateToIndex(1)),
       const DiscoverPage(),
-      SavedPage(
-        userRole: widget.userRole ?? 'none',
-      ),
       const TermlyPage(),
-      HistoryPage(
-        userRole: widget.userRole ?? 'none',
-      ),
     ];
   }
 
@@ -154,17 +148,8 @@ class _HomepageState extends State<Homepage> {
           label: 'Discover',
         ),
         BottomNavigationBarItem(
-          icon:
-              Image.asset('assets/images/bookmarks.png', width: 35, height: 35),
-          label: 'Bookmarks',
-        ),
-        BottomNavigationBarItem(
           icon: Image.asset('assets/images/termly.png', width: 35, height: 35),
           label: 'Termly',
-        ),
-        BottomNavigationBarItem(
-          icon: Image.asset('assets/images/history.png', width: 35, height: 35),
-          label: 'History',
         ),
       ],
     );
@@ -204,7 +189,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'Featured',
+                    'Featured Articles',
                     style: TextStyle(
                       fontSize: 28,
                       color: Colors.black,
@@ -238,26 +223,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             isAuthenticated: currentUser != null,
                             timePosted: item.datePosted,
                             isLoading: false,
-                            isTermly: false,
+                            forPage: item.pageType,
+                            isPosted: item.isPosted,
                           ),
                         );
                       });
                 },
                 loading: () => FeaturedPostCard(
                   isLoading: true,
-                  isTermly: false,
+                  forPage: '',
+                  isPosted: false,
                 ),
                 error: (error, stack) => Center(child: Text('Error: $error')),
               ),
             ),
 
             const SizedBox(height: 13),
+            _divider(context),
+
             const Padding(
-              padding: EdgeInsets.all(15),
+              padding: EdgeInsets.only(
+                left: 15,
+                right: 15,
+              ),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Latest',
+                  'Latest Articles',
                   style: TextStyle(
                     fontSize: 28,
                     color: Colors.black,
@@ -266,6 +258,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 10),
             normalCards.when(
               data: (normalCards) {
                 if (normalCards.isEmpty) {
@@ -288,7 +281,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         isAuthenticated: currentUser != null,
                         datePosted: item.datePosted,
                         isLoading: false,
-                        isTermly: false,
+                        forPage: item.pageType,
+                        isPosted: item.isPosted,
                       ),
                     );
                   },
@@ -298,7 +292,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   height: MediaQuery.of(context).size.height * .15,
                   child: NormalPostCard(
                     isLoading: true,
-                    isTermly: false,
+                    forPage: '',
+                    isPosted: false,
                   )),
               error: (error, stack) => Center(child: Text('Error: $error')),
             ),
@@ -326,6 +321,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             //     : const Text('Welcome Back!'),
           ],
         ),
+      ),
+    );
+  }
+
+  Container _divider(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      width: MediaQuery.of(context).size.width * .85,
+      height: 5,
+      decoration: BoxDecoration(
+        color: Colors.grey[400],
+        borderRadius: BorderRadius.circular(10),
       ),
     );
   }

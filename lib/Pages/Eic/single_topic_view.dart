@@ -10,6 +10,7 @@ import 'package:nuntium_mobile/Pages/Eic/timelinev2.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/image_processor/image_upload_service.dart';
+import 'package:nuntium_mobile/models/topic_content_model.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
@@ -131,14 +132,11 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         //may response na yung tatlo kaya pwede na magrespond si eic
         return topicView.containsKey('ManagingApproved') &&
             topicView.containsKey('AssociateApproved') &&
-            topicView.containsKey('SEApproved') &&
             !topicView.containsKey('eicApproved');
       case 'Managing':
         return !topicView.containsKey('ManagingApproved');
       case 'Associate':
         return !topicView.containsKey('AssociateApproved');
-      case 'section_editors':
-        return !topicView.containsKey('SEApproved');
       default:
         return false;
     }
@@ -156,8 +154,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         return topicView.containsKey('ManagingApproved');
       case 'Associate':
         return topicView.containsKey('AssociateApproved');
-      case 'section_editors':
-        return topicView.containsKey('SEApproved');
       default:
         return false;
     }
@@ -172,14 +168,11 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         //may response na yung tatlo kaya pwede na magrespond si eic
         return topicView.containsKey('ManagingApprovedPST') &&
             topicView.containsKey('AssociateApprovedPST') &&
-            topicView.containsKey('SEApprovedPST') &&
             !topicView.containsKey('eicApprovedPST');
       case 'Managing':
         return !topicView.containsKey('ManagingApprovedPST');
       case 'Associate':
         return !topicView.containsKey('AssociateApprovedPST');
-      case 'section_editors':
-        return !topicView.containsKey('SEApprovedPST');
       default:
         return false;
     }
@@ -197,8 +190,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         return topicView.containsKey('ManagingApprovedPST');
       case 'Associate':
         return topicView.containsKey('AssociateApprovedPST');
-      case 'section_editors':
-        return topicView.containsKey('SEApprovedPST');
       default:
         return false;
     }
@@ -541,8 +532,32 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                         const SizedBox(height: 15),
                         _divider(context),
                         const SizedBox(height: 15),
-                        topicView['section'] == 'XDEPw2VPYdeFdKQRuRpA'
-                            ? SizedBox(
+                        taskContent.when(
+                          data: (viewContent) {
+                            if (viewContent.pubmatUrls.isEmpty &&
+                                viewContent.headline.isEmpty &&
+                                viewContent.writtenContent.isEmpty) {
+                              return const Center(
+                                child: Text(
+                                  'Content Preview will appear here once available',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            if (viewContent.pubmatUrls.isNotEmpty) {
+                              setState(() {
+                                hasPubmatImages = true;
+                              });
+                            }
+
+                            if (topicView['section'] ==
+                                'XDEPw2VPYdeFdKQRuRpA') {
+                              return SizedBox(
                                 height: 60,
                                 width: double.infinity,
                                 child: ElevatedButton(
@@ -575,324 +590,18 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                     ),
                                   ),
                                 ),
-                              )
-                            : taskContent.when(
-                                data: (viewContent) {
-                                  if (viewContent.pubmatUrls.isEmpty &&
-                                      viewContent.headline.isEmpty &&
-                                      viewContent.writtenContent.isEmpty) {
-                                    return const Center(
-                                      child: Text(
-                                        'Content Preview will appear here once available',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    );
-                                  }
-
-                                  if (viewContent.pubmatUrls.isNotEmpty) {
-                                    setState(() {
-                                      hasPubmatImages = true;
-                                    });
-                                  }
-
-                                  return Column(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Align(
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          viewContent.headline,
-                                          softWrap: true,
-                                          maxLines: 3,
-                                          style: const TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      viewContent.pubmatUrls.isNotEmpty
-                                          ? SizedBox(
-                                              height: MediaQuery.of(context)
-                                                      .size
-                                                      .height *
-                                                  .35,
-                                              child: PageView.builder(
-                                                itemCount: viewContent
-                                                    .pubmatUrls.length,
-                                                controller: _pageController,
-                                                itemBuilder: (context, index) {
-                                                  final item =
-                                                      viewContent.pubmatUrls;
-
-                                                  return Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            8.0),
-                                                    child: ClipRRect(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              20),
-                                                      child: Image.network(
-                                                        item.elementAt(index),
-                                                        loadingBuilder: (context,
-                                                            child,
-                                                            loadingProgress) {
-                                                          if (loadingProgress ==
-                                                              null)
-                                                            return child;
-                                                          return Center(
-                                                            child:
-                                                                CircularProgressIndicator(
-                                                              value: loadingProgress
-                                                                          .expectedTotalBytes !=
-                                                                      null
-                                                                  ? loadingProgress
-                                                                          .cumulativeBytesLoaded /
-                                                                      loadingProgress
-                                                                          .expectedTotalBytes!
-                                                                  : null,
-                                                            ),
-                                                          );
-                                                        },
-                                                        errorBuilder: (context,
-                                                            error, stackTrace) {
-                                                          return const Text(
-                                                              'Failed to load image');
-                                                        },
-                                                        fit: BoxFit.cover,
-                                                        alignment:
-                                                            Alignment.center,
-                                                        width: MediaQuery.of(
-                                                                    context)
-                                                                .size
-                                                                .width *
-                                                            .8,
-                                                        height: MediaQuery.of(
-                                                                    context)
-                                                                .size
-                                                                .height *
-                                                            .35,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            )
-                                          : const Text(
-                                              'No uploaded pubmat yet',
-                                              style: TextStyle(
-                                                color: Colors.black,
-                                                fontSize: 21,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        viewContent.writtenContent,
-                                        softWrap: true,
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      if (topicView['status'] == 'pendingPST')
-                                        TextButton(
-                                          onPressed: () async {
-                                            Fluttertoast.showToast(
-                                                msg:
-                                                    "Return a task for revision in the individual tasks",
-                                                toastLength: Toast.LENGTH_LONG,
-                                                backgroundColor:
-                                                    const Color(0XFFD23737));
-                                          },
-                                          child: const Align(
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              'Still Needs Revision?',
-                                              style: TextStyle(
-                                                fontSize: 17,
-                                                fontWeight: FontWeight.w800,
-                                                color: Colors.red,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      if (viewContent.pubmatStatus ==
-                                              'Submitted' &&
-                                          viewContent.writtenStatus ==
-                                              'Submitted')
-                                        const Align(
-                                          alignment: Alignment.bottomCenter,
-                                          child: Text(
-                                            'Approve all subtask content!',
-                                            style: TextStyle(
-                                              color: Colors.green,
-                                              fontSize: 15,
-                                            ),
-                                          ),
-                                        ),
-                                      if (viewContent.pubmatStatus ==
-                                              'Submitted' &&
-                                          viewContent.writtenStatus ==
-                                              'Submitted')
-                                        FutureBuilder<bool>(
-                                            future: _canUserEditFuture,
-                                            builder: (BuildContext context,
-                                                AsyncSnapshot<bool> snapshot) {
-                                              if (snapshot.hasData) {
-                                                final userCanEdit =
-                                                    snapshot.data!;
-
-                                                return userCanEdit
-                                                    ? Row(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .center,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .center,
-                                                        children: [
-                                                          ElevatedButton(
-                                                            onPressed:
-                                                                () async {
-                                                              final confirm =
-                                                                  await showDialog<
-                                                                      bool>(
-                                                                context:
-                                                                    context,
-                                                                builder:
-                                                                    (BuildContext
-                                                                        context) {
-                                                                  return AlertDialog(
-                                                                    title: const Text(
-                                                                        'Confirm Approval'),
-                                                                    content:
-                                                                        const Text(
-                                                                            'Are you sure you want to approve these works?'),
-                                                                    actions: <Widget>[
-                                                                      TextButton(
-                                                                        onPressed:
-                                                                            () =>
-                                                                                Navigator.of(context).pop(false),
-                                                                        child: const Text(
-                                                                            'Cancel'),
-                                                                      ),
-                                                                      TextButton(
-                                                                        onPressed:
-                                                                            () async {
-                                                                          Navigator.of(context)
-                                                                              .pop(true);
-
-                                                                          print(
-                                                                              'works approved');
-                                                                        },
-                                                                        child: const Text(
-                                                                            'Approve'),
-                                                                      ),
-                                                                    ],
-                                                                  );
-                                                                },
-                                                              );
-
-                                                              if (confirm ==
-                                                                  true) {
-                                                                try {
-                                                                  await firebaseFunctions
-                                                                      .massApprove(
-                                                                    widget.id,
-                                                                    viewContent
-                                                                        .pubmatId,
-                                                                    viewContent
-                                                                        .writingId,
-                                                                  );
-
-                                                                  ScaffoldMessenger.of(
-                                                                          context)
-                                                                      .showSnackBar(
-                                                                    const SnackBar(
-                                                                      content: Text(
-                                                                          'Works approved successfully!'),
-                                                                      backgroundColor:
-                                                                          Colors
-                                                                              .green,
-                                                                    ),
-                                                                  );
-                                                                } catch (error) {
-                                                                  ScaffoldMessenger.of(
-                                                                          context)
-                                                                      .showSnackBar(
-                                                                    SnackBar(
-                                                                      content: Text(
-                                                                          'Failed to approve works: $error'),
-                                                                      backgroundColor:
-                                                                          Colors
-                                                                              .red,
-                                                                    ),
-                                                                  );
-                                                                }
-                                                              }
-                                                            },
-                                                            style:
-                                                                ElevatedButton
-                                                                    .styleFrom(
-                                                              backgroundColor:
-                                                                  Colors.green,
-                                                              elevation: 10,
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            10),
-                                                              ),
-                                                            ),
-                                                            child: const Align(
-                                                              alignment:
-                                                                  Alignment
-                                                                      .center,
-                                                              child: Text(
-                                                                'Approve',
-                                                                style:
-                                                                    TextStyle(
-                                                                  fontSize: 20,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w900,
-                                                                  color: Colors
-                                                                      .white,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      )
-                                                    : const SizedBox.shrink();
-                                              } else if (snapshot.hasError) {
-                                                return Text(
-                                                    'Error: ${snapshot.error}');
-                                              } else {
-                                                return const CircularProgressIndicator();
-                                              }
-                                            })
-                                    ],
-                                  );
-                                },
-                                error: (error, stack) =>
-                                    Center(child: Text('Error: $error')),
-                                loading: () => const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              ),
+                              );
+                            } else {
+                              return _articlePreview(
+                                  viewContent, context, topicView);
+                            }
+                          },
+                          error: (error, stack) =>
+                              Center(child: Text('Error: $error')),
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
                         const SizedBox(height: 10),
                       ],
                     ),
@@ -915,6 +624,216 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
           ],
         ),
       ),
+    );
+  }
+
+  Column _articlePreview(TopicContentModel viewContent, BuildContext context,
+      Map<String, dynamic> topicView) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            viewContent.headline,
+            softWrap: true,
+            maxLines: 3,
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        viewContent.pubmatUrls.isNotEmpty
+            ? SizedBox(
+                height: MediaQuery.of(context).size.height * .35,
+                child: PageView.builder(
+                  itemCount: viewContent.pubmatUrls.length,
+                  controller: _pageController,
+                  itemBuilder: (context, index) {
+                    final item = viewContent.pubmatUrls;
+
+                    return Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.network(
+                          item.elementAt(index),
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Text('Failed to load image');
+                          },
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          width: MediaQuery.of(context).size.width * .8,
+                          height: MediaQuery.of(context).size.height * .35,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+            : const Text(
+                'No uploaded pubmat yet',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+        const SizedBox(height: 10),
+        Text(
+          viewContent.writtenContent,
+          softWrap: true,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (topicView['status'] == 'pendingPST')
+          TextButton(
+            onPressed: () async {
+              Fluttertoast.showToast(
+                  msg: "Return a task for revision in the individual tasks",
+                  toastLength: Toast.LENGTH_LONG,
+                  backgroundColor: const Color(0XFFD23737));
+            },
+            child: const Align(
+              alignment: Alignment.center,
+              child: Text(
+                'Still Needs Revision?',
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ),
+        if (viewContent.pubmatStatus == 'Submitted' &&
+            viewContent.writtenStatus == 'Submitted')
+          const Align(
+            alignment: Alignment.bottomCenter,
+            child: Text(
+              'Approve all subtask content!',
+              style: TextStyle(
+                color: Colors.green,
+                fontSize: 15,
+              ),
+            ),
+          ),
+        if (viewContent.pubmatStatus == 'Submitted' &&
+            viewContent.writtenStatus == 'Submitted')
+          FutureBuilder<bool>(
+              future: _canUserEditFuture,
+              builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                if (snapshot.hasData) {
+                  final userCanEdit = snapshot.data!;
+
+                  return userCanEdit
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: const Text('Confirm Approval'),
+                                      content: const Text(
+                                          'Are you sure you want to approve these works?'),
+                                      actions: <Widget>[
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () async {
+                                            Navigator.of(context).pop(true);
+
+                                            print('works approved');
+                                          },
+                                          child: const Text('Approve'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+
+                                if (confirm == true) {
+                                  try {
+                                    await firebaseFunctions.massApprove(
+                                      widget.id,
+                                      viewContent.pubmatId,
+                                      viewContent.writingId,
+                                    );
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                            'Works approved successfully!'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  } catch (error) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            'Failed to approve works: $error'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                elevation: 10,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: const Align(
+                                alignment: Alignment.center,
+                                child: Text(
+                                  'Approve',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : const SizedBox.shrink();
+                } else if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
+                } else {
+                  return const CircularProgressIndicator();
+                }
+              })
+      ],
     );
   }
 
@@ -1384,13 +1303,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
               reason: topicView.containsKey('ManagingRejected')
                   ? topicView['ManagingRejected']
                   : null),
-          _buildApprovalTile(
-              context: context,
-              approved: topicView['SEApproved'],
-              role: '${widget.section} Editor',
-              reason: topicView.containsKey('SERejected')
-                  ? topicView['SERejected']
-                  : null),
         ],
       );
     } else if (topicView['status'] == 'pendingPST' ||
@@ -1419,13 +1331,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
               role: 'Managing Editor',
               reason: topicView.containsKey('ManagingRejected')
                   ? topicView['ManagingRejected']
-                  : null),
-          _buildApprovalTile(
-              context: context,
-              approved: topicView['SEApprovedPST'],
-              role: '${widget.section} Editor',
-              reason: topicView.containsKey('SERejected')
-                  ? topicView['SERejected']
                   : null),
         ],
       );

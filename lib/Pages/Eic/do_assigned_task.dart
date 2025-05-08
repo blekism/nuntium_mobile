@@ -1,4 +1,3 @@
-import 'package:dotted_border/dotted_border.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -699,8 +698,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
               ),
               isContentSubmitted
                   ? const LoadingScreen(
-                      customMessage:
-                          'Please wait while we process your submission...',
+                      customMessage: 'Loading...',
                     )
                   : const SizedBox.shrink(),
             ],
@@ -957,6 +955,10 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                           _headlineController.text,
                           _contentController.text,
                         );
+                        setState(() {
+                          isContentSubmitted = false;
+                          wasSubmitPressed = true;
+                        });
                         break;
                       case 'Photography':
                         print('call caption submission');

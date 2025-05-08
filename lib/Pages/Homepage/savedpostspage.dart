@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'CardsTemplate/SeeMorePageTemplate.dart';
@@ -31,23 +32,29 @@ class _SavedPageState extends ConsumerState<SavedPage> {
       final bookmarkedStream =
           ref.watch(bookmarkContentProvider(currentUser!.uid));
 
-      return bookmarkedStream.when(
-        data: (bookmarkedStream) {
-          if (bookmarkedStream.isEmpty) {
-            return const Center(
-                child: Text('Start bookmarking items now! hehe'));
-          }
-
-          return SeeMorePageTemplate(
-            pageName: 'Saved Posts',
-            shownTopics: bookmarkedStream,
-          );
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
+      return Scaffold(
+        appBar: const CustomAppBar(
+          appbarTitle: 'Bookmarks',
+          hasNavigated: false,
         ),
-        error: (error, stackStrace) => Center(
-          child: Text('Error: $error'),
+        body: bookmarkedStream.when(
+          data: (bookmarkedStream) {
+            if (bookmarkedStream.isEmpty) {
+              return const Center(
+                  child: Text('Start bookmarking items now! hehe'));
+            }
+
+            return SeeMorePageTemplate(
+              pageName: 'Saved Posts',
+              shownTopics: bookmarkedStream,
+            );
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(),
+          ),
+          error: (error, stackStrace) => Center(
+            child: Text('Error: $error'),
+          ),
         ),
       );
     }

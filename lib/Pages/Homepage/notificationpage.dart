@@ -1,8 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
+import 'package:nuntium_mobile/Pages/Homepage/aaaapdf.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
+import 'package:nuntium_mobile/providers/read_provider.dart';
 
 class NotificationPage extends ConsumerStatefulWidget {
   const NotificationPage({super.key});
@@ -64,27 +68,63 @@ class _NotificationPageState extends ConsumerState<NotificationPage> {
                   itemCount: notifications.length,
                   itemBuilder: (context, index) {
                     final item = notifications[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundImage: NetworkImage(item.imageUrl),
-                      ),
-                      title: Text(
-                        'New ${item.section} \nArticle: ${item.headline}',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0XFF020B40),
-                          overflow: TextOverflow.ellipsis,
-                          fontStyle:
-                              item.isRead ? FontStyle.italic : FontStyle.normal,
+                    return GestureDetector(
+                      onTap: !item.isTermly
+                          ? () {
+                              print('Navigating to content page from normal');
+                              final notifier =
+                                  ref.read(savedPostsProvider.notifier);
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => ArticlePage(
+                                            postId: item.postId,
+                                          )));
+
+                              FirebaseAuth.instance.currentUser != null
+                                  ? notifier.markAsRead(item.postId, false)
+                                  : null;
+                            }
+                          : () {
+                              print('Navigating to content page from normal');
+                              final notifier =
+                                  ref.read(savedPostsProvider.notifier);
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => PdfViewerScreen(
+                                            pdfUrl: item.pdfUrl,
+                                            isPosted: true,
+                                            postId: item.postId,
+                                          )));
+
+                              FirebaseAuth.instance.currentUser != null
+                                  ? notifier.markAsRead(item.postId, false)
+                                  : null;
+                            },
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: NetworkImage(item.imageUrl[0]),
                         ),
-                      ),
-                      subtitle: Text(
-                        item.datePosted,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0XFF020B40),
+                        title: Text(
+                          'New ${item.section} \nArticle: ${item.headline}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0XFF020B40),
+                            overflow: TextOverflow.ellipsis,
+                            fontStyle: item.isRead
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                          ),
+                        ),
+                        subtitle: Text(
+                          item.datePosted,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0XFF020B40),
+                          ),
                         ),
                       ),
                     );
