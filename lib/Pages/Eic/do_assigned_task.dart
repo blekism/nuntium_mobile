@@ -819,11 +819,18 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
 
                         if (confirm == true) {
                           ref.invalidate(taskWrittenProvider);
-                          await firebaseFunctions.writeComment(
+                          await firebaseFunctions.seReject(
                             widget.topicId,
                             widget.taskId,
                             comment,
                             _contentController.text,
+                          );
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Task returned successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
                           );
 
                           print('Sending comment: $comment');
@@ -885,7 +892,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                       widget.status == "Approved" ||
                       widget.status == 'Done'
                   ? const Text(
-                      'No futher edits can be done to this task if its submitted or done',
+                      'No futher edits can be done to this task if its finished',
                       style: TextStyle(
                         color: Colors.black,
                         fontSize: 15,
@@ -948,6 +955,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                         setState(() {
                           isContentSubmitted = true;
                           wasSubmitPressed = true;
+                          FocusScope.of(context).unfocus();
                         });
                         await firebaseFunctions.submitSubTaskContent(
                           widget.topicId,

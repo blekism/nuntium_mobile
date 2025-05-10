@@ -317,7 +317,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            ' Created by: ${topicView['userName']}}',
+                            ' Created by: ${topicView['userName']} | Status: ${topicView['status']}',
                             style: const TextStyle(
                               color: Color(0xFF505050),
                               fontSize: 15,
@@ -425,8 +425,42 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                               ),
                             ),
                             Expanded(
-                              child: topicView['status'] != 'pendingAPR'
+                              child: topicView['status'] == 'pendingAPR' ||
+                                      topicView['status'] == 'Rejected'
                                   ? SizedBox(
+                                      height: 50,
+                                      child: ElevatedButton(
+                                        onPressed: () async {
+                                          print('tasks viewed');
+                                          Fluttertoast.showToast(
+                                              msg: "Topic is not approved yet",
+                                              toastLength: Toast.LENGTH_LONG,
+                                              backgroundColor:
+                                                  const Color(0XFFD23737));
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color.fromARGB(
+                                              153, 2, 11, 64),
+                                          elevation: 10,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                        ),
+                                        child: const Align(
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            'Tasks',
+                                            style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : SizedBox(
                                       height: 50,
                                       child: ElevatedButton(
                                         onPressed: FirebaseAuth
@@ -492,41 +526,8 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                           ),
                                         ),
                                       ),
-                                    )
-                                  : SizedBox(
-                                      height: 50,
-                                      child: ElevatedButton(
-                                        onPressed: () async {
-                                          print('tasks viewed');
-                                          Fluttertoast.showToast(
-                                              msg: "Topic is not approved yet",
-                                              toastLength: Toast.LENGTH_LONG,
-                                              backgroundColor:
-                                                  const Color(0XFFD23737));
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color.fromARGB(
-                                              153, 2, 11, 64),
-                                          elevation: 10,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                          ),
-                                        ),
-                                        child: const Align(
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            'Tasks',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
                                     ),
-                            )
+                            ),
                           ],
                         ),
                         const SizedBox(height: 15),
@@ -815,7 +816,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                               child: const Align(
                                 alignment: Alignment.center,
                                 child: Text(
-                                  'Approve',
+                                  'Approve Topic Contents',
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w900,
@@ -1062,7 +1063,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
           );
         }
 
-        if (status == 'pendingAPR') {
+        if (status == 'pendingAPR' || status == 'Rejected') {
           widgets.add(
             const Align(
               alignment: Alignment.bottomCenter,
@@ -1074,7 +1075,8 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
           );
 
           if (showShowApprovalAPR(topicView, userCanEdit) &&
-              status == 'pendingAPR') {
+                  status == 'pendingAPR' ||
+              status == 'Rejected') {
             widgets.add(
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1240,7 +1242,8 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
               ),
             );
           } else if (showShowAPRRespondent(topicView, userCanEdit) &&
-              status == 'pendingAPR') {
+                  status == 'pendingAPR' ||
+              status == 'Rejected') {
             widgets.add(
               const Align(
                 alignment: Alignment.bottomCenter,
@@ -1277,67 +1280,68 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
   }
 
   Widget _buildApprovalDialogContent(Map<String, dynamic> topicView) {
-    if (topicView['status'] == 'pendingAPR') {
-      return Column(
-        mainAxisSize: MainAxisSize.min, // Important for AlertDialog content
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildApprovalTile(
-              context: context,
-              approved: topicView['eicApproved'],
-              role: 'Editor-In-Chief',
-              reason: topicView.containsKey('eicRejected')
-                  ? topicView['eicRejected']
-                  : null),
-          _buildApprovalTile(
-              context: context,
-              approved: topicView['AssociateApproved'],
-              role: 'Associate Editor',
-              reason: topicView.containsKey('AssociateRejected')
-                  ? topicView['AssociateRejected']
-                  : null),
-          _buildApprovalTile(
-              context: context,
-              approved: topicView['ManagingApproved'],
-              role: 'Managing Editor',
-              reason: topicView.containsKey('ManagingRejected')
-                  ? topicView['ManagingRejected']
-                  : null),
-        ],
-      );
-    } else if (topicView['status'] == 'pendingPST' ||
-        topicView['status'] == 'Done') {
-      return Column(
-        mainAxisSize: MainAxisSize.min, // Important for AlertDialog content
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildApprovalTile(
-              context: context,
-              approved: topicView['eicApprovedPST'],
-              role: 'Editor-In-Chief',
-              reason: topicView.containsKey('eicRejected')
-                  ? topicView['eicRejected']
-                  : null),
-          _buildApprovalTile(
-              context: context,
-              approved: topicView['AssociateApprovedPST'],
-              role: 'Associate Editor',
-              reason: topicView.containsKey('AssociateRejected')
-                  ? topicView['AssociateRejected']
-                  : null),
-          _buildApprovalTile(
-              context: context,
-              approved: topicView['ManagingApprovedPST'],
-              role: 'Managing Editor',
-              reason: topicView.containsKey('ManagingRejected')
-                  ? topicView['ManagingRejected']
-                  : null),
-        ],
-      );
-    } else {
-      // Return an empty container or a message if status is neither
+    final String status = topicView['status'] ?? '';
+    List<_ApprovalRoleConfig> approvalConfigs = [];
+
+    switch (status) {
+      case 'pendingAPR':
+      case 'To Do':
+      case 'Doing':
+        approvalConfigs = [
+          _ApprovalRoleConfig(
+              approvedKey: 'eicApproved',
+              roleName: 'Editor-In-Chief',
+              rejectionReasonKey: 'eicRejected'),
+          _ApprovalRoleConfig(
+              approvedKey: 'AssociateApproved',
+              roleName: 'Associate Editor',
+              rejectionReasonKey: 'AssociateRejected'),
+          _ApprovalRoleConfig(
+              approvedKey: 'ManagingApproved',
+              roleName: 'Managing Editor',
+              rejectionReasonKey: 'ManagingRejected'),
+        ];
+        break;
+      case 'pendingPST':
+      case 'Done':
+        approvalConfigs = [
+          _ApprovalRoleConfig(
+              approvedKey: 'eicApprovedPST',
+              roleName: 'Editor-In-Chief for Posting',
+              rejectionReasonKey: 'eicRejected'),
+          _ApprovalRoleConfig(
+              approvedKey: 'AssociateApprovedPST',
+              roleName: 'Associate Editor for Posting',
+              rejectionReasonKey: 'AssociateRejected'),
+          _ApprovalRoleConfig(
+              approvedKey: 'ManagingApprovedPST',
+              roleName: 'Managing Editor for Posting',
+              rejectionReasonKey: 'ManagingRejected'),
+        ];
+        break;
+      default:
+        // For any other status, approvalConfigs will be empty.
+        break;
+    }
+
+    if (approvalConfigs.isEmpty) {
       return const SizedBox.shrink();
     }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min, // Important for AlertDialog content
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: approvalConfigs.map((config) {
+        return _buildApprovalTile(
+          context: context,
+          approved: topicView[config.approvedKey],
+          role: config.roleName,
+          reason: topicView.containsKey(config.rejectionReasonKey)
+              ? topicView[config.rejectionReasonKey]
+              : null,
+        );
+      }).toList(),
+    );
   }
 
   void showAllImages(
@@ -1734,4 +1738,16 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
       trailing: trailingIcon,
     );
   }
+}
+
+class _ApprovalRoleConfig {
+  final String approvedKey;
+  final String roleName;
+  final String rejectionReasonKey;
+
+  _ApprovalRoleConfig({
+    required this.approvedKey,
+    required this.roleName,
+    required this.rejectionReasonKey,
+  });
 }

@@ -197,7 +197,7 @@ class _AppdrawerState extends ConsumerState<Appdrawer> {
                   title: const Text('Log in Now!'),
                   onTap: () {
                     widget.onLogout();
-                    Navigator.pushNamed(
+                    Navigator.pushReplacementNamed(
                       context,
                       '/login',
                     );

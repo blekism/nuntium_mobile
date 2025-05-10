@@ -715,6 +715,7 @@ class FirebaseFunctions {
     // 1. Fetch posts where the user is the writing author
     final writingAuthorQuery = db
         .collection('posts')
+        .where('needsApproval', isEqualTo: false)
         .where('writingAuthor', isEqualTo: userId)
         .orderBy('datePosted', descending: true)
         .get();
@@ -722,6 +723,7 @@ class FirebaseFunctions {
     // 2. Fetch posts where the user is the pubmat author
     final pubmatAuthorQuery = db
         .collection('posts')
+        .where('needsApproval', isEqualTo: false)
         .where('pubmatAuthor', isEqualTo: userId)
         .orderBy('datePosted', descending: true)
         .get();
@@ -1043,8 +1045,6 @@ class FirebaseFunctions {
 
       if (userRole == 'Managing' || userRole == 'Associate') {
         topicData['${userRole}Approved'] = true;
-      } else if (userRole == 'section_editors') {
-        topicData['SEApproved'] = true;
       }
 
       await db.collection('tasks').add(topicData).then((docRef) async {
@@ -1515,10 +1515,6 @@ class FirebaseFunctions {
         userRole = 'unknown';
       }
 
-      if (userRole == 'section_editors') {
-        userRole = 'SE';
-      }
-
       await parentRef.update({'${userRole}ApprovedPST': true});
 
       await logInTimeline(
@@ -1536,7 +1532,7 @@ class FirebaseFunctions {
   Future<void> rejectToCreate(String topicId, reason, role) async {
     try {
       await db.collection('tasks').doc(topicId).update({
-        'status': 'rejected',
+        'status': 'Rejected',
         '${role}Approved': false,
         '${role}Rejected': reason,
         'rejected_at': Timestamp.now(),
@@ -1544,8 +1540,8 @@ class FirebaseFunctions {
 
       final dateString = formatTimestamp(Timestamp.now());
 
-      await logInTimeline(topicId, 'Topic Rejected',
-          'Topic was Rejected at $dateString', 'Rejected');
+      await logInTimeline(
+          topicId, reason, 'Topic was Rejected at $dateString', 'Rejected');
     } catch (e) {
       print('error rejecting post $e');
       return Future.error(e);
@@ -1582,18 +1578,47 @@ class FirebaseFunctions {
     // need na sa log starting dito yung mismong content and mismong comments na
     // this is essentially eb returns the task along with the comments for revision
     try {
-      await db
+      WriteBatch batch = db.batch();
+
+      // Update the assigned task
+      DocumentReference assignedTaskRef = db
           .collection('tasks')
           .doc(topicId)
           .collection('assigned_tasks')
-          .doc(taskId)
-          .update({
-        'status': 'rejected',
-        'reason': 'rejected',
+          .doc(taskId);
+      batch.update(assignedTaskRef, {
+        'status': 'Returned',
+        'returned_by': auth.currentUser!.uid,
         'comment': comment,
         'rejected_at': Timestamp.now(),
       });
 
+      // Prepare updates for the parent topic
+      Map<String, dynamic> topicUpdates = {
+        'status': 'Doing',
+      };
+
+      // Fetch the parent topic document to check for existing fields
+      DocumentReference topicRef = db.collection('tasks').doc(topicId);
+      DocumentSnapshot topicDoc = await topicRef.get();
+
+      if (topicDoc.exists) {
+        Map<String, dynamic> topicData =
+            topicDoc.data() as Map<String, dynamic>;
+        if (topicData.containsKey('ManagingApprovedPST')) {
+          topicUpdates['ManagingApprovedPST'] = FieldValue.delete();
+        }
+        if (topicData.containsKey('AssociateApprovedPST')) {
+          topicUpdates['AssociateApprovedPST'] = FieldValue.delete();
+        }
+      }
+
+      batch.update(topicRef, topicUpdates);
+
+      // Commit the batch
+      await batch.commit();
+
+      // Log after successful batch commit
       await logInTimeline(topicId, comment, content, 'For Revision');
     } catch (e) {
       print('error rejecting post $e');
@@ -1723,12 +1748,10 @@ class FirebaseFunctions {
                   'No Comments yet'
               : '',
           content: subTaskSnap.data() != null
-              ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ??
-                  'No Content'
+              ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ?? ''
               : '',
           headline: subTaskSnap.data() != null
-              ? (subTaskSnap.data() as Map<String, dynamic>)['headline'] ??
-                  'No Headlien'
+              ? (subTaskSnap.data() as Map<String, dynamic>)['headline'] ?? ''
               : '',
           taskId: subTaskSnap.id,
         );
@@ -1962,18 +1985,53 @@ class FirebaseFunctions {
       final dbref = db.collection('tasks').doc(topicId);
 
       String cleanedData = await processData(content);
+      final DocumentSnapshot parentDoc = await dbref.get();
+      final DocumentSnapshot childDoc =
+          await dbref.collection('assigned_tasks').doc(taskId).get();
 
-      await dbref.collection('assigned_tasks').doc(taskId).update({
-        'headline': headline,
-        'content': cleanedData,
-        'submittedAt': Timestamp.now(),
-        'status': 'Submitted',
-      });
+      String assigner = '';
+      String returner = '';
+
+      if (parentDoc.exists && childDoc.exists) {
+        final childData = childDoc.data() as Map<String, dynamic>;
+        assigner = parentDoc['assigned_by'];
+        if (childData.containsKey('returned_by')) {
+          returner = childData['returned_by'];
+        }
+      } else {
+        throw Exception('Parent and Child documents does not exist');
+      }
+
+      if (assigner == returner) {
+        // writer was tasked to revise the work by section editor
+        await dbref.collection('assigned_tasks').doc(taskId).update({
+          'headline': headline,
+          'content': cleanedData,
+          'submittedAt': Timestamp.now(),
+          'status': 'Submitted',
+        });
+      } else if (returner == '') {
+        // writer passes a new submission
+        await dbref.collection('assigned_tasks').doc(taskId).update({
+          'headline': headline,
+          'content': cleanedData,
+          'submittedAt': Timestamp.now(),
+          'status': 'Submitted',
+        });
+      } else {
+        // writer was tasked to revise the work by any of the eic, assoc, or managing
+        await dbref.collection('assigned_tasks').doc(taskId).update({
+          'headline': headline,
+          'content': cleanedData,
+          'submittedAt': Timestamp.now(),
+          'status': 'Approved',
+        });
+      }
 
       await logInTimeline(
         topicId,
         'Task Submitted',
-        content,
+        cleanedData,
         'Task Submitted',
       );
     } catch (e) {
@@ -2228,6 +2286,10 @@ class FirebaseFunctions {
       batch.update(parentRef.collection('assigned_tasks').doc(writingId), {
         'status': 'Approved',
         'approvedAt': Timestamp.now(),
+      });
+
+      batch.update(parentRef, {
+        'completed_subtask': 2,
       });
 
       await logInTimeline(
