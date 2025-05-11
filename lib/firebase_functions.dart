@@ -1554,10 +1554,6 @@ class FirebaseFunctions {
     try {
       final dbref = db.collection('tasks').doc(topicId);
 
-      await dbref.update({
-        'completed_subtask': FieldValue.increment(1),
-      });
-
       await dbref.collection('assigned_tasks').doc(taskId).update({
         'status': 'Approved',
         'approved_at': Timestamp.now(),
@@ -1596,6 +1592,9 @@ class FirebaseFunctions {
       // Prepare updates for the parent topic
       Map<String, dynamic> topicUpdates = {
         'status': 'Doing',
+        'projectStep': FieldValue.increment(-1),
+        'completed_subtask': FieldValue.increment(-1),
+        'pstApproved_at': FieldValue.delete(),
       };
 
       // Fetch the parent topic document to check for existing fields
@@ -2010,6 +2009,10 @@ class FirebaseFunctions {
           'submittedAt': Timestamp.now(),
           'status': 'Submitted',
         });
+
+        await dbref.update({
+          'completed_subtask': FieldValue.increment(1),
+        });
       } else if (returner == '') {
         // writer passes a new submission
         await dbref.collection('assigned_tasks').doc(taskId).update({
@@ -2018,6 +2021,10 @@ class FirebaseFunctions {
           'submittedAt': Timestamp.now(),
           'status': 'Submitted',
         });
+
+        await dbref.update({
+          'completed_subtask': FieldValue.increment(1),
+        });
       } else {
         // writer was tasked to revise the work by any of the eic, assoc, or managing
         await dbref.collection('assigned_tasks').doc(taskId).update({
@@ -2025,6 +2032,10 @@ class FirebaseFunctions {
           'content': cleanedData,
           'submittedAt': Timestamp.now(),
           'status': 'Approved',
+        });
+
+        await dbref.update({
+          'completed_subtask': FieldValue.increment(1),
         });
       }
 
@@ -2095,23 +2106,6 @@ class FirebaseFunctions {
     );
   }
 
-  Future<void> pubmatImageUpload(String topicId, taskId, imageUrl) async {
-    final dbref = db.collection('tasks').doc(topicId);
-
-    await dbref.collection('assigned_tasks').doc(taskId).update({
-      'submittedAt': Timestamp.now(),
-      'content': imageUrl,
-      'status': 'Submitted',
-    });
-
-    await logInTimeline(
-      topicId,
-      'Task Submitted',
-      'Images uploaded',
-      'Task Submitted',
-    );
-  }
-
   Future<void> pubmatMultiUpload(
       String topicId, taskId, List<String> imageUrls) async {
     final dbref = db.collection('tasks').doc(topicId);
@@ -2121,6 +2115,10 @@ class FirebaseFunctions {
       'images': FieldValue.arrayUnion(imageUrls),
       'content': 'Pubmat Images uploaded',
       'status': 'Submitted',
+    });
+
+    await dbref.update({
+      'completed_subtask': FieldValue.increment(1),
     });
 
     await logInTimeline(

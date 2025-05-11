@@ -435,8 +435,8 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                         ),
                                       ),
                                     ),
-                                    widget.status == "Approved" ||
-                                            widget.status == "Done"
+                                    assignedTask.status == "Approved" ||
+                                            assignedTask.status == "Done"
                                         ? const SizedBox.shrink()
                                         : FutureBuilder<bool>(
                                             future: _canUserEditFuture,
@@ -637,10 +637,12 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                           const SizedBox(height: 15),
                                           assignedTask.canCaption ||
                                                   widget.type == 'Writing'
-                                              ? _bottomButtons()
+                                              ? _bottomButtons(
+                                                  assignedTask.status)
                                               : const SizedBox.shrink(),
                                           const SizedBox(height: 10),
-                                          _bottomButtonsApproval(),
+                                          _bottomButtonsApproval(
+                                              assignedTask.status),
                                         ],
                                       )
                                     : Column(
@@ -854,14 +856,14 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
     );
   }
 
-  FutureBuilder<bool> _bottomButtonsApproval() {
+  FutureBuilder<bool> _bottomButtonsApproval(String taskStatus) {
     return FutureBuilder<bool>(
       future: _canUserEditFuture,
       builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
         if (snapshot.hasData) {
           final userCanEdit = snapshot.data!;
           return userCanEdit
-              ? widget.status == 'Approved' || widget.status == 'Done'
+              ? taskStatus == 'Approved' || taskStatus == 'Done'
                   ? const Text(
                       'Task has been approved already',
                       style: TextStyle(
@@ -880,7 +882,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
     );
   }
 
-  FutureBuilder<bool> _bottomButtons() {
+  FutureBuilder<bool> _bottomButtons(String taskStatus) {
     return FutureBuilder(
       future: _canUserEditFuture,
       builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
@@ -888,9 +890,9 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
           final userCanEdit = snapshot.data!;
 
           return userCanEdit == false
-              ? widget.status == "Submitted" ||
-                      widget.status == "Approved" ||
-                      widget.status == 'Done'
+              ? taskStatus == "Submitted" ||
+                      taskStatus == "Approved" ||
+                      taskStatus == 'Done'
                   ? const Text(
                       'No futher edits can be done to this task if its finished',
                       style: TextStyle(
