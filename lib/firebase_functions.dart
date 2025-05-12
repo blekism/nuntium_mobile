@@ -1128,11 +1128,13 @@ class FirebaseFunctions {
     } else {
       return db
           .collection('tasks')
-          .where('section', isNotEqualTo: 'XDEPw2VPYdeFdKQRuRpA')
-          .orderBy('deadline', descending: true)
+          .where('section', isNotEqualTo: 'XDEPw2VPYdeFdKQRuRpA') // ✅ Allowed
+          .orderBy('deadline', descending: true) // ✅ Allowed
           .snapshots()
           .asyncMap((snapshot) {
-        return Future.wait(snapshot.docs.map((topicDoc) async {
+        final filteredDocs =
+            snapshot.docs.where((doc) => doc['status'] != 'Done').toList();
+        return Future.wait(filteredDocs.map((topicDoc) async {
           final topicData = topicDoc.data();
           final deadline = topicDoc['deadline'] as Timestamp;
           final dateString =
