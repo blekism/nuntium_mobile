@@ -18,14 +18,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:multi_image_picker_view/multi_image_picker_view.dart';
 
 class DoAssignedTaskPage extends ConsumerStatefulWidget {
-  final String topicId, taskId, section, sectionId, type, status;
+  final String topicId, taskId, section, type, status;
 
   const DoAssignedTaskPage({
     super.key,
     required this.topicId,
     required this.taskId,
     required this.section,
-    required this.sectionId,
     required this.type,
     required this.status,
   });
@@ -471,7 +470,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                                                   tasktype:
                                                                       assignedTask
                                                                           .tasktype,
-                                                                  sectionId:
+                                                                  section:
                                                                       assignedTask
                                                                           .assigneeSec,
                                                                   topicId: widget

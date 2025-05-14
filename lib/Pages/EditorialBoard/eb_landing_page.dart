@@ -28,7 +28,7 @@ class EbLandingPage extends ConsumerStatefulWidget {
 class _EbLandingPageState extends ConsumerState<EbLandingPage> {
   late final FirebaseFunctions firebaseFunctions;
   EbSectionModel? sectionData;
-  String? sectionId;
+  String? sectionName;
   bool isLoading = true;
   String? errorMessage;
   List<Widget> _screens = [];
@@ -54,17 +54,16 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
       setState(() {
         _screens = [
           TopicPage(
-            sectionID: section.sectionId,
             sectionName: section.sectionName,
             shouldShowAppbar: false,
             secEd: true,
           ),
           const CalendarPage(),
-          TopicHistoryPage(sectionId: section.sectionId),
+          TopicHistoryPage(sectionName: section.sectionName),
         ];
 
         sectionData = section;
-        sectionId = section.sectionId;
+        sectionName = section.sectionName;
         isLoading = false;
       });
     } catch (e) {
@@ -106,7 +105,7 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
               onPressed: () {},
               child: const Icon(Icons.cancel),
             )
-          : _adminFab(context, sectionId!),
+          : _adminFab(context, sectionName!),
     );
   }
 

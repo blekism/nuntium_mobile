@@ -3,15 +3,7 @@ import 'package:nuntium_mobile/Pages/Eic/do_assigned_task.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
 
 class SubtaskCard extends StatefulWidget {
-  final String imageurl,
-      id,
-      title,
-      section,
-      type,
-      deadline,
-      status,
-      topicId,
-      sectionId;
+  final String imageurl, id, title, section, type, deadline, status, topicId;
 
   const SubtaskCard({
     super.key,
@@ -23,7 +15,6 @@ class SubtaskCard extends StatefulWidget {
     required this.deadline,
     required this.status,
     required this.topicId,
-    required this.sectionId,
   });
 
   @override
@@ -45,7 +36,6 @@ class _SubtaskCardState extends State<SubtaskCard> {
               section: widget.section,
               taskId: widget.id,
               topicId: widget.topicId,
-              sectionId: widget.sectionId,
               type: widget.type,
               status: widget.status,
             ),

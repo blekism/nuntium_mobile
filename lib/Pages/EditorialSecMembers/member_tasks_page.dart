@@ -91,7 +91,6 @@ class _MemberTasksPageState extends ConsumerState<MemberTasksPage> {
                         deadline: item.deadline,
                         status: item.status,
                         topicId: item.parentId,
-                        sectionId: item.section,
                       ),
                     ),
                   );

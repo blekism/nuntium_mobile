@@ -4,7 +4,6 @@ import 'package:nuntium_mobile/providers/data_provider.dart';
 class ProviderInvalidator {
   static void invalidateAll(WidgetRef ref) {
     print('all providers will be invalidated');
-    ref.invalidate(topicsProvider);
     ref.invalidate(featuredCardProvider);
     ref.invalidate(normalCardProvider);
     ref.invalidate(discoverContentProvider);

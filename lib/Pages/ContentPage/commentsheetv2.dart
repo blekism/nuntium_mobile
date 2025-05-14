@@ -71,8 +71,9 @@ class _CommentSheetV2State extends ConsumerState<CommentSheetV2> {
                                   comment: item.comment,
                                   commenter: item.commenter,
                                   isLoading: false,
-                                  isCommentOwner: item.userId ==
-                                      FirebaseAuth.instance.currentUser!.uid,
+                                  isCommentOwner: item.commenter ==
+                                      FirebaseAuth
+                                          .instance.currentUser!.displayName,
                                   commentId: item.commentId,
                                   postId: widget.postId,
                                 );

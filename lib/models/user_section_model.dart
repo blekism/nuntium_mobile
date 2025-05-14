@@ -1,9 +1,8 @@
 class UserSectionModel {
-  final String uid, sectionId, sectionName;
+  final String uid, sectionName;
 
   const UserSectionModel({
     required this.uid,
-    required this.sectionId,
     required this.sectionName,
   });
 }

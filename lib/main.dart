@@ -12,6 +12,7 @@ import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset_noacc.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/profilepage.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
+import 'package:path/path.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Pages/LoginRegister/login_page.dart';
@@ -25,6 +26,9 @@ import 'Pages/Homepage/readhistory.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+RemoteMessage? _pendingMessage;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +45,66 @@ void main() async {
 
   await requestNotificationPermission();
 
+  setupInteractedMessage();
+
   runApp(const ProviderScope(child: NuntiumApp()));
+}
+
+Future<void> setupInteractedMessage() async {
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  // Terminated state: get the message which opened the app
+  RemoteMessage? initialMessage = await messaging.getInitialMessage();
+
+  if (initialMessage != null) {
+    _handleMessageNavigation(initialMessage);
+  }
+
+  // Foreground/background message taps
+  FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageNavigation);
+}
+
+void _handleMessageNavigation(RemoteMessage message) {
+  if (navigatorKey.currentState == null) {
+    _pendingMessage = message;
+    return;
+  }
+
+  final data = message.data;
+  final screenName = data['screenName'];
+
+  if (screenName != null) {
+    switch (screenName) {
+      case "readerPage":
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => ArticlePage(
+              postId: data['articleId'],
+            ),
+          ),
+        );
+        break;
+      case "singleTopicView":
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => ArticlePage(
+              postId: data['articleId'],
+            ),
+          ),
+        );
+        break;
+      default:
+    }
+    // navigatorKey.currentState?.pushNamed(
+    //   '/$screenName',
+    //   arguments: {
+    //     'taskId': data['taskId'],
+    //     'role': data['role'],
+    //     'title': data['title'],
+    //   },
+    // );
+    _pendingMessage = null;
+  }
 }
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -78,6 +141,7 @@ class NuntiumApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         textTheme: GoogleFonts.poppinsTextTheme(),
       ),
@@ -223,6 +287,11 @@ class _AuthCheckerState extends State<AuthChecker> {
               snapshot.data!.photoURL,
             );
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (_pendingMessage != null && navigatorKey.currentState != null) {
+            _handleMessageNavigation(_pendingMessage!);
+            _pendingMessage = null;
           }
 
           switch (userRole) {

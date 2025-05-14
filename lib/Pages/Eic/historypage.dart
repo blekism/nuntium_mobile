@@ -7,12 +7,12 @@ import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class TopicHistoryPage extends ConsumerStatefulWidget {
-  final String? sectionId;
+  final String? sectionName;
   final String? userId;
 
   const TopicHistoryPage({
     super.key,
-    this.sectionId = 'All',
+    this.sectionName = 'All',
     this.userId,
   });
 
@@ -32,7 +32,7 @@ class _TopicHistoryPageState extends ConsumerState<TopicHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final historyData = ref.watch(historyProvider(widget.sectionId!));
+    final historyData = ref.watch(historyProvider(widget.sectionName!));
 
     List<Topic> filteredTopics = [];
 
@@ -57,7 +57,9 @@ class _TopicHistoryPageState extends ConsumerState<TopicHistoryPage> {
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          widget.sectionId == 'All' ? _genreFilter() : const SizedBox.shrink(),
+          widget.sectionName == 'All'
+              ? _genreFilter()
+              : const SizedBox.shrink(),
           Expanded(
             child: historyData.when(
               data: (historyView) {
@@ -95,7 +97,6 @@ class _TopicHistoryPageState extends ConsumerState<TopicHistoryPage> {
                           member2: member2Image,
                           otherMembers: item.otherMembers,
                           projectStep: item.projectStep,
-                          sectionId: item.section,
                         ),
                       );
                     },

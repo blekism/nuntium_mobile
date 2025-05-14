@@ -14,22 +14,21 @@ class ParentTopicCard extends StatefulWidget {
   final String member1, member2;
   final int otherMembers;
   final int projectStep;
-  final String sectionId;
 
-  const ParentTopicCard(
-      {super.key,
-      required this.id,
-      required this.topicTitle,
-      required this.section,
-      required this.status,
-      required this.deadline,
-      required this.totalSubtask,
-      required this.completedSubtask,
-      required this.member1,
-      required this.member2,
-      this.otherMembers = 0,
-      required this.projectStep,
-      required this.sectionId});
+  const ParentTopicCard({
+    super.key,
+    required this.id,
+    required this.topicTitle,
+    required this.section,
+    required this.status,
+    required this.deadline,
+    required this.totalSubtask,
+    required this.completedSubtask,
+    required this.member1,
+    required this.member2,
+    this.otherMembers = 0,
+    required this.projectStep,
+  });
 
   @override
   State<ParentTopicCard> createState() => _ParentTopicCardState();
@@ -49,7 +48,6 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
             builder: (context) => TopicSingleRead(
               id: widget.id,
               section: widget.section,
-              sectionId: widget.sectionId,
               member1: widget.member1,
               member2: widget.member2,
               otherMember: widget.otherMembers,

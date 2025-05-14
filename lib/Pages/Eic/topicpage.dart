@@ -9,14 +9,12 @@ import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class TopicPage extends ConsumerStatefulWidget {
-  final String? sectionID;
   final String? sectionName;
   final bool secEd;
   final bool shouldShowAppbar;
 
   const TopicPage({
     super.key,
-    this.sectionID,
     this.sectionName,
     this.secEd = false,
     this.shouldShowAppbar = false,
@@ -37,7 +35,7 @@ class _TopicPageState extends ConsumerState<TopicPage> {
 
   @override
   Widget build(BuildContext context) {
-    final viewTopics = ref.watch(topicProvider(widget.sectionID!));
+    final viewTopics = ref.watch(topicProvider(widget.sectionName!));
 
     List<Topic> filteredTopics = [];
 
@@ -79,7 +77,6 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                           context,
                           MaterialPageRoute(
                               builder: (context) => CreateTaskPage(
-                                    sectionID: widget.sectionID,
                                     sectionName: widget.sectionName,
                                   )));
                     },
@@ -141,7 +138,6 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                           member2: member2Image,
                           otherMembers: item.otherMembers,
                           projectStep: item.projectStep,
-                          sectionId: widget.sectionID!,
                         ),
                       );
                     },

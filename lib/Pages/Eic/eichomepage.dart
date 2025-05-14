@@ -63,7 +63,6 @@ class _EicHomepageState extends ConsumerState<EicHomepage> {
                             sectionType: sectionData['sectionType']!,
                             totalMembers: sectionData['totalMembers']!,
                             totalTask: sectionData['totalTask']!,
-                            sectionID: sectionDoc.id,
                           ),
                         );
                       } else {

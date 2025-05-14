@@ -7,7 +7,6 @@ class SectionCardTemplate extends StatelessWidget {
   final String? imageAsset;
   final String? sectionType;
   final String? totalTask;
-  final String? sectionID;
   final String? totalMembers;
   final String? sectionPhoto;
 
@@ -17,7 +16,6 @@ class SectionCardTemplate extends StatelessWidget {
     this.imageAsset,
     this.sectionType,
     this.totalTask,
-    this.sectionID,
     this.totalMembers,
     this.sectionPhoto,
   });
@@ -26,13 +24,11 @@ class SectionCardTemplate extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        print('section name and id is: $sectionID and $sectionType');
         print('Section clicked');
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => TopicPage(
-              sectionID: sectionID,
               sectionName: sectionType,
               secEd: true,
               shouldShowAppbar: true,

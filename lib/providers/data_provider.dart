@@ -16,11 +16,6 @@ import 'package:nuntium_mobile/models/viewed_task.dart';
 
 final firebaseFunctions = FirebaseFunctions();
 
-final topicsProvider =
-    StreamProvider.family.autoDispose<List<Topic>, String>((ref, sectionId) {
-  return firebaseFunctions.streamTopics(sectionId);
-});
-
 final featuredCardProvider =
     StreamProvider.autoDispose<List<FeaturedItem>>((ref) {
   return firebaseFunctions.streamFeaturedItems();

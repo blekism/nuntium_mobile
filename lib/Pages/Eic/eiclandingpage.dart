@@ -44,7 +44,7 @@ class _EicLandingPage extends State<EicLandingPage> {
     final baseScreens = [
       const EicHomepage(),
       const CalendarPage(),
-      const TopicHistoryPage(sectionId: 'All'),
+      const TopicHistoryPage(sectionName: 'All'),
     ];
 
     if (widget.userRole == 'eic') {

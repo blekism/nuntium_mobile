@@ -93,11 +93,6 @@ class _HomepageState extends State<Homepage> {
       }
     });
 
-    if (_auth.currentUser != null) {
-      firebaseFunctions.resetExpiredLikeThrottles();
-      firebaseFunctions.resetExpiredBookmarkThrottles();
-    }
-
     _checkNewUser();
 
     _screens = [

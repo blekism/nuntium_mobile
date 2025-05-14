@@ -55,7 +55,7 @@ class _SecMemberLandingPageState extends ConsumerState<SecMemberLandingPage> {
             children: [
               MemberTasksPage(uid: widget.uid),
               const CalendarPage(),
-              TopicHistoryPage(sectionId: userSec.sectionId),
+              TopicHistoryPage(sectionName: userSec.sectionName),
             ],
           );
         },

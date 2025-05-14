@@ -1,13 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
-import 'package:nuntium_mobile/providers/data_provider.dart';
 
-class CreateTaskPage extends ConsumerStatefulWidget {
+class CreateTaskPage extends StatefulWidget {
   //params for creation after this comment
-  final String? sectionID;
   final String? sectionName;
   //params for update/edit after this comment
   final String? topicId, deadline, details, title;
@@ -15,7 +12,6 @@ class CreateTaskPage extends ConsumerStatefulWidget {
 
   const CreateTaskPage({
     super.key,
-    this.sectionID,
     this.sectionName,
     this.topicId,
     this.deadline,
@@ -25,16 +21,16 @@ class CreateTaskPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<CreateTaskPage> createState() => _CreateTaskPageState();
+  State<CreateTaskPage> createState() => _CreateTaskPageState();
 }
 
-class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
+class _CreateTaskPageState extends State<CreateTaskPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _detailController = TextEditingController();
   final TextEditingController _deadlineController = TextEditingController();
   final TextEditingController _sectionController = TextEditingController();
-  String? _selectedSectionID;
+
   // bool _didInitDropdown = false;
   bool isUpdateSuccess = false;
 
@@ -82,9 +78,7 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
   @override
   void initState() {
     super.initState();
-    print('creating topic for: ${widget.sectionID} and ${widget.sectionName}');
-    if (widget.sectionID != null) {
-      _selectedSectionID = widget.sectionID;
+    if (widget.sectionName != null) {
       _sectionController.text = widget.sectionName!;
     }
 
@@ -98,8 +92,6 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
 
   @override
   Widget build(BuildContext context) {
-    final sections = ref.watch(sectionProvider);
-
     return Scaffold(
       appBar: const CustomAppBar(
         appbarTitle: 'Create A New Topic',
@@ -228,77 +220,38 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
                           )
                         : const SizedBox.shrink(),
                     const SizedBox(height: 7),
-                    widget.isEditing == false
-                        ? sections.when(
-                            data: (sectionsSnapshot) {
-                              final docs = sectionsSnapshot.docs;
-                              final bool isReadOnlyDueToPreselection =
-                                  widget.sectionID != null;
+                    TextFormField(
+                      controller: _sectionController,
+                      readOnly: true,
+                      cursorColor: const Color(0XFF020B40),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0XFFF5F5F5),
+                        labelText: 'Section',
+                        labelStyle: const TextStyle(
+                          color: Color(0xFF020B40),
+                          fontSize: 12,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10.0, horizontal: 5.0),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: Color(0XFF020B40),
+                          ),
+                        ),
+                        focusColor: const Color(0XFF020B40),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter the section';
+                        }
 
-                              return DropdownButtonFormField(
-                                value: _selectedSectionID,
-                                items: isReadOnlyDueToPreselection &&
-                                        widget.sectionName != null &&
-                                        _selectedSectionID != null
-                                    ? [
-                                        // If read-only and sectionName is available, show only that item.
-                                        // The value must match _selectedSectionID.
-                                        DropdownMenuItem<String>(
-                                          value:
-                                              _selectedSectionID!, // This is widget.sectionID
-                                          child: Text(widget.sectionName!),
-                                        ),
-                                      ]
-                                    : docs.map((doc) {
-                                        // If editable, show all sections.
-                                        final data =
-                                            doc.data() as Map<String, dynamic>;
-                                        final name =
-                                            data['sectionType'] ?? 'unknown';
-                                        return DropdownMenuItem<String>(
-                                          value: doc.id,
-                                          child: Text(name),
-                                        );
-                                      }).toList(),
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: isReadOnlyDueToPreselection
-                                      ? Colors
-                                          .grey[300] // Visual cue for read-only
-                                      : const Color(0XFFF5F5F5),
-                                  labelText: 'Section',
-                                  labelStyle: const TextStyle(
-                                    color: Color(0xFF020B40),
-                                    fontSize: 12,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  focusedBorder: const OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color: Color(0XFF020B40),
-                                    ),
-                                  ),
-                                ),
-                                onChanged: isReadOnlyDueToPreselection
-                                    ? null // Makes the dropdown read-only
-                                    : (value) {
-                                        setState(() {
-                                          _selectedSectionID = value.toString();
-                                        });
-                                      },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please select Topic section';
-                                  }
-                                  return null;
-                                },
-                              );
-                            },
-                            loading: () => const CircularProgressIndicator(),
-                            error: (error, stackTrace) => Text('Error: $error'),
-                          )
-                        : const SizedBox.shrink(),
+                        return null;
+                      },
+                    ),
                     const SizedBox(height: 7),
                     const Align(
                       alignment: Alignment.topLeft,
@@ -384,7 +337,7 @@ class _CreateTaskPageState extends ConsumerState<CreateTaskPage> {
                                         _titleController.text,
                                         _deadlineController.text,
                                         _detailController.text,
-                                        _selectedSectionID,
+                                        _sectionController.text,
                                       );
 
                                       ScaffoldMessenger.of(context)

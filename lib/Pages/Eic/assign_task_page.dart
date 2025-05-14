@@ -7,7 +7,6 @@ import 'package:nuntium_mobile/providers/data_provider.dart';
 class AssignTaskPage extends ConsumerStatefulWidget {
   final String topicId;
   final String? section;
-  final String sectionId;
   final bool isEditing;
   final String? taskname, deadline, tasktype, member, taskId;
 
@@ -15,7 +14,6 @@ class AssignTaskPage extends ConsumerStatefulWidget {
     super.key,
     required this.topicId,
     this.section,
-    required this.sectionId,
     this.isEditing = false,
     this.tasktype,
     this.taskname,
@@ -92,7 +90,7 @@ class _AssignTaskPageState extends ConsumerState<AssignTaskPage> {
 
   @override
   Widget build(BuildContext context) {
-    final memberList = ref.watch(memberListProvider(widget.sectionId));
+    final memberList = ref.watch(memberListProvider(widget.section!));
 
     return Scaffold(
       appBar: const CustomAppBar(

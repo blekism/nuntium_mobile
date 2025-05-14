@@ -41,7 +41,7 @@ class _InstantCreateState extends ConsumerState<InstantCreate> {
   List<String> uploadingImagePaths = [];
   bool isUploading = false;
   String? _selectedSectionID;
-  final String _photographySectionId = 'XDEPw2VPYdeFdKQRuRpA';
+  final String _photographySectionId = 'Photojournalism';
 
   final controller = MultiImagePickerController(
     maxImages: 10,
@@ -268,7 +268,7 @@ class _InstantCreateState extends ConsumerState<InstantCreate> {
                                 final data = doc.data() as Map<String, dynamic>;
                                 final name = data['sectionType'] ?? 'unknown';
                                 return DropdownMenuItem<String>(
-                                  value: doc.id,
+                                  value: name,
                                   child: Text(name),
                                 );
                               }).toList(),

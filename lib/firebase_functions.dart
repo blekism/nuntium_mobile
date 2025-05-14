@@ -87,61 +87,6 @@ class FirebaseFunctions {
         isPosted: !doc['needsApproval']);
   }
 
-  Stream<List<Topic>> streamTopics(String sectionId) {
-    return db
-        .collection('tasks')
-        .where('section', isEqualTo: sectionId)
-        .where('assigned_by', isEqualTo: auth.currentUser!.uid)
-        .orderBy('deadline', descending: true)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      return Future.wait(snapshot.docs.map((topicDoc) async {
-        final topicData = topicDoc.data();
-
-        final assignedTaskData =
-            await topicDoc.reference.collection('assigned_tasks').get();
-
-        List<Member> members = [];
-
-        if (assignedTaskData.docs.isNotEmpty) {
-          members = (await Future.wait(
-            assignedTaskData.docs.map((taskDoc) async {
-              final memberId = taskDoc['assignee_id'];
-
-              if (memberId != null) {
-                final userDoc =
-                    await db.collection('users').doc(memberId).get();
-
-                if (userDoc.exists) {
-                  return Member(
-                    id: userDoc.id,
-                    name: userDoc['username'] ?? '',
-                    imageUrl: userDoc['photoURL'] ?? '',
-                  );
-                }
-              }
-              return null;
-            }),
-          ))
-              .where((member) => member != null)
-              .cast<Member>()
-              .toList();
-        }
-
-        return Topic(
-            id: topicDoc.id,
-            title: topicData['title'] ?? '',
-            section: topicData['section'] ?? '',
-            status: topicData['status'] ?? '',
-            deadline: topicData['deadline'] ?? '',
-            totalSubtask: topicData['totalTasks'] ?? '',
-            completedSubtask: topicData['completedTasks'] ?? '',
-            members: members,
-            projectStep: topicData['projectStep']);
-      }).toList());
-    });
-  }
-
   Stream<List<FeaturedItem>> streamFeaturedItems() {
     return db
         .collection('posts')
@@ -384,12 +329,14 @@ class FirebaseFunctions {
         return;
       }
 
-      final userId = auth.currentUser!.uid;
+      final username = auth.currentUser!.displayName;
+      final photoURL = auth.currentUser!.photoURL;
 
       await db.collection('comments').add({
         'comment': comment,
         'postID': postId,
-        'userID': userId,
+        'username': username,
+        'photoURL': photoURL,
         'time': Timestamp.now(),
       });
 
@@ -413,18 +360,6 @@ class FirebaseFunctions {
     });
   }
 
-  Future<String> getUserName(String userId) async {
-    if (userCache.containsKey(userId)) {
-      return userCache[userId]!;
-    }
-
-    DocumentSnapshot userDoc = await db.collection('users').doc(userId).get();
-
-    String username = userDoc.exists ? userDoc['username'] : 'unknown';
-    userCache[userId] = username;
-    return username;
-  }
-
   Stream<List<Comment>> streamComments(String postId) {
     return db
         .collection('comments')
@@ -434,24 +369,17 @@ class FirebaseFunctions {
         .asyncMap((snapshot) async {
       final comments = await Future.wait(snapshot.docs.map((commentDoc) async {
         final data = commentDoc.data();
-        final userId = data['userID'];
-
-        DocumentSnapshot userDoc =
-            await db.collection('users').doc(userId).get();
-
-        String userName = userDoc.exists ? userDoc['username'] : 'unknown';
-        String userPhotoURL = userDoc.exists ? userDoc['photoURL'] : 'unknown';
 
         final timestamp = data['time'] as Timestamp;
         String dateString = timestamp.toDate().toString();
 
         return Comment(
           commentId: commentDoc.id,
-          imageUrl: userPhotoURL, // Replace with actual user image if available
-          commenter: userName,
+          imageUrl:
+              data['photoURL'], // Replace with actual user image if available
+          commenter: data['username'],
           comment: data['comment'],
           date: dateString,
-          userId: userId,
         );
       }).toList());
 
@@ -645,78 +573,14 @@ class FirebaseFunctions {
     }
   }
 
-  Future<void> resetExpiredLikeThrottles() async {
-    if (auth.currentUser == null) {
-      return;
-    }
-
-    final userId = auth.currentUser!.uid;
-    final savedPostsCollection =
-        db.collection('users').doc(userId).collection('savedPosts');
-
-    final now = Timestamp.now();
-
-    try {
-      final querySnapshot = await savedPostsCollection
-          .where('likeThrottleExpiresAt', isLessThanOrEqualTo: now)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        final batch = FirebaseFirestore.instance.batch();
-        for (final doc in querySnapshot.docs) {
-          batch.update(doc.reference, {
-            'likeClick': 0,
-            'likeThrottleExpiresAt': FieldValue.delete(),
-          });
-        }
-        await batch.commit();
-        print('Expired like throttles reset.');
-      }
-    } catch (e) {
-      print('Error resetting expired like throttles: $e');
-    }
-  }
-
-  Future<void> resetExpiredBookmarkThrottles() async {
-    if (auth.currentUser == null) {
-      return;
-    }
-
-    final userId = auth.currentUser!.uid;
-    final savedPostsCollection =
-        db.collection('users').doc(userId).collection('savedPosts');
-
-    final now = Timestamp.now();
-
-    try {
-      final querySnapshot = await savedPostsCollection
-          .where('bookmarkThrottleExpiresAt', isLessThanOrEqualTo: now)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        final batch = FirebaseFirestore.instance.batch();
-        for (final doc in querySnapshot.docs) {
-          batch.update(doc.reference, {
-            'bookmarkClick': 0,
-            'bookmarkThrottleExpiresAt': FieldValue.delete(),
-          });
-        }
-        await batch.commit();
-        print('Expired bookmark throttles reset.');
-      }
-    } catch (e) {
-      print('Error resetting expired bookmark throttles: $e');
-    }
-  }
-
   Future<List<NormalItem>> yourWorks() async {
-    final userId = auth.currentUser!.uid;
+    final userName = auth.currentUser!.displayName;
 
     // 1. Fetch posts where the user is the writing author
     final writingAuthorQuery = db
         .collection('posts')
         .where('needsApproval', isEqualTo: false)
-        .where('writingAuthor', isEqualTo: userId)
+        .where('writingAuthor', isEqualTo: userName)
         .orderBy('datePosted', descending: true)
         .get();
 
@@ -724,7 +588,7 @@ class FirebaseFunctions {
     final pubmatAuthorQuery = db
         .collection('posts')
         .where('needsApproval', isEqualTo: false)
-        .where('pubmatAuthor', isEqualTo: userId)
+        .where('pubmatAuthor', isEqualTo: userName)
         .orderBy('datePosted', descending: true)
         .get();
 
@@ -989,17 +853,13 @@ class FirebaseFunctions {
       final DocumentSnapshot userDoc = await getUserInfo(uid);
 
       if (userDoc.exists) {
-        final DocumentSnapshot section =
-            await db.collection('sections').doc(userDoc['section']).get();
-
         return UserSectionModel(
-            uid: uid,
-            sectionId: userDoc['section'],
-            sectionName: section['sectionType']);
+          uid: uid,
+          sectionName: userDoc['section'],
+        );
       } else {
         return UserSectionModel(
           uid: uid,
-          sectionId: "",
           sectionName: "",
         );
       }
@@ -1011,14 +871,19 @@ class FirebaseFunctions {
 
 //starting here ang need ng logging sa timeline
   Future<void> createTopic(
-      String assignee, title, deadline, details, section) async {
+    String assigner,
+    title,
+    deadline,
+    details,
+    section,
+  ) async {
     try {
       if (auth.currentUser == null) {
         print("user not logged in");
         return;
       }
 
-      final userData = await getUserInfo(assignee);
+      final userData = await getUserInfo(assigner);
       String userRole = '';
 
       if (userData.exists) {
@@ -1029,7 +894,8 @@ class FirebaseFunctions {
       Timestamp deadlineTimestamp = Timestamp.fromDate(parsedDeadline);
 
       final Map<String, dynamic> topicData = {
-        'assigned_by': assignee,
+        'assigned_by': assigner,
+        'assignerName': auth.currentUser!.displayName,
         'title': title,
         'deadline': deadlineTimestamp,
         'details': details,
@@ -1063,11 +929,11 @@ class FirebaseFunctions {
     }
   }
 
-  Stream<List<Topic>> getTopics(String sectionId) {
-    if (sectionId != 'AhIBjLyTec3anoj3mYkz') {
+  Stream<List<Topic>> getTopics(String sectioName) {
+    if (sectioName != 'Layout') {
       return db
           .collection('tasks')
-          .where('section', isEqualTo: sectionId)
+          .where('section', isEqualTo: sectioName)
           .where('status', isNotEqualTo: 'Done')
           .orderBy('deadline', descending: true)
           .snapshots()
@@ -1128,7 +994,7 @@ class FirebaseFunctions {
     } else {
       return db
           .collection('tasks')
-          .where('section', isNotEqualTo: 'XDEPw2VPYdeFdKQRuRpA') // ✅ Allowed
+          .where('section', isNotEqualTo: 'Photojournalism') // ✅ Allowed
           .orderBy('deadline', descending: true) // ✅ Allowed
           .snapshots()
           .asyncMap((snapshot) {
@@ -1190,12 +1056,12 @@ class FirebaseFunctions {
     }
   }
 
-  Stream<List<Topic>> getTopicHistory(String sectionId) {
+  Stream<List<Topic>> getTopicHistory(String sectionName) {
     Query query = db.collection('tasks');
 
-    if (sectionId != 'All') {
+    if (sectionName != 'All') {
       // history view for eic, managing, associate
-      query = query.where('section', isEqualTo: sectionId);
+      query = query.where('section', isEqualTo: sectionName);
     }
     // For 'All', we don't add a section filter, effectively getting all tasks.
     // We always order by deadline.
@@ -1316,7 +1182,6 @@ class FirebaseFunctions {
         DocumentSnapshot userDoc =
             await db.collection('users').doc(memberId).get();
 
-        String userName = userDoc.exists ? userDoc['username'] : 'unkown';
         String imageUrl = userDoc.exists ? userDoc['photoURL'] : 'unkown';
 
         return TaskModel(
@@ -1344,23 +1209,14 @@ class FirebaseFunctions {
       }
 
       Map<String, dynamic> taskData = taskDoc.data() as Map<String, dynamic>;
-      String userId = taskData['assigned_by'];
 
-      DocumentSnapshot userDoc = await db.collection('users').doc(userId).get();
       DocumentSnapshot currentUser = await getUserInfo(auth.currentUser!.uid);
-
-      if (!userDoc.exists) {
-        throw Exception("User not found");
-      }
 
       if (!currentUser.exists) {
         throw Exception("User not found");
       }
 
-      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-      taskData['userName'] = userData['username'];
       taskData['role'] = currentUser['role'];
-      taskData['currentUser'] = currentUser['username'];
 
       return taskData;
     }).handleError((e) {
@@ -1418,7 +1274,7 @@ class FirebaseFunctions {
 
       final docs = childSnapshot.docs;
 
-      if (section == 'XDEPw2VPYdeFdKQRuRpA') {
+      if (section == 'Photojournalism') {
         // Pull images from parent
         final dynamic parentImages = parentDoc['images'];
         if (parentImages is List) {
@@ -1722,7 +1578,6 @@ class FirebaseFunctions {
 
         description = parentData['details'];
 
-        final username = await getUserInfo(parentSnap['assigned_by']);
         final assigneeSec = await getUserInfo(subTaskSnap['assignee_id']);
         final deadlineTimestamp = subTaskSnap['deadline'] as Timestamp?;
         final deadline = deadlineTimestamp != null
@@ -1735,7 +1590,7 @@ class FirebaseFunctions {
           details: description ?? '',
           tasktype: subTaskSnap['task_type'] ?? '',
           deadline: deadline,
-          assigner: username['username'],
+          assigner: parentData['assignerName'],
           assignee: subTaskSnap['assignee_id'],
           assigneeName: assigneeSec['username'],
           canCaption: subTaskSnap['forCaption'],
@@ -1745,9 +1600,8 @@ class FirebaseFunctions {
           totalSubtask: parentData['total_subtask'],
           status: subTaskSnap['status'],
           comments: subTaskSnap.data() != null
-              ? (subTaskSnap.data() as Map<String, dynamic>)['comment'] ??
-                  'No Comments yet'
-              : '',
+              ? (subTaskSnap.data() as Map<String, dynamic>)['comment'] ?? ''
+              : 'No comments yet',
           content: subTaskSnap.data() != null
               ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ?? ''
               : '',
@@ -1889,22 +1743,15 @@ class FirebaseFunctions {
 
   Future<EbSectionModel> getEbSection(String uid) async {
     try {
-      final String userSectionId, userSectionName;
+      final String userSection;
       final userData = await getUserInfo(uid);
 
       if (userData.exists) {
-        userSectionId = userData['section'];
+        userSection = userData['section'];
 
-        DocumentSnapshot sectionSnapshot =
-            await db.collection('sections').doc(userSectionId).get();
-
-        if (sectionSnapshot.exists) {
-          userSectionName = sectionSnapshot['sectionType'];
-          return EbSectionModel(
-            sectionId: userSectionId,
-            sectionName: userSectionName,
-          );
-        }
+        return EbSectionModel(
+          sectionName: userSection,
+        );
       }
     } catch (e) {
       print('error getting section: $e');
@@ -1958,11 +1805,7 @@ class FirebaseFunctions {
         DocumentSnapshot userDoc =
             await db.collection('users').doc(memberId).get();
 
-        DocumentSnapshot secDoc =
-            await db.collection('sections').doc(parentSection).get();
-
         String imageUrl = userDoc.exists ? userDoc['photoURL'] : 'unkown';
-        String userSec = secDoc.exists ? secDoc['sectionType'] : 'unknown';
 
         return TaskModel(
           id: taskDoc.id,
@@ -1973,7 +1816,7 @@ class FirebaseFunctions {
           assignee: imageUrl,
           status: status,
           parentId: parentId,
-          sectionName: userSec,
+          sectionName: parentSection,
           forCaption: canCaption,
         );
       }));
@@ -2011,10 +1854,6 @@ class FirebaseFunctions {
           'submittedAt': Timestamp.now(),
           'status': 'Submitted',
         });
-
-        await dbref.update({
-          'completed_subtask': FieldValue.increment(1),
-        });
       } else if (returner == '') {
         // writer passes a new submission
         await dbref.collection('assigned_tasks').doc(taskId).update({
@@ -2022,10 +1861,6 @@ class FirebaseFunctions {
           'content': cleanedData,
           'submittedAt': Timestamp.now(),
           'status': 'Submitted',
-        });
-
-        await dbref.update({
-          'completed_subtask': FieldValue.increment(1),
         });
       } else {
         // writer was tasked to revise the work by any of the eic, assoc, or managing
@@ -2035,11 +1870,11 @@ class FirebaseFunctions {
           'submittedAt': Timestamp.now(),
           'status': 'Approved',
         });
-
-        await dbref.update({
-          'completed_subtask': FieldValue.increment(1),
-        });
       }
+
+      await dbref.update({
+        'completed_subtask': FieldValue.increment(1),
+      });
 
       await logInTimeline(
         topicId,
@@ -2364,44 +2199,10 @@ class FirebaseFunctions {
     }
   }
 
-  Future<void> writeComment(
-    String topicId,
-    String taskId,
-    String comment,
-    String content,
-  ) async {
-    try {
-      final commentData = {
-        'comment': comment,
-        'userId': auth.currentUser!.uid,
-        'comment_at': FieldValue.serverTimestamp(),
-        'status': 'Returned'
-      };
-
-      await FirebaseFirestore.instance
-          .collection('tasks')
-          .doc(topicId)
-          .collection('assigned_tasks')
-          .doc(taskId)
-          .update(commentData);
-
-      await logInTimeline(topicId, comment, content, 'Commented');
-
-      print('Comment added successfully');
-    } catch (e) {
-      print('Error writing comment: $e');
-    }
-  }
-
   Future<void> instantPost(
       List<String> pubmatUrls, String headline, content, section) async {
     try {
       String cleanedData = await processData(content);
-      DocumentSnapshot secDoc = await getSectionDoc(section);
-      String sectionName = '';
-      if (secDoc.exists) {
-        sectionName = secDoc['sectionType'];
-      }
 
       await db.collection('posts').add({
         'content': cleanedData,
@@ -2410,9 +2211,9 @@ class FirebaseFunctions {
         'isAnnouncement': false,
         'pageType': 'article',
         'isFeatured': false,
-        'pubmatAuthor': auth.currentUser!.uid,
-        'writingAuthor': auth.currentUser!.uid,
-        'section': sectionName,
+        'pubmatAuthor': auth.currentUser!.displayName,
+        'writingAuthor': auth.currentUser!.displayName,
+        'section': section,
         'title': headline,
         'totalBookmarks': 0,
         'totalComments': 0,
@@ -2431,11 +2232,6 @@ class FirebaseFunctions {
       List<String> pubmatUrls, String caption, section) async {
     try {
       String cleanedData = await processData(caption);
-      DocumentSnapshot secDoc = await getSectionDoc(section);
-      String sectionName = '';
-      if (secDoc.exists) {
-        sectionName = secDoc['sectionType'];
-      }
 
       await db.collection('posts').add({
         'content': cleanedData,
@@ -2444,8 +2240,8 @@ class FirebaseFunctions {
         'isAnnouncement': false,
         'pageType': 'photography',
         'isFeatured': false,
-        'photoAuthor': auth.currentUser!.uid,
-        'section': sectionName,
+        'photoAuthor': auth.currentUser!.displayName,
+        'section': section,
         'title': 'IN PHOTOS',
         'totalBookmarks': 0,
         'totalComments': 0,
@@ -2457,23 +2253,6 @@ class FirebaseFunctions {
     } catch (e) {
       print('error ka bro: $e');
       return Future.error(e);
-    }
-  }
-
-  Future<DocumentSnapshot> getSectionDoc(String sectionId) async {
-    try {
-      DocumentSnapshot sectionDoc =
-          await db.collection('sections').doc(sectionId).get();
-      if (!sectionDoc.exists) {
-        // Consider how you want to handle non-existent sections.
-        // Throwing an exception might be appropriate if the caller expects it to exist.
-        throw Exception('Section with ID $sectionId not found.');
-      }
-      return sectionDoc;
-    } catch (e) {
-      print('Error fetching section document for ID $sectionId: $e');
-      // Re-throw the error to allow the caller to handle it.
-      throw Exception('Failed to fetch section document: $e');
     }
   }
 

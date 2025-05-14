@@ -19,7 +19,6 @@ import 'package:step_progress_indicator/step_progress_indicator.dart';
 class TopicSingleRead extends ConsumerStatefulWidget {
   final String id;
   final String section;
-  final String sectionId;
   final String member1;
   final String member2;
   final int otherMember;
@@ -29,7 +28,6 @@ class TopicSingleRead extends ConsumerStatefulWidget {
     super.key,
     required this.id,
     required this.section,
-    required this.sectionId,
     this.member1 = '',
     this.member2 = '',
     this.otherMember = 0,
@@ -317,7 +315,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            ' Created by: ${topicView['userName']} | Status: ${topicView['status']}',
+                            ' Created by: ${topicView['assignerName']} | Status: ${topicView['status']}',
                             style: const TextStyle(
                               color: Color(0xFF505050),
                               fontSize: 15,
@@ -325,7 +323,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 5),
                         const SizedBox(height: 5),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -483,9 +480,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                                       SubTaskView(
                                                     topicId: widget.id,
                                                     section: widget.section,
-                                                    sectionId: widget.sectionId,
-                                                    member1: widget.member1,
-                                                    member2: widget.member2,
                                                   ),
                                                 );
                                               }
