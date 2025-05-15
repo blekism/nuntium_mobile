@@ -18,6 +18,7 @@ import 'package:nuntium_mobile/models/topic_content_model.dart';
 import 'package:nuntium_mobile/models/user_section_model.dart';
 import 'package:nuntium_mobile/models/viewed_task.dart';
 import 'package:http/http.dart' as http;
+import 'package:porter_2_stemmer/porter_2_stemmer.dart';
 
 class FirebaseFunctions {
   FirebaseFirestore db = FirebaseFirestore.instance;
@@ -870,6 +871,18 @@ class FirebaseFunctions {
   }
 
 //starting here ang need ng logging sa timeline
+
+  List<String> processText(String sentence) {
+    final stemmer = Porter2Stemmer();
+    final words = sentence
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\w\s]'), '')
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .toList();
+    return words.map((word) => stemmer.stem(word)).toList();
+  }
+
   Future<void> createTopic(
     String assigner,
     title,
@@ -882,6 +895,8 @@ class FirebaseFunctions {
         print("user not logged in");
         return;
       }
+
+      final stemmedWords = processText(title);
 
       final userData = await getUserInfo(assigner);
       String userRole = '';
@@ -897,6 +912,7 @@ class FirebaseFunctions {
         'assigned_by': assigner,
         'assignerName': auth.currentUser!.displayName,
         'title': title,
+        'searchKeywords': stemmedWords,
         'deadline': deadlineTimestamp,
         'details': details,
         'completed_subtask': 0,
@@ -992,6 +1008,7 @@ class FirebaseFunctions {
         return Future.error(e);
       });
     } else {
+      // pag layout visible lahat ng topics
       return db
           .collection('tasks')
           .where('section', isNotEqualTo: 'Photojournalism') // ✅ Allowed
@@ -1600,8 +1617,9 @@ class FirebaseFunctions {
           totalSubtask: parentData['total_subtask'],
           status: subTaskSnap['status'],
           comments: subTaskSnap.data() != null
-              ? (subTaskSnap.data() as Map<String, dynamic>)['comment'] ?? ''
-              : 'No comments yet',
+              ? (subTaskSnap.data() as Map<String, dynamic>)['comment'] ??
+                  'No comments yet'
+              : '',
           content: subTaskSnap.data() != null
               ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ?? ''
               : '',
@@ -2290,6 +2308,92 @@ class FirebaseFunctions {
       });
     } catch (e) {
       print('error ka ya eh: $e');
+      return Future.error(e);
+    }
+  }
+
+  Future<List<Topic>> searchTopics(String userInput) async {
+    try {
+      QuerySnapshot userSearch;
+
+      // Determine the query based on user input
+      if (userInput == 'All') {
+        userSearch = await db
+            .collection('tasks')
+            .orderBy('deadline', descending: true)
+            .limit(5)
+            .get();
+      } else {
+        userSearch = await db
+            .collection('tasks')
+            .where('searchKeywords', arrayContains: userInput)
+            .get();
+      }
+
+      // Check if the query returned any documents
+      if (userSearch.docs.isEmpty) {
+        print('No topics found');
+        return [];
+      }
+
+      // Process each document and query the `assigned_tasks` subcollection
+      return Future.wait(userSearch.docs.map((doc) async {
+        final data = doc.data() as Map<String, dynamic>;
+        final deadline = data['deadline'] as Timestamp;
+        final dateString =
+            DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
+
+        // Query the `assigned_tasks` subcollection
+        final assignedTaskData = await db
+            .collection('tasks')
+            .doc(doc.id)
+            .collection('assigned_tasks')
+            .get();
+
+        List<Member> members = [];
+
+        if (assignedTaskData.docs.isNotEmpty) {
+          members = (await Future.wait(
+            assignedTaskData.docs.map((taskDoc) async {
+              final memberId = taskDoc['assignee_id'];
+
+              if (memberId != null) {
+                // Query the `users` collection for member details
+                final userDoc =
+                    await db.collection('users').doc(memberId).get();
+
+                if (userDoc.exists) {
+                  return Member(
+                    id: userDoc.id,
+                    name: userDoc['username'] ?? '',
+                    imageUrl: userDoc['photoURL'] ?? '',
+                  );
+                }
+              }
+              return null;
+            }),
+          ))
+              .where((member) => member != null)
+              .cast<Member>()
+              .toList();
+        }
+
+        // Return the `Topic` object
+        return Topic(
+          id: doc.id,
+          title: data['title'] ?? '',
+          section: data['section'] ?? '',
+          status: data['status'] ?? '',
+          deadline: dateString,
+          totalSubtask: data['total_subtask'] ?? 0,
+          completedSubtask: data['completed_subtask'] ?? 0,
+          otherMembers: data['otherMembers'] ?? 0,
+          members: members,
+          projectStep: data['projectStep'] ?? 0,
+        );
+      }).toList());
+    } catch (e) {
+      print('Error searching topics: $e');
       return Future.error(e);
     }
   }

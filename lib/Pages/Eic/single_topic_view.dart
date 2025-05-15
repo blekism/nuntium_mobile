@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -193,6 +194,12 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
     }
   }
 
+  Future<void> _refreshData() async {
+    ref.invalidate(topicDataProvider);
+    ref.invalidate(singleViewTopicContent);
+    ref.invalidate(viewAllImageInParent);
+  }
+
   @override
   Widget build(BuildContext context) {
     final topicViewer = ref.watch(topicDataProvider(widget.id));
@@ -204,419 +211,464 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         appbarTitle: 'Tasks',
         hasNavigated: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.only(
-          left: 15,
-          right: 15,
-          bottom: 10,
-          top: 10,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: topicViewer.when(
-                data: (topicView) {
-                  if (topicView.isEmpty) {
-                    return const Center(
-                      child: Text('Error: No Topic Found'),
-                    );
-                  }
+      body: CustomRefreshIndicator(
+        onRefresh: _refreshData,
+        builder: (
+          BuildContext context,
+          Widget child,
+          IndicatorController controller,
+        ) {
+          return AnimatedBuilder(
+            animation: controller,
+            builder: (BuildContext context, _) {
+              return Stack(
+                alignment: Alignment.topCenter,
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.only(
+                        top: controller.value *
+                            MediaQuery.of(context).size.height *
+                            0.1),
+                    child: child,
+                  ),
+                  if (controller.isArmed)
+                    const Text(
+                      "Release to Refresh",
+                      style: TextStyle(
+                          color: Color(0XFF020B40),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17),
+                    ),
+                  if (controller.isLoading || controller.isLoading)
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0XFF020B40),
+                      ), // Change color
+                      strokeWidth: 4.0,
+                    ),
+                ],
+              );
+            },
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.only(
+            left: 15,
+            right: 15,
+            bottom: 10,
+            top: 10,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: topicViewer.when(
+                  data: (topicView) {
+                    if (topicView.isEmpty) {
+                      return const Center(
+                        child: Text('Error: No Topic Found'),
+                      );
+                    }
 
-                  final deadline = topicView['deadline'] as Timestamp;
-                  final dateString = DateFormat('dd/MM/yyyy hh:mm a')
-                      .format(deadline.toDate());
+                    final deadline = topicView['deadline'] as Timestamp;
+                    final dateString = DateFormat('dd/MM/yyyy hh:mm a')
+                        .format(deadline.toDate());
 
-                  int totalSubtask = topicView['total_subtask'];
-                  int completedSubtask = topicView['completed_subtask'];
+                    int totalSubtask = topicView['total_subtask'];
+                    int completedSubtask = topicView['completed_subtask'];
 
-                  return SingleChildScrollView(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        FutureBuilder<bool>(
-                          future: _canUserEditFuture,
-                          builder: (BuildContext context,
-                              AsyncSnapshot<bool> snapshot) {
-                            if (snapshot.hasData) {
-                              final userCanEdit = snapshot.data!;
+                    return SingleChildScrollView(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          FutureBuilder<bool>(
+                            future: _canUserEditFuture,
+                            builder: (BuildContext context,
+                                AsyncSnapshot<bool> snapshot) {
+                              if (snapshot.hasData) {
+                                final userCanEdit = snapshot.data!;
 
-                              return userCanEdit
-                                  ? Align(
-                                      alignment: Alignment.topRight,
-                                      child: IconButton(
-                                        onPressed: () {
-                                          print('editing topic na ey');
-                                          widget.status == "pendingPST" ||
-                                                  widget.status == "Done"
-                                              ? Fluttertoast.showToast(
-                                                  msg:
-                                                      "Details of ongoing tasks are no longer editable",
-                                                  toastLength:
-                                                      Toast.LENGTH_SHORT,
-                                                  backgroundColor:
-                                                      const Color(0XFFD23737))
-                                              : Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        CreateTaskPage(
-                                                      topicId: widget.id,
-                                                      deadline: dateString,
-                                                      details:
-                                                          topicView['details'],
-                                                      title: topicView['title'],
-                                                      isEditing: true,
-                                                      sectionName:
-                                                          widget.section,
-                                                    ),
-                                                  ),
-                                                );
-                                        },
-                                        icon: const Icon(Icons.edit),
-                                      ),
-                                    )
-                                  : const SizedBox.shrink();
-                            } else if (snapshot.hasError) {
-                              return Text(
-                                  'Error: ${snapshot.error}'); // Handle error appropriately
-                            } else {
-                              return const CircularProgressIndicator(); // Show loading indicator
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            topicView['title'],
-                            style: const TextStyle(
-                              color: Color(0xFF020B40),
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            ' ${widget.section} | $dateString | $totalSubtask tasks',
-                            style: const TextStyle(
-                              color: Color(0xFF505050),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            ' Created by: ${topicView['assignerName']} | Status: ${topicView['status']}',
-                            style: const TextStyle(
-                              color: Color(0xFF505050),
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Details',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
-                            ElevatedButton(
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Approval Status'),
-                                      content: _buildApprovalDialogContent(
-                                          topicView), // Use the helper function
-                                      actions: <Widget>[
-                                        TextButton(
-                                          child: const Text('Close'),
+                                return userCanEdit
+                                    ? Align(
+                                        alignment: Alignment.topRight,
+                                        child: IconButton(
                                           onPressed: () {
-                                            Navigator.of(context).pop();
+                                            print('editing topic na ey');
+                                            widget.status == "pendingPST" ||
+                                                    widget.status == "Done"
+                                                ? Fluttertoast.showToast(
+                                                    msg:
+                                                        "Details of ongoing tasks are no longer editable",
+                                                    toastLength:
+                                                        Toast.LENGTH_SHORT,
+                                                    backgroundColor:
+                                                        const Color(0XFFD23737))
+                                                : Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          CreateTaskPage(
+                                                        topicId: widget.id,
+                                                        deadline: dateString,
+                                                        details: topicView[
+                                                            'details'],
+                                                        title:
+                                                            topicView['title'],
+                                                        isEditing: true,
+                                                        sectionName:
+                                                            widget.section,
+                                                      ),
+                                                    ),
+                                                  );
                                           },
+                                          icon: const Icon(Icons.edit),
                                         ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0XFFD4AF37),
-                                elevation: 10,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                                      )
+                                    : const SizedBox.shrink();
+                              } else if (snapshot.hasError) {
+                                return Text(
+                                    'Error: ${snapshot.error}'); // Handle error appropriately
+                              } else {
+                                return const CircularProgressIndicator(); // Show loading indicator
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              topicView['title'],
+                              style: const TextStyle(
+                                color: Color(0xFF020B40),
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
                               ),
-                              child: const Text(
-                                'Approval Status',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 7),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            topicView['details'],
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 15,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 30),
-                        StepProgressIndicator(
-                          totalSteps: 6,
-                          currentStep: topicView['projectStep'],
-                          selectedColor: const Color(0XFF020B40),
-                          unselectedColor:
-                              const Color(0XFF0E0E0E).withAlpha(90),
-                        ),
-                        const SizedBox(height: 10),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            '${topicView['projectStep']} of 6 Project Steps done!',
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          spacing: 15,
-                          children: [
-                            Expanded(
-                              child: _timelineButton(
-                                context,
-                                topicView,
-                                dateString,
-                                totalSubtask,
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              ' ${widget.section} | $dateString | $totalSubtask tasks',
+                              style: const TextStyle(
+                                color: Color(0xFF505050),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                            Expanded(
-                              child: topicView['status'] == 'pendingAPR' ||
-                                      topicView['status'] == 'Rejected'
-                                  ? SizedBox(
-                                      height: 50,
-                                      child: ElevatedButton(
-                                        onPressed: () async {
-                                          print('tasks viewed');
-                                          Fluttertoast.showToast(
-                                              msg: "Topic is not approved yet",
-                                              toastLength: Toast.LENGTH_LONG,
-                                              backgroundColor:
-                                                  const Color(0XFFD23737));
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color.fromARGB(
-                                              153, 2, 11, 64),
-                                          elevation: 10,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                          ),
-                                        ),
-                                        child: const Align(
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            'Tasks',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : SizedBox(
-                                      height: 50,
-                                      child: ElevatedButton(
-                                        onPressed: FirebaseAuth
-                                                    .instance.currentUser !=
-                                                null
-                                            ? () async {
-                                                print('tasks viewed');
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  isScrollControlled: true,
-                                                  backgroundColor: Colors.white,
-                                                  shape:
-                                                      const RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .vertical(
-                                                    top: Radius.circular(20),
-                                                  )),
-                                                  builder: (context) =>
-                                                      SubTaskView(
-                                                    topicId: widget.id,
-                                                    section: widget.section,
-                                                  ),
-                                                );
-                                              }
-                                            : () async {
-                                                print(
-                                                    'di nakalogin pano nangyari yon');
-
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                        'Please login to do this'),
-                                                    duration:
-                                                        Duration(seconds: 2),
-                                                    behavior: SnackBarBehavior
-                                                        .floating,
-                                                  ),
-                                                );
-                                              },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0XFF020B40),
-                                          elevation: 10,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                          ),
-                                        ),
-                                        child: const Align(
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            'Tasks',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                          ),
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              ' Created by: ${topicView['assignerName']} | Status: ${topicView['status']}',
+                              style: const TextStyle(
+                                color: Color(0xFF505050),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 15),
-                        _divider(context),
-                        const SizedBox(height: 15),
-                        taskContent.when(
-                          data: (viewContent) {
-                            if (viewContent.pubmatUrls.isEmpty &&
-                                viewContent.headline.isEmpty &&
-                                viewContent.writtenContent.isEmpty) {
-                              return const Center(
+                          ),
+                          const SizedBox(height: 5),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              const Align(
+                                alignment: Alignment.centerLeft,
                                 child: Text(
-                                  'Content Preview will appear here once available',
+                                  'Details',
                                   style: TextStyle(
                                     color: Colors.black,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 18,
                                   ),
                                 ),
-                              );
-                            }
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: const Text('Approval Status'),
+                                        content: _buildApprovalDialogContent(
+                                            topicView), // Use the helper function
+                                        actions: <Widget>[
+                                          TextButton(
+                                            child: const Text('Close'),
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                            },
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0XFFD4AF37),
+                                  elevation: 10,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Approval Status',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 7),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              topicView['details'],
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          StepProgressIndicator(
+                            totalSteps: 6,
+                            currentStep: topicView['projectStep'],
+                            selectedColor: const Color(0XFF020B40),
+                            unselectedColor:
+                                const Color(0XFF0E0E0E).withAlpha(90),
+                          ),
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '${topicView['projectStep']} of 6 Project Steps done!',
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 15),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            spacing: 15,
+                            children: [
+                              Expanded(
+                                child: _timelineButton(
+                                  context,
+                                  topicView,
+                                  dateString,
+                                  totalSubtask,
+                                ),
+                              ),
+                              Expanded(
+                                child: topicView['status'] == 'pendingAPR' ||
+                                        topicView['status'] == 'Rejected'
+                                    ? SizedBox(
+                                        height: 50,
+                                        child: ElevatedButton(
+                                          onPressed: () async {
+                                            print('tasks viewed');
+                                            Fluttertoast.showToast(
+                                                msg:
+                                                    "Topic is not approved yet",
+                                                toastLength: Toast.LENGTH_LONG,
+                                                backgroundColor:
+                                                    const Color(0XFFD23737));
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                const Color.fromARGB(
+                                                    153, 2, 11, 64),
+                                            elevation: 10,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                          child: const Align(
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              'Tasks',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : SizedBox(
+                                        height: 50,
+                                        child: ElevatedButton(
+                                          onPressed: FirebaseAuth
+                                                      .instance.currentUser !=
+                                                  null
+                                              ? () async {
+                                                  print('tasks viewed');
+                                                  showModalBottomSheet(
+                                                    context: context,
+                                                    isScrollControlled: true,
+                                                    backgroundColor:
+                                                        Colors.white,
+                                                    shape:
+                                                        const RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .vertical(
+                                                      top: Radius.circular(20),
+                                                    )),
+                                                    builder: (context) =>
+                                                        SubTaskView(
+                                                      topicId: widget.id,
+                                                      section: widget.section,
+                                                    ),
+                                                  );
+                                                }
+                                              : () async {
+                                                  print(
+                                                      'di nakalogin pano nangyari yon');
 
-                            if (viewContent.pubmatUrls.isNotEmpty) {
-                              setState(() {
-                                hasPubmatImages = true;
-                              });
-                            }
-
-                            if (topicView['section'] ==
-                                'XDEPw2VPYdeFdKQRuRpA') {
-                              return SizedBox(
-                                height: 60,
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    print('image bottomshit viewed');
-                                    showAllImages(
-                                      context,
-                                      allImageView,
-                                      topicView['section'] ==
-                                          'XDEPw2VPYdeFdKQRuRpA',
-                                      showImageIsLoading,
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0XFF020B40),
-                                    elevation: 10,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                                  ScaffoldMessenger.of(context)
+                                                      .showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                          'Please login to do this'),
+                                                      duration:
+                                                          Duration(seconds: 2),
+                                                      behavior: SnackBarBehavior
+                                                          .floating,
+                                                    ),
+                                                  );
+                                                },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0XFF020B40),
+                                            elevation: 10,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                          child: const Align(
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              'Tasks',
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 15),
+                          _divider(context),
+                          const SizedBox(height: 15),
+                          taskContent.when(
+                            data: (viewContent) {
+                              if (viewContent.pubmatUrls.isEmpty &&
+                                  viewContent.headline.isEmpty &&
+                                  viewContent.writtenContent.isEmpty) {
+                                return const Center(
+                                  child: Text(
+                                    'Content Preview will appear here once available',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                  child: const Align(
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      'View Images',
-                                      style: TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white,
+                                );
+                              }
+
+                              if (viewContent.pubmatUrls.isNotEmpty) {
+                                setState(() {
+                                  hasPubmatImages = true;
+                                });
+                              }
+
+                              if (topicView['section'] ==
+                                  'XDEPw2VPYdeFdKQRuRpA') {
+                                return SizedBox(
+                                  height: 60,
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      print('image bottomshit viewed');
+                                      showAllImages(
+                                        context,
+                                        allImageView,
+                                        topicView['section'] ==
+                                            'XDEPw2VPYdeFdKQRuRpA',
+                                        showImageIsLoading,
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0XFF020B40),
+                                      elevation: 10,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    child: const Align(
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        'View Images',
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              );
-                            } else {
-                              return _articlePreview(
-                                  viewContent, context, topicView);
-                            }
-                          },
-                          error: (error, stack) =>
-                              Center(child: Text('Error: $error')),
-                          loading: () => const Center(
-                            child: CircularProgressIndicator(),
+                                );
+                              } else {
+                                return _articlePreview(
+                                    viewContent, context, topicView);
+                              }
+                            },
+                            error: (error, stack) =>
+                                Center(child: Text('Error: $error')),
+                            loading: () => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                    ),
-                  );
-                },
-                error: (error, stack) => Center(child: Text('Error: $error')),
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
+                          const SizedBox(height: 10),
+                        ],
+                      ),
+                    );
+                  },
+                  error: (error, stack) => Center(child: Text('Error: $error')),
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
               ),
-            ),
-            topicViewer.when(
-              data: (topicView) {
-                return _conditionalRenderApproval(
-                    _canUserEditFuture, topicView, hasPubmatImages);
-              },
-              error: (error, stack) => Text('Error: $error'),
-              loading: () => const CircularProgressIndicator(),
-            ),
-          ],
+              topicViewer.when(
+                data: (topicView) {
+                  return _conditionalRenderApproval(
+                      _canUserEditFuture, topicView, hasPubmatImages);
+                },
+                error: (error, stack) => Text('Error: $error'),
+                loading: () => const CircularProgressIndicator(),
+              ),
+            ],
+          ),
         ),
       ),
     );

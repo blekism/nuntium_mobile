@@ -67,7 +67,7 @@ dependencies:
   image: ^4.5.4
   fluttertoast: ^8.2.12
   file_picker: ^10.1.5
-
+  porter_2_stemmer: ^3.0.2
 
 dev_dependencies:
   flutter_test:

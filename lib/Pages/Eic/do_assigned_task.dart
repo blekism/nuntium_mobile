@@ -1,7 +1,9 @@
+import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:googleapis/cloudbuild/v1.dart';
 import 'package:nuntium_mobile/Pages/Eic/assign_task_page.dart';
 import 'package:nuntium_mobile/Pages/Eic/fullscreentextfield.dart';
 import 'package:nuntium_mobile/Pages/Eic/timelinev2.dart';
@@ -46,6 +48,12 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
   final TextEditingController _commentController = TextEditingController();
   bool isContentSubmitted = false;
   bool wasSubmitPressed = false;
+
+  Future<void> _refreshData() async {
+    ref.invalidate(taskWrittenProvider);
+    ref.invalidate(retImagesProvider);
+    ref.invalidate(viewAllImageInParent);
+  }
 
   @override
   void initState() {
@@ -382,327 +390,367 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
           appbarTitle: 'Create Your Content',
           hasNavigated: false,
         ),
-        body: GestureDetector(
-          onTap: () {
-            FocusScope.of(context).unfocus();
+        body: CustomRefreshIndicator(
+          onRefresh: _refreshData,
+          builder: (BuildContext context, Widget child,
+              IndicatorController controller) {
+            return AnimatedBuilder(
+              animation: controller,
+              builder: (BuildContext context, _) {
+                return Stack(
+                  alignment: Alignment.topCenter,
+                  children: <Widget>[
+                    Padding(
+                      padding: EdgeInsets.only(
+                          top: controller.value *
+                              MediaQuery.of(context).size.height *
+                              0.1),
+                      child: child,
+                    ),
+                    if (controller.isArmed)
+                      const Text(
+                        "Release to Refresh",
+                        style: TextStyle(
+                            color: Color(0XFF020B40),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 17),
+                      ),
+                    if (controller.isLoading || controller.isLoading)
+                      const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0XFF020B40),
+                        ), // Change color
+                        strokeWidth: 4.0,
+                      ),
+                  ],
+                );
+              },
+            );
           },
-          child: Stack(
-            children: [
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                child: SingleChildScrollView(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        assignedTaskView.when(
-                          data: (assignedTask) {
-                            if (_headlineController.text.isEmpty) {
-                              _headlineController.text = assignedTask.headline;
-                            }
-                            if (_contentNotifier.value.isEmpty) {
-                              _contentNotifier.value = assignedTask.content;
-                            }
-                            if (_contentController.text.isEmpty) {
-                              _contentController.text = assignedTask.content;
-                            }
+          child: GestureDetector(
+            onTap: () {
+              FocusScope.of(context).unfocus();
+            },
+            child: Stack(
+              children: [
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: SingleChildScrollView(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          assignedTaskView.when(
+                            data: (assignedTask) {
+                              if (_headlineController.text.isEmpty) {
+                                _headlineController.text =
+                                    assignedTask.headline;
+                              }
+                              if (_contentNotifier.value.isEmpty) {
+                                _contentNotifier.value = assignedTask.content;
+                              }
+                              if (_contentController.text.isEmpty) {
+                                _contentController.text = assignedTask.content;
+                              }
 
-                            if (_commentController.text.isEmpty) {
-                              _commentController.text = assignedTask.comments;
-                            }
+                              if (_commentController.text.isEmpty) {
+                                _commentController.text = assignedTask.comments;
+                              }
 
-                            return Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    const Expanded(
-                                      child: Align(
+                              return Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      const Expanded(
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            'Task Title: ',
+                                            style: TextStyle(
+                                              color: Color(0xFF020B40),
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      assignedTask.status == "Approved" ||
+                                              assignedTask.status == "Done"
+                                          ? const SizedBox.shrink()
+                                          : FutureBuilder<bool>(
+                                              future: _canUserEditFuture,
+                                              builder: (BuildContext context,
+                                                  AsyncSnapshot<bool>
+                                                      snapshot) {
+                                                if (snapshot.hasData) {
+                                                  final userCanEdit = snapshot
+                                                      .data!; // Safely unwrap the bool
+
+                                                  return userCanEdit
+                                                      ? Align(
+                                                          alignment: Alignment
+                                                              .topRight,
+                                                          child: IconButton(
+                                                            onPressed: () {
+                                                              Navigator.push(
+                                                                context,
+                                                                MaterialPageRoute(
+                                                                  builder:
+                                                                      (context) =>
+                                                                          AssignTaskPage(
+                                                                    isEditing:
+                                                                        true,
+                                                                    deadline:
+                                                                        assignedTask
+                                                                            .deadline,
+                                                                    member: assignedTask
+                                                                        .assignee,
+                                                                    taskname:
+                                                                        assignedTask
+                                                                            .title,
+                                                                    tasktype:
+                                                                        assignedTask
+                                                                            .tasktype,
+                                                                    section:
+                                                                        assignedTask
+                                                                            .assigneeSec,
+                                                                    topicId: widget
+                                                                        .topicId,
+                                                                    taskId: assignedTask
+                                                                        .taskId,
+                                                                  ),
+                                                                ),
+                                                              );
+                                                            },
+                                                            icon: const Icon(
+                                                                Icons.edit),
+                                                          ),
+                                                        )
+                                                      : const SizedBox.shrink();
+                                                } else if (snapshot.hasError) {
+                                                  return Text(
+                                                      'Error: ${snapshot.error}');
+                                                } else {
+                                                  return const CircularProgressIndicator();
+                                                }
+                                              },
+                                            ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      assignedTask.title,
+                                      style: const TextStyle(
+                                        color: Color(0xFF020B40),
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      ' ${widget.section} | ${assignedTask.deadline} ',
+                                      style: const TextStyle(
+                                        color: Color(0xFF505050),
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      ' Created by: ${assignedTask.assigner}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF505050),
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  const Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      'Task Details: ',
+                                      style: TextStyle(
+                                        color: Color(0xFF020B40),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      assignedTask.details,
+                                      style: const TextStyle(
+                                        color: Color(0xFF020B40),
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Align(
                                         alignment: Alignment.centerLeft,
                                         child: Text(
-                                          'Task Title: ',
-                                          style: TextStyle(
+                                          'Assigned To: ${assignedTask.assigneeName}',
+                                          style: const TextStyle(
                                             color: Color(0xFF020B40),
                                             fontSize: 16,
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    assignedTask.status == "Approved" ||
-                                            assignedTask.status == "Done"
-                                        ? const SizedBox.shrink()
-                                        : FutureBuilder<bool>(
-                                            future: _canUserEditFuture,
-                                            builder: (BuildContext context,
-                                                AsyncSnapshot<bool> snapshot) {
-                                              if (snapshot.hasData) {
-                                                final userCanEdit = snapshot
-                                                    .data!; // Safely unwrap the bool
-
-                                                return userCanEdit
-                                                    ? Align(
-                                                        alignment:
-                                                            Alignment.topRight,
-                                                        child: IconButton(
-                                                          onPressed: () {
-                                                            Navigator.push(
-                                                              context,
-                                                              MaterialPageRoute(
-                                                                builder:
-                                                                    (context) =>
-                                                                        AssignTaskPage(
-                                                                  isEditing:
-                                                                      true,
-                                                                  deadline:
-                                                                      assignedTask
-                                                                          .deadline,
-                                                                  member: assignedTask
-                                                                      .assignee,
-                                                                  taskname:
-                                                                      assignedTask
-                                                                          .title,
-                                                                  tasktype:
-                                                                      assignedTask
-                                                                          .tasktype,
-                                                                  section:
-                                                                      assignedTask
-                                                                          .assigneeSec,
-                                                                  topicId: widget
-                                                                      .topicId,
-                                                                  taskId:
-                                                                      assignedTask
-                                                                          .taskId,
-                                                                ),
-                                                              ),
-                                                            );
-                                                          },
-                                                          icon: const Icon(
-                                                              Icons.edit),
-                                                        ),
-                                                      )
-                                                    : const SizedBox.shrink();
-                                              } else if (snapshot.hasError) {
-                                                return Text(
-                                                    'Error: ${snapshot.error}');
-                                              } else {
-                                                return const CircularProgressIndicator();
-                                              }
+                                      _timelineButton(context, assignedTask),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 15),
+                                  assignedTask.hasStarted
+                                      ? Column(
+                                          children: [
+                                            switch (widget.type) {
+                                              'Writing' => _headlineLabel(),
+                                              _ => const SizedBox.shrink()
                                             },
-                                          ),
-                                  ],
-                                ),
-                                const SizedBox(height: 7),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    assignedTask.title,
-                                    style: const TextStyle(
-                                      color: Color(0xFF020B40),
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 7),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    ' ${widget.section} | ${assignedTask.deadline} ',
-                                    style: const TextStyle(
-                                      color: Color(0xFF505050),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 7),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    ' Created by: ${assignedTask.assigner}',
-                                    style: const TextStyle(
-                                      color: Color(0xFF505050),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                const Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    'Task Details: ',
-                                    style: TextStyle(
-                                      color: Color(0xFF020B40),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 7),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    assignedTask.details,
-                                    style: const TextStyle(
-                                      color: Color(0xFF020B40),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 7),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(
-                                        'Assigned To: ${assignedTask.assigneeName}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF020B40),
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    _timelineButton(context, assignedTask),
-                                  ],
-                                ),
-                                const SizedBox(height: 15),
-                                assignedTask.hasStarted
-                                    ? Column(
-                                        children: [
-                                          switch (widget.type) {
-                                            'Writing' => _headlineLabel(),
-                                            _ => const SizedBox.shrink()
-                                          },
-                                          assignedTask.canCaption
-                                              ? _captionLabel()
-                                              : const SizedBox.shrink(),
-                                          const SizedBox(height: 7),
-                                          switch (widget.type) {
-                                            'Writing' => _headlineInput(),
-                                            _ => const SizedBox.shrink()
-                                          },
-                                          assignedTask.canCaption
-                                              ? _captionInput()
-                                              : const SizedBox.shrink(),
-                                          const SizedBox(height: 8),
-                                          const Align(
-                                            alignment: Alignment.topLeft,
-                                            child: Text(
-                                              'Content',
-                                              style: TextStyle(
-                                                color: Colors.black,
-                                                fontSize: 15,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 7),
-                                          switch (widget.type) {
-                                            'Writing' => _writingInput(),
-                                            'Photography' => _buildImageInput(
-                                                context,
-                                                allImageView,
-                                              ),
-                                            'Pubmat' => _buildImageInput(
-                                                context,
-                                                retImagesView,
-                                              ),
-                                            _ => const SizedBox.shrink(),
-                                          },
-                                          const SizedBox(height: 10),
-                                          Align(
-                                            alignment: Alignment.topLeft,
-                                            child: Text(
-                                              '${widget.section} Editor Comments',
-                                              style: const TextStyle(
-                                                color: Colors.black,
-                                                fontSize: 15,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          _commentContainer(),
-                                          const SizedBox(height: 15),
-                                          assignedTask.canCaption ||
-                                                  widget.type == 'Writing'
-                                              ? _bottomButtons(
-                                                  assignedTask.status)
-                                              : const SizedBox.shrink(),
-                                          const SizedBox(height: 10),
-                                          _bottomButtonsApproval(
-                                              assignedTask.status),
-                                        ],
-                                      )
-                                    : Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          const Text(
-                                              'Task has not been started.'),
-                                          const SizedBox(height: 15),
-                                          ElevatedButton(
-                                            onPressed: () async {
-                                              await firebaseFunctions.startTask(
-                                                  widget.topicId,
-                                                  widget.taskId);
-                                              ref.invalidate(
-                                                  taskWrittenProvider);
-
-                                              print('call task start shiii');
+                                            assignedTask.canCaption
+                                                ? _captionLabel()
+                                                : const SizedBox.shrink(),
+                                            const SizedBox(height: 7),
+                                            switch (widget.type) {
+                                              'Writing' => _headlineInput(),
+                                              _ => const SizedBox.shrink()
                                             },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor:
-                                                  const Color(0XFF020B40),
-                                              elevation: 10,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
+                                            assignedTask.canCaption
+                                                ? _captionInput()
+                                                : const SizedBox.shrink(),
+                                            const SizedBox(height: 8),
+                                            const Align(
+                                              alignment: Alignment.topLeft,
+                                              child: Text(
+                                                'Content',
+                                                style: TextStyle(
+                                                  color: Colors.black,
+                                                  fontSize: 15,
+                                                ),
                                               ),
                                             ),
-                                            child: const Text(
-                                              'Start task now',
-                                              style: TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.white,
+                                            const SizedBox(height: 7),
+                                            switch (widget.type) {
+                                              'Writing' => _writingInput(),
+                                              'Photography' => _buildImageInput(
+                                                  context,
+                                                  allImageView,
+                                                ),
+                                              'Pubmat' => _buildImageInput(
+                                                  context,
+                                                  retImagesView,
+                                                ),
+                                              _ => const SizedBox.shrink(),
+                                            },
+                                            const SizedBox(height: 10),
+                                            Align(
+                                              alignment: Alignment.topLeft,
+                                              child: Text(
+                                                '${widget.section} Editor Comments',
+                                                style: const TextStyle(
+                                                  color: Colors.black,
+                                                  fontSize: 15,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        ],
-                                      )
-                              ],
-                            );
-                          },
-                          error: (error, stack) =>
-                              Center(child: Text('Error: $error')),
-                          loading: () => const Center(
-                            child: CircularProgressIndicator(),
+                                            const SizedBox(height: 10),
+                                            _commentContainer(),
+                                            const SizedBox(height: 15),
+                                            assignedTask.canCaption ||
+                                                    widget.type == 'Writing'
+                                                ? _bottomButtons(
+                                                    assignedTask.status)
+                                                : const SizedBox.shrink(),
+                                            const SizedBox(height: 10),
+                                            _bottomButtonsApproval(
+                                                assignedTask.status),
+                                          ],
+                                        )
+                                      : Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            const Text(
+                                                'Task has not been started.'),
+                                            const SizedBox(height: 15),
+                                            ElevatedButton(
+                                              onPressed: () async {
+                                                await firebaseFunctions
+                                                    .startTask(widget.topicId,
+                                                        widget.taskId);
+                                                ref.invalidate(
+                                                    taskWrittenProvider);
+
+                                                print('call task start shiii');
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    const Color(0XFF020B40),
+                                                elevation: 10,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Start task now',
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                ],
+                              );
+                            },
+                            error: (error, stack) =>
+                                Center(child: Text('Error: $error')),
+                            loading: () => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              isContentSubmitted
-                  ? const LoadingScreen(
-                      customMessage: 'Loading...',
-                    )
-                  : const SizedBox.shrink(),
-            ],
+                isContentSubmitted
+                    ? const LoadingScreen(
+                        customMessage: 'Loading...',
+                      )
+                    : const SizedBox.shrink(),
+              ],
+            ),
           ),
         ),
       ),

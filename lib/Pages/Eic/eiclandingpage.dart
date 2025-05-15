@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nuntium_mobile/Pages/AdminSearch/adminsearch.dart';
 import 'package:nuntium_mobile/Pages/Eic/eichomepage.dart';
 import 'package:nuntium_mobile/Pages/Eic/historypage.dart';
 import 'package:nuntium_mobile/Pages/Eic/instacreate.dart';
@@ -44,6 +45,7 @@ class _EicLandingPage extends State<EicLandingPage> {
     final baseScreens = [
       const EicHomepage(),
       const CalendarPage(),
+      const AdminSearchPage(),
       const TopicHistoryPage(sectionName: 'All'),
     ];
 
@@ -72,8 +74,9 @@ class _EicLandingPage extends State<EicLandingPage> {
       return switch (_currentIndex) {
         0 => 'Sections',
         1 => 'Calendar',
-        2 => 'History',
-        3 => 'Post Approvals',
+        2 => 'Search',
+        3 => 'History',
+        4 => 'Post Approvals',
         _ => '',
       };
     } else {
@@ -81,7 +84,8 @@ class _EicLandingPage extends State<EicLandingPage> {
       return switch (_currentIndex) {
         0 => 'Sections',
         1 => 'Calendar',
-        2 => 'History',
+        2 => 'Search',
+        3 => 'History',
         _ => '',
       };
     }
@@ -204,6 +208,14 @@ class _EicLandingPage extends State<EicLandingPage> {
           height: iconSize,
         ),
         label: 'Calendar',
+      ),
+      BottomNavigationBarItem(
+        icon: Image.asset(
+          'assets/images/searchicon.png',
+          width: iconSize,
+          height: iconSize,
+        ),
+        label: 'Search',
       ),
       BottomNavigationBarItem(
         icon: Image.asset(

@@ -6,7 +6,9 @@ import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
 import 'package:nuntium_mobile/Pages/EditorialBoard/eb_landing_page.dart';
 import 'package:nuntium_mobile/Pages/EditorialSecMembers/sec_member_landing_page.dart';
 import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
+import 'package:nuntium_mobile/Pages/Eic/do_assigned_task.dart';
 import 'package:nuntium_mobile/Pages/Eic/eiclandingpage.dart';
+import 'package:nuntium_mobile/Pages/Eic/single_topic_view.dart';
 import 'package:nuntium_mobile/Pages/Homepage/contribhuntpage.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset_noacc.dart';
@@ -71,11 +73,11 @@ void _handleMessageNavigation(RemoteMessage message) {
   }
 
   final data = message.data;
-  final screenName = data['screenName'];
+  final type = data['type'];
 
-  if (screenName != null) {
-    switch (screenName) {
-      case "readerPage":
+  if (type != null) {
+    switch (type) {
+      case "new_article":
         navigatorKey.currentState?.push(
           MaterialPageRoute(
             builder: (context) => ArticlePage(
@@ -84,25 +86,50 @@ void _handleMessageNavigation(RemoteMessage message) {
           ),
         );
         break;
-      case "singleTopicView":
+      case "approval_req":
         navigatorKey.currentState?.push(
           MaterialPageRoute(
-            builder: (context) => ArticlePage(
-              postId: data['articleId'],
+            builder: (context) => TopicSingleRead(
+              id: data['topicId'],
+              section: data['section'],
+              status: data['status'],
+            ),
+          ),
+        );
+        break;
+      case "new_task":
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => DoAssignedTaskPage(
+              topicId: data['topicId'],
+              taskId: data['taskId'],
+              section: data['section'],
+              status: data['status'],
+              type: data['tasktype'],
+            ),
+          ),
+        );
+        break;
+      case "task_update":
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => DoAssignedTaskPage(
+              topicId: data['topicId'],
+              taskId: data['taskId'],
+              section: data['section'],
+              status: data['status'],
+              type: data['tasktype'],
             ),
           ),
         );
         break;
       default:
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => const LoginPage(),
+          ),
+        );
     }
-    // navigatorKey.currentState?.pushNamed(
-    //   '/$screenName',
-    //   arguments: {
-    //     'taskId': data['taskId'],
-    //     'role': data['role'],
-    //     'title': data['title'],
-    //   },
-    // );
     _pendingMessage = null;
   }
 }
@@ -290,8 +317,10 @@ class _AuthCheckerState extends State<AuthChecker> {
           }
 
           if (_pendingMessage != null && navigatorKey.currentState != null) {
-            _handleMessageNavigation(_pendingMessage!);
-            _pendingMessage = null;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _handleMessageNavigation(_pendingMessage!);
+              _pendingMessage = null;
+            });
           }
 
           switch (userRole) {

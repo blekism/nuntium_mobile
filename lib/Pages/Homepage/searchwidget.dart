@@ -2,7 +2,15 @@ import 'package:flutter/material.dart';
 
 class SearchWidget extends StatefulWidget {
   final TextEditingController searchController;
-  const SearchWidget({super.key, required this.searchController});
+  final String usedInPage;
+  final Function(String)? onSearch; // Callback for search action
+
+  const SearchWidget({
+    super.key,
+    required this.searchController,
+    this.usedInPage = 'reader',
+    this.onSearch,
+  });
 
   @override
   State<SearchWidget> createState() => _SearchWidgetState();
@@ -24,6 +32,15 @@ class _SearchWidgetState extends State<SearchWidget> {
           ]),
           child: TextField(
             controller: widget.searchController,
+            textInputAction: TextInputAction.search,
+            onTapOutside: (PointerDownEvent event) {
+              FocusManager.instance.primaryFocus?.unfocus();
+            },
+            onSubmitted: (value) {
+              if (value.isNotEmpty) {
+                widget.onSearch!(value); // Notify parent widget
+              }
+            },
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.white,

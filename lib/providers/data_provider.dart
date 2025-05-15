@@ -149,3 +149,8 @@ final historyProvider = StreamProvider.family
     .autoDispose<List<Topic>, String>((ref, String sectionId) {
   return firebaseFunctions.getTopicHistory(sectionId);
 });
+
+final searchItemsProvider =
+    FutureProvider.family.autoDispose<List<Topic>, String>((ref, userInput) {
+  return firebaseFunctions.searchTopics(userInput);
+});

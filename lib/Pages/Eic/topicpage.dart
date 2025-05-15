@@ -1,4 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
@@ -129,7 +130,7 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                         child: ParentTopicCard(
                           id: item.id,
                           topicTitle: item.title,
-                          section: widget.sectionName!,
+                          section: item.section,
                           status: item.status,
                           deadline: item.deadline,
                           totalSubtask: item.totalSubtask,
