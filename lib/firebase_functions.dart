@@ -773,7 +773,7 @@ class FirebaseFunctions {
           .collection("users")
           .doc(user.uid)
           .update({
-        "fcmToken": token,
+        "mobileFcmToken": token,
       });
     }
   }
@@ -872,17 +872,6 @@ class FirebaseFunctions {
 
 //starting here ang need ng logging sa timeline
 
-  List<String> processText(String sentence) {
-    final stemmer = Porter2Stemmer();
-    final words = sentence
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^\w\s]'), '')
-        .split(' ')
-        .where((word) => word.isNotEmpty)
-        .toList();
-    return words.map((word) => stemmer.stem(word)).toList();
-  }
-
   Future<void> createTopic(
     String assigner,
     title,
@@ -895,8 +884,6 @@ class FirebaseFunctions {
         print("user not logged in");
         return;
       }
-
-      final stemmedWords = processText(title);
 
       final userData = await getUserInfo(assigner);
       String userRole = '';
@@ -912,7 +899,6 @@ class FirebaseFunctions {
         'assigned_by': assigner,
         'assignerName': auth.currentUser!.displayName,
         'title': title,
-        'searchKeywords': stemmedWords,
         'deadline': deadlineTimestamp,
         'details': details,
         'completed_subtask': 0,
@@ -951,7 +937,7 @@ class FirebaseFunctions {
           .collection('tasks')
           .where('section', isEqualTo: sectioName)
           .where('status', isNotEqualTo: 'Done')
-          .orderBy('deadline', descending: true)
+          .orderBy('created_at', descending: true)
           .snapshots()
           .asyncMap((snapshot) {
         return Future.wait(snapshot.docs.map((topicDoc) async {
@@ -1012,7 +998,7 @@ class FirebaseFunctions {
       return db
           .collection('tasks')
           .where('section', isNotEqualTo: 'Photojournalism') // ✅ Allowed
-          .orderBy('deadline', descending: true) // ✅ Allowed
+          .orderBy('created_at', descending: true) // ✅ Allowed
           .snapshots()
           .asyncMap((snapshot) {
         final filteredDocs =
@@ -1083,7 +1069,7 @@ class FirebaseFunctions {
     // For 'All', we don't add a section filter, effectively getting all tasks.
     // We always order by deadline.
     query = query.where('status', isEqualTo: 'Done');
-    query = query.orderBy('deadline', descending: true);
+    query = query.orderBy('created_at', descending: true);
 
     return query.snapshots().asyncMap((snapshot) async {
       // Fetch all section names first to minimize reads inside the loop
@@ -1359,6 +1345,7 @@ class FirebaseFunctions {
 
       Map<String, dynamic> updates = {
         '${userRole}Approved': true,
+        'projectStep': FieldValue.increment(1),
       };
 
       // Apply updates
@@ -1390,7 +1377,10 @@ class FirebaseFunctions {
         userRole = 'unknown';
       }
 
-      await parentRef.update({'${userRole}ApprovedPST': true});
+      await parentRef.update({
+        '${userRole}ApprovedPST': true,
+        'projectStep': FieldValue.increment(1),
+      });
 
       await logInTimeline(
         topicId,
@@ -1411,6 +1401,7 @@ class FirebaseFunctions {
         '${role}Approved': false,
         '${role}Rejected': reason,
         'rejected_at': Timestamp.now(),
+        'projectStep': FieldValue.increment(1),
       });
 
       final dateString = formatTimestamp(Timestamp.now());
@@ -1434,6 +1425,10 @@ class FirebaseFunctions {
         'approved_at': Timestamp.now(),
       });
 
+      await dbref.update({
+        'projectStep': FieldValue.increment(1),
+      });
+
       await logInTimeline(
           topicId,
           'Task Content Approved',
@@ -1450,6 +1445,7 @@ class FirebaseFunctions {
     // this is essentially eb returns the task along with the comments for revision
     try {
       WriteBatch batch = db.batch();
+      int projectStepDecrement = 1;
 
       // Update the assigned task
       DocumentReference assignedTaskRef = db
@@ -1467,7 +1463,6 @@ class FirebaseFunctions {
       // Prepare updates for the parent topic
       Map<String, dynamic> topicUpdates = {
         'status': 'Doing',
-        'projectStep': FieldValue.increment(-1),
         'completed_subtask': FieldValue.increment(-1),
         'pstApproved_at': FieldValue.delete(),
       };
@@ -1481,11 +1476,15 @@ class FirebaseFunctions {
             topicDoc.data() as Map<String, dynamic>;
         if (topicData.containsKey('ManagingApprovedPST')) {
           topicUpdates['ManagingApprovedPST'] = FieldValue.delete();
+          projectStepDecrement++;
         }
         if (topicData.containsKey('AssociateApprovedPST')) {
           topicUpdates['AssociateApprovedPST'] = FieldValue.delete();
+          projectStepDecrement++;
         }
       }
+
+      topicUpdates['projectStep'] = FieldValue.increment(-projectStepDecrement);
 
       batch.update(topicRef, topicUpdates);
 
@@ -1537,6 +1536,7 @@ class FirebaseFunctions {
 
       await db.collection('tasks').doc(id).update({
         'total_subtask': FieldValue.increment(1),
+        'projectStep': FieldValue.increment(1),
       });
 
       final dateString = formatTimestamp(Timestamp.now());
@@ -1617,8 +1617,7 @@ class FirebaseFunctions {
           totalSubtask: parentData['total_subtask'],
           status: subTaskSnap['status'],
           comments: subTaskSnap.data() != null
-              ? (subTaskSnap.data() as Map<String, dynamic>)['comment'] ??
-                  'No comments yet'
+              ? (subTaskSnap.data() as Map<String, dynamic>)['comment'] ?? ''
               : '',
           content: subTaskSnap.data() != null
               ? (subTaskSnap.data() as Map<String, dynamic>)['content'] ?? ''
@@ -1784,7 +1783,7 @@ class FirebaseFunctions {
     return db
         .collectionGroup('assigned_tasks')
         .where('assignee_id', isEqualTo: uid)
-        .orderBy('deadline', descending: true)
+        .orderBy('created_at', descending: true)
         .snapshots()
         .asyncMap((snapshot) async {
       return Future.wait(snapshot.docs.map((taskDoc) async {
@@ -1846,7 +1845,6 @@ class FirebaseFunctions {
     try {
       final dbref = db.collection('tasks').doc(topicId);
 
-      String cleanedData = await processData(content);
       final DocumentSnapshot parentDoc = await dbref.get();
       final DocumentSnapshot childDoc =
           await dbref.collection('assigned_tasks').doc(taskId).get();
@@ -1868,7 +1866,7 @@ class FirebaseFunctions {
         // writer was tasked to revise the work by section editor
         await dbref.collection('assigned_tasks').doc(taskId).update({
           'headline': headline,
-          'content': cleanedData,
+          'content': content,
           'submittedAt': Timestamp.now(),
           'status': 'Submitted',
         });
@@ -1876,7 +1874,7 @@ class FirebaseFunctions {
         // writer passes a new submission
         await dbref.collection('assigned_tasks').doc(taskId).update({
           'headline': headline,
-          'content': cleanedData,
+          'content': content,
           'submittedAt': Timestamp.now(),
           'status': 'Submitted',
         });
@@ -1884,7 +1882,7 @@ class FirebaseFunctions {
         // writer was tasked to revise the work by any of the eic, assoc, or managing
         await dbref.collection('assigned_tasks').doc(taskId).update({
           'headline': headline,
-          'content': cleanedData,
+          'content': content,
           'submittedAt': Timestamp.now(),
           'status': 'Approved',
         });
@@ -1892,12 +1890,13 @@ class FirebaseFunctions {
 
       await dbref.update({
         'completed_subtask': FieldValue.increment(1),
+        'projectStep': FieldValue.increment(1),
       });
 
       await logInTimeline(
         topicId,
         'Task Submitted',
-        cleanedData,
+        content,
         'Task Submitted',
       );
     } catch (e) {
@@ -1965,15 +1964,52 @@ class FirebaseFunctions {
       String topicId, taskId, List<String> imageUrls) async {
     final dbref = db.collection('tasks').doc(topicId);
 
-    await dbref.collection('assigned_tasks').doc(taskId).update({
-      'submittedAt': Timestamp.now(),
-      'images': FieldValue.arrayUnion(imageUrls),
-      'content': 'Pubmat Images uploaded',
-      'status': 'Submitted',
-    });
+    final DocumentSnapshot parentDoc = await dbref.get();
+    final DocumentSnapshot childDoc =
+        await dbref.collection('assigned_tasks').doc(taskId).get();
+
+    String assigner = '';
+    String returner = '';
+
+    if (parentDoc.exists && childDoc.exists) {
+      final childData = childDoc.data() as Map<String, dynamic>;
+      assigner = parentDoc['assigned_by'];
+      if (childData.containsKey('returned_by')) {
+        returner = childData['returned_by'];
+      }
+    } else {
+      throw Exception('Parent and Child documents does not exist');
+    }
+
+    if (assigner == returner) {
+      // writer was tasked to revise the work by section editor
+      await dbref.collection('assigned_tasks').doc(taskId).update({
+        'submittedAt': Timestamp.now(),
+        'images': FieldValue.arrayUnion(imageUrls),
+        'content': 'Pubmat Images uploaded',
+        'status': 'Submitted',
+      });
+    } else if (returner == '') {
+      // writer passes a new submission
+      await dbref.collection('assigned_tasks').doc(taskId).update({
+        'submittedAt': Timestamp.now(),
+        'images': FieldValue.arrayUnion(imageUrls),
+        'content': 'Pubmat Images uploaded',
+        'status': 'Submitted',
+      });
+    } else {
+      // writer was tasked to revise the work by any of the eic, assoc, or managing
+      await dbref.collection('assigned_tasks').doc(taskId).update({
+        'submittedAt': Timestamp.now(),
+        'images': FieldValue.arrayUnion(imageUrls),
+        'content': 'Pubmat Images uploaded',
+        'status': 'Approved',
+      });
+    }
 
     await dbref.update({
       'completed_subtask': FieldValue.increment(1),
+      'projectStep': FieldValue.increment(1),
     });
 
     await logInTimeline(
@@ -2109,7 +2145,6 @@ class FirebaseFunctions {
           .doc(taskId)
           .update({
         'images': FieldValue.arrayRemove([retrievedImages[index]]),
-        'testdeleted': true,
       });
 
       await logInTimeline(
@@ -2142,7 +2177,7 @@ class FirebaseFunctions {
       });
 
       batch.update(parentRef, {
-        'completed_subtask': 2,
+        'projectStep': FieldValue.increment(2),
       });
 
       await logInTimeline(
@@ -2312,23 +2347,15 @@ class FirebaseFunctions {
     }
   }
 
-  Future<List<Topic>> searchTopics(String userInput) async {
+  Future<List<Topic>> searchTopics() async {
     try {
       QuerySnapshot userSearch;
 
       // Determine the query based on user input
-      if (userInput == 'All') {
-        userSearch = await db
-            .collection('tasks')
-            .orderBy('deadline', descending: true)
-            .limit(5)
-            .get();
-      } else {
-        userSearch = await db
-            .collection('tasks')
-            .where('searchKeywords', arrayContains: userInput)
-            .get();
-      }
+      userSearch = await db
+          .collection('tasks')
+          .orderBy('created_at', descending: true)
+          .get();
 
       // Check if the query returned any documents
       if (userSearch.docs.isEmpty) {

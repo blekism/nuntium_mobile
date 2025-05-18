@@ -122,12 +122,14 @@ class _SubtaskCardState extends State<SubtaskCard> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                const Icon(
-                                  Icons.access_time_filled_outlined,
-                                  color: Colors.white,
-                                  size: 16,
+                                const Text(
+                                  'Due at: ',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                                const SizedBox(width: 7),
                                 Expanded(
                                   child: FittedBox(
                                     fit: BoxFit.scaleDown,

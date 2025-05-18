@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Eic/parent_topic_card.dart';
 import 'package:nuntium_mobile/Pages/Homepage/searchwidget.dart';
+import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class AdminSearchPage extends ConsumerStatefulWidget {
@@ -13,20 +15,45 @@ class AdminSearchPage extends ConsumerStatefulWidget {
 
 class _AdminSearchPageState extends ConsumerState<AdminSearchPage> {
   final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
-    // Load initial data when the page is first loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(searchItemsProvider('All').future);
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
     });
+  }
+
+  List<Topic> _filterArticles(List<Topic> allArticles) {
+    return allArticles.where((article) {
+      final titleMatch =
+          article.title.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      return titleMatch;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final searchItemsView = ref.watch(searchItemsProvider(
-        _searchController.text.isEmpty ? 'All' : _searchController.text));
+    final searchItemsView = ref.watch(searchItemsProvider);
+
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
@@ -38,20 +65,16 @@ class _AdminSearchPageState extends ConsumerState<AdminSearchPage> {
             children: [
               SearchWidget(
                 searchController: _searchController,
-                usedInPage: 'adminsearch',
-                onSearch: (value) {
-                  setState(() {
-                    // Trigger search when the user submits a query
-                    ref.refresh(searchItemsProvider(value));
-                  });
-                },
               ),
               const SizedBox(height: 10),
               searchItemsView.when(
                 data: (searchedTopics) {
-                  if (searchedTopics.isEmpty) {
+                  final List<Topic> filteredBySearch =
+                      _filterArticles(searchedTopics);
+
+                  if (filteredBySearch.isEmpty) {
                     return const Center(
-                      child: Text('No Topics Found. Start Creating One Now!'),
+                      child: Text('No Topics Found!'),
                     );
                   }
 
@@ -60,9 +83,9 @@ class _AdminSearchPageState extends ConsumerState<AdminSearchPage> {
                     child: ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      itemCount: searchedTopics.length,
+                      itemCount: filteredBySearch.length,
                       itemBuilder: (context, index) {
-                        final item = searchedTopics[index];
+                        final item = filteredBySearch[index];
                         final member1Image = item.members.isNotEmpty
                             ? item.members[0].imageUrl
                             : '';

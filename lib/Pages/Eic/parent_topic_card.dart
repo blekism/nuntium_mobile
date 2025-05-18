@@ -257,6 +257,7 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
                         ),
                         const SizedBox(height: 10),
                         Container(
+                          width: MediaQuery.of(context).size.width * .4,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
@@ -274,18 +275,26 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              const Icon(
-                                Icons.access_time_filled_outlined,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 7),
-                              Text(
-                                widget.deadline,
-                                style: const TextStyle(
+                              const Text(
+                                'Due at: ',
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
+                                ),
+                              ),
+                              Expanded(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    widget.deadline,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -298,7 +307,7 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
                 ),
                 const SizedBox(height: 10),
                 StepProgressIndicator(
-                  totalSteps: 6,
+                  totalSteps: 14,
                   currentStep: widget.projectStep,
                   selectedColor: const Color(0XFF020B40),
                   unselectedColor: const Color(0XFF0E0E0E).withAlpha(90),
@@ -317,7 +326,7 @@ class _ParentTopicCardState extends State<ParentTopicCard> {
                       ),
                     ),
                     Text(
-                      '${widget.completedSubtask} of ${widget.totalSubtask} Tasks Done!',
+                      '${widget.projectStep} of 14 Steps Done!',
                       style: const TextStyle(
                         color: Colors.black,
                         fontSize: 16,

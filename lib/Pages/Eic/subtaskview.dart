@@ -26,7 +26,7 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
     final tasksView = ref.watch(taskProvider(widget.topicId));
 
     return FractionallySizedBox(
-      heightFactor: .85,
+      heightFactor: .70,
       child: Column(
         children: [
           Container(

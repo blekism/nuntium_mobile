@@ -402,6 +402,7 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
   Text _articleContent(Map<String, dynamic> articleView) {
     return Text(
       articleView['content'],
+      textAlign: TextAlign.justify,
       softWrap: true,
       style: const TextStyle(
         color: Colors.black,
@@ -441,7 +442,7 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
                 return Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(10),
                     child: Image.network(
                       images[index],
                       loadingBuilder: (context, child, loadingProgress) {
@@ -458,10 +459,10 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
                       errorBuilder: (context, error, stackTrace) {
                         return const Text('Failed to load image');
                       },
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       alignment: Alignment.center,
-                      width: MediaQuery.of(context).size.width * .8,
-                      height: MediaQuery.of(context).size.height * .35,
+                      // width: MediaQuery.of(context).size.width * .8,
+                      // height: MediaQuery.of(context).size.height * .35,
                     ),
                   ),
                 );

@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/ContentPage/articlepage.dart';
 import 'package:nuntium_mobile/Pages/EditorialBoard/eb_landing_page.dart';
@@ -14,7 +15,6 @@ import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/passwordreset_noacc.dart';
 import 'package:nuntium_mobile/Pages/ProfilePage/profilepage.dart';
 import 'package:nuntium_mobile/firebase_functions.dart';
-import 'package:path/path.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'Pages/LoginRegister/login_page.dart';
@@ -49,6 +49,10 @@ void main() async {
 
   setupInteractedMessage();
 
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+
   runApp(const ProviderScope(child: NuntiumApp()));
 }
 
@@ -78,7 +82,7 @@ void _handleMessageNavigation(RemoteMessage message) {
   if (type != null) {
     switch (type) {
       case "new_article":
-        navigatorKey.currentState?.push(
+        navigatorKey.currentState?.pushReplacement(
           MaterialPageRoute(
             builder: (context) => ArticlePage(
               postId: data['articleId'],
@@ -87,7 +91,7 @@ void _handleMessageNavigation(RemoteMessage message) {
         );
         break;
       case "approval_req":
-        navigatorKey.currentState?.push(
+        navigatorKey.currentState?.pushReplacement(
           MaterialPageRoute(
             builder: (context) => TopicSingleRead(
               id: data['topicId'],
@@ -98,7 +102,7 @@ void _handleMessageNavigation(RemoteMessage message) {
         );
         break;
       case "new_task":
-        navigatorKey.currentState?.push(
+        navigatorKey.currentState?.pushReplacement(
           MaterialPageRoute(
             builder: (context) => DoAssignedTaskPage(
               topicId: data['topicId'],
@@ -111,7 +115,7 @@ void _handleMessageNavigation(RemoteMessage message) {
         );
         break;
       case "task_update":
-        navigatorKey.currentState?.push(
+        navigatorKey.currentState?.pushReplacement(
           MaterialPageRoute(
             builder: (context) => DoAssignedTaskPage(
               topicId: data['topicId'],

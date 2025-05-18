@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
 import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
+import 'package:nuntium_mobile/Pages/Eic/singletopic_header.dart';
 import 'package:nuntium_mobile/Pages/Eic/subtaskview.dart';
 import 'package:nuntium_mobile/Pages/Eic/timelinev2.dart';
 import 'package:nuntium_mobile/Pages/customappbar.dart';
@@ -15,7 +16,6 @@ import 'package:nuntium_mobile/models/topic_content_model.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
-import 'package:step_progress_indicator/step_progress_indicator.dart';
 
 class TopicSingleRead extends ConsumerStatefulWidget {
   final String id;
@@ -205,8 +205,10 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
     final topicViewer = ref.watch(topicDataProvider(widget.id));
     final taskContent = ref.watch(singleViewTopicContent(widget.id));
     final allImageView = ref.watch(viewAllImageInParent(widget.id));
+    TopicContentModel? latestContent = taskContent.valueOrNull;
 
     return Scaffold(
+      backgroundColor: const Color(0XFFEBEBEB),
       appBar: const CustomAppBar(
         appbarTitle: 'Tasks',
         hasNavigated: false,
@@ -279,377 +281,493 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     int completedSubtask = topicView['completed_subtask'];
 
                     return SingleChildScrollView(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          FutureBuilder<bool>(
-                            future: _canUserEditFuture,
-                            builder: (BuildContext context,
-                                AsyncSnapshot<bool> snapshot) {
-                              if (snapshot.hasData) {
-                                final userCanEdit = snapshot.data!;
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SingleTopicHeader(
+                              headerText: 'Topic Information',
+                              trailing: FutureBuilder<bool>(
+                                future: _canUserEditFuture,
+                                builder: (BuildContext context,
+                                    AsyncSnapshot<bool> snapshot) {
+                                  if (snapshot.hasData) {
+                                    final userCanEdit = snapshot.data!;
 
-                                return userCanEdit
-                                    ? Align(
-                                        alignment: Alignment.topRight,
-                                        child: IconButton(
-                                          onPressed: () {
-                                            print('editing topic na ey');
-                                            widget.status == "pendingPST" ||
-                                                    widget.status == "Done"
-                                                ? Fluttertoast.showToast(
-                                                    msg:
-                                                        "Details of ongoing tasks are no longer editable",
-                                                    toastLength:
-                                                        Toast.LENGTH_SHORT,
-                                                    backgroundColor:
-                                                        const Color(0XFFD23737))
-                                                : Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          CreateTaskPage(
-                                                        topicId: widget.id,
-                                                        deadline: dateString,
-                                                        details: topicView[
-                                                            'details'],
-                                                        title:
-                                                            topicView['title'],
-                                                        isEditing: true,
-                                                        sectionName:
-                                                            widget.section,
-                                                      ),
-                                                    ),
-                                                  );
-                                          },
-                                          icon: const Icon(Icons.edit),
-                                        ),
-                                      )
-                                    : const SizedBox.shrink();
-                              } else if (snapshot.hasError) {
-                                return Text(
-                                    'Error: ${snapshot.error}'); // Handle error appropriately
-                              } else {
-                                return const CircularProgressIndicator(); // Show loading indicator
-                              }
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              topicView['title'],
-                              style: const TextStyle(
-                                color: Color(0xFF020B40),
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              ' ${widget.section} | $dateString | $totalSubtask tasks',
-                              style: const TextStyle(
-                                color: Color(0xFF505050),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              ' Created by: ${topicView['assignerName']} | Status: ${topicView['status']}',
-                              style: const TextStyle(
-                                color: Color(0xFF505050),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'Details',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ),
-                              ElevatedButton(
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return AlertDialog(
-                                        title: const Text('Approval Status'),
-                                        content: _buildApprovalDialogContent(
-                                            topicView), // Use the helper function
-                                        actions: <Widget>[
-                                          TextButton(
-                                            child: const Text('Close'),
-                                            onPressed: () {
-                                              Navigator.of(context).pop();
-                                            },
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0XFFD4AF37),
-                                  elevation: 10,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                child: const Text(
-                                  'Approval Status',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 7),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              topicView['details'],
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 30),
-                          StepProgressIndicator(
-                            totalSteps: 6,
-                            currentStep: topicView['projectStep'],
-                            selectedColor: const Color(0XFF020B40),
-                            unselectedColor:
-                                const Color(0XFF0E0E0E).withAlpha(90),
-                          ),
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              '${topicView['projectStep']} of 6 Project Steps done!',
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 15),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            spacing: 15,
-                            children: [
-                              Expanded(
-                                child: _timelineButton(
-                                  context,
-                                  topicView,
-                                  dateString,
-                                  totalSubtask,
-                                ),
-                              ),
-                              Expanded(
-                                child: topicView['status'] == 'pendingAPR' ||
-                                        topicView['status'] == 'Rejected'
-                                    ? SizedBox(
-                                        height: 50,
-                                        child: ElevatedButton(
-                                          onPressed: () async {
-                                            print('tasks viewed');
-                                            Fluttertoast.showToast(
-                                                msg:
-                                                    "Topic is not approved yet",
-                                                toastLength: Toast.LENGTH_LONG,
-                                                backgroundColor:
-                                                    const Color(0XFFD23737));
-                                          },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                const Color.fromARGB(
-                                                    153, 2, 11, 64),
-                                            elevation: 10,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                          ),
-                                          child: const Align(
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              'Tasks',
-                                              style: TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w900,
+                                    return userCanEdit
+                                        ? Align(
+                                            alignment: Alignment.topRight,
+                                            child: IconButton(
+                                              onPressed: () {
+                                                print('editing topic na ey');
+                                                widget.status == "pendingPST" ||
+                                                        widget.status == "Done"
+                                                    ? Fluttertoast.showToast(
+                                                        msg:
+                                                            "Details of ongoing tasks are no longer editable",
+                                                        toastLength:
+                                                            Toast.LENGTH_SHORT,
+                                                        backgroundColor:
+                                                            const Color(
+                                                                0XFFD23737))
+                                                    : Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (context) =>
+                                                              CreateTaskPage(
+                                                            topicId: widget.id,
+                                                            deadline:
+                                                                dateString,
+                                                            details: topicView[
+                                                                'details'],
+                                                            title: topicView[
+                                                                'title'],
+                                                            isEditing: true,
+                                                            sectionName:
+                                                                widget.section,
+                                                          ),
+                                                        ),
+                                                      );
+                                              },
+                                              icon: const Icon(
+                                                Icons.edit,
                                                 color: Colors.white,
                                               ),
                                             ),
-                                          ),
+                                          )
+                                        : const SizedBox.shrink();
+                                  } else if (snapshot.hasError) {
+                                    return Text(
+                                        'Error: ${snapshot.error}'); // Handle error appropriately
+                                  } else {
+                                    return const CircularProgressIndicator(); // Show loading indicator
+                                  }
+                                },
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              width: MediaQuery.of(context).size.width * .95,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: const BorderRadius.only(
+                                  bottomLeft: Radius.circular(10),
+                                  bottomRight: Radius.circular(10),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withAlpha(80),
+                                    spreadRadius: 1,
+                                    blurRadius: 5,
+                                    offset: const Offset(2, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      topicView['title'],
+                                      style: const TextStyle(
+                                        color: Color(0xFF020B40),
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        ' ${widget.section} | $dateString | $totalSubtask tasks',
+                                        style: const TextStyle(
+                                          color: Color(0xFF505050),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                      )
-                                    : SizedBox(
-                                        height: 50,
-                                        child: ElevatedButton(
-                                          onPressed: FirebaseAuth
-                                                      .instance.currentUser !=
-                                                  null
-                                              ? () async {
-                                                  print('tasks viewed');
-                                                  showModalBottomSheet(
-                                                    context: context,
-                                                    isScrollControlled: true,
-                                                    backgroundColor:
-                                                        Colors.white,
-                                                    shape:
-                                                        const RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .vertical(
-                                                      top: Radius.circular(20),
-                                                    )),
-                                                    builder: (context) =>
-                                                        SubTaskView(
-                                                      topicId: widget.id,
-                                                      section: widget.section,
-                                                    ),
-                                                  );
-                                                }
-                                              : () async {
-                                                  print(
-                                                      'di nakalogin pano nangyari yon');
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        ' Created by: ${topicView['assignerName']} | Status: ${topicView['status']}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF505050),
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  const Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        'Topic Details',
+                                        style: TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        topicView['details'],
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 15),
+                                  _divider(context),
+                                  const SizedBox(height: 15),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    spacing: 15,
+                                    children: [
+                                      Expanded(
+                                        child: _timelineButton(
+                                          context,
+                                          topicView,
+                                          dateString,
+                                          totalSubtask,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: SizedBox(
+                                          height: 50,
+                                          child: ElevatedButton(
+                                            onPressed: FirebaseAuth
+                                                        .instance.currentUser !=
+                                                    null
+                                                ? () async {
+                                                    topicView['status'] ==
+                                                                'pendingAPR' ||
+                                                            topicView[
+                                                                    'status'] ==
+                                                                'Rejected'
+                                                        ? Fluttertoast.showToast(
+                                                            msg:
+                                                                "Topic is not approved yet",
+                                                            toastLength: Toast
+                                                                .LENGTH_LONG,
+                                                            backgroundColor:
+                                                                const Color(
+                                                                    0XFFD23737))
+                                                        : showModalBottomSheet(
+                                                            context: context,
+                                                            isScrollControlled:
+                                                                true,
+                                                            backgroundColor:
+                                                                Colors.white,
+                                                            shape:
+                                                                const RoundedRectangleBorder(
+                                                                    borderRadius:
+                                                                        BorderRadius
+                                                                            .vertical(
+                                                              top: Radius
+                                                                  .circular(20),
+                                                            )),
+                                                            builder:
+                                                                (context) =>
+                                                                    SubTaskView(
+                                                              topicId:
+                                                                  widget.id,
+                                                              section: widget
+                                                                  .section,
+                                                            ),
+                                                          );
+                                                  }
+                                                : () async {
+                                                    print(
+                                                        'di nakalogin pano nangyari yon');
 
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                          'Please login to do this'),
-                                                      duration:
-                                                          Duration(seconds: 2),
-                                                      behavior: SnackBarBehavior
-                                                          .floating,
-                                                    ),
-                                                  );
-                                                },
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                const Color(0XFF020B40),
-                                            elevation: 10,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                            'Please login to do this'),
+                                                        duration: Duration(
+                                                            seconds: 2),
+                                                        behavior:
+                                                            SnackBarBehavior
+                                                                .floating,
+                                                      ),
+                                                    );
+                                                  },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  const Color(0XFF020B40),
+                                              elevation: 10,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
                                             ),
-                                          ),
-                                          child: const Align(
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              'Tasks',
-                                              style: TextStyle(
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.w900,
-                                                color: Colors.white,
+                                            child: const Align(
+                                              alignment: Alignment.center,
+                                              child: FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text(
+                                                  'Tasks',
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 15),
+                                  topicView['section'] != 'Photojournalism'
+                                      ? ElevatedButton(
+                                          onPressed: () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (BuildContext context) {
+                                                return AlertDialog(
+                                                  title: const Text(
+                                                      'Content Preview'),
+                                                  content:
+                                                      _buildPreviewContentDialog(
+                                                          taskContent,
+                                                          topicView,
+                                                          context,
+                                                          allImageView),
+                                                  actions: <Widget>[
+                                                    TextButton(
+                                                      child:
+                                                          const Text('Close'),
+                                                      onPressed: () {
+                                                        Navigator.of(context)
+                                                            .pop();
+                                                      },
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            );
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.white,
+                                            side: const BorderSide(
+                                              color: Colors.black,
+                                              width: 2,
+                                            ),
+                                            elevation: 10,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                          child: const Align(
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              'Content Preview',
+                                              style: TextStyle(
+                                                color: Color(0XFF020B40),
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      : SizedBox(
+                                          height: 60,
+                                          width: double.infinity,
+                                          child: ElevatedButton(
+                                            onPressed: () async {
+                                              print('image bottomshit viewed');
+                                              showAllImages(
+                                                context,
+                                                allImageView,
+                                                topicView['section'] ==
+                                                    'Photojournalism',
+                                                showImageIsLoading,
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  const Color(0XFF020B40),
+                                              elevation: 10,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                            child: const Align(
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                'View Images',
+                                                style: TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                ],
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 15),
-                          _divider(context),
-                          const SizedBox(height: 15),
-                          taskContent.when(
-                            data: (viewContent) {
-                              if (viewContent.pubmatUrls.isEmpty &&
-                                  viewContent.headline.isEmpty &&
-                                  viewContent.writtenContent.isEmpty) {
-                                return const Center(
-                                  child: Text(
-                                    'Content Preview will appear here once available',
-                                    style: TextStyle(
+                            ),
+                            const SizedBox(height: 10),
+                            const SingleTopicHeader(
+                              headerText: 'Progress Report',
+                            ),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              width: MediaQuery.of(context).size.width * .95,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: const BorderRadius.only(
+                                    bottomLeft: Radius.circular(10),
+                                    bottomRight: Radius.circular(10)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withAlpha(80),
+                                    spreadRadius: 1,
+                                    blurRadius: 5,
+                                    offset: const Offset(2, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${topicView['projectStep']} of 14 steps completed!',
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Current Status: Pending Approval of Managing Editor',
+                                    style: const TextStyle(
                                       color: Colors.black,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
-                                );
-                              }
-
-                              if (viewContent.pubmatUrls.isNotEmpty) {
-                                setState(() {
-                                  hasPubmatImages = true;
-                                });
-                              }
-
-                              if (topicView['section'] ==
-                                  'XDEPw2VPYdeFdKQRuRpA') {
-                                return SizedBox(
-                                  height: 60,
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: () async {
-                                      print('image bottomshit viewed');
-                                      showAllImages(
-                                        context,
-                                        allImageView,
-                                        topicView['section'] ==
-                                            'XDEPw2VPYdeFdKQRuRpA',
-                                        showImageIsLoading,
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0XFF020B40),
-                                      elevation: 10,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                    child: const Align(
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        'View Images',
-                                        style: TextStyle(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                return _articlePreview(
-                                    viewContent, context, topicView);
-                              }
-                            },
-                            error: (error, stack) =>
-                                Center(child: Text('Error: $error')),
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
+                                  const SizedBox(height: 10),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 1,
+                                      label: 'Topic Created',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 2,
+                                      label: 'Associate Editor Approval',
+                                      reason: topicView
+                                              .containsKey('AssociateRejected')
+                                          ? topicView['AssociateRejected']
+                                          : null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 3,
+                                      label: 'Managing Editor Approval',
+                                      reason: topicView
+                                              .containsKey('ManagingRejected')
+                                          ? topicView['ManagingRejected']
+                                          : null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 4,
+                                      label: 'Editor-in-Chief Approval',
+                                      reason:
+                                          topicView.containsKey('eicRejected')
+                                              ? topicView['eicRejected']
+                                              : null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 5,
+                                      label: 'Pubmat Task Auto Created',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 6,
+                                      label: 'Writing Task Auto Created',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 7,
+                                      label: 'Pubmat Task Submitted',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 8,
+                                      label: 'Writing Task Submitted',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 9,
+                                      label: 'Pubmat Task Approved',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 10,
+                                      label: 'Writing Task Approved',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 11,
+                                      label: 'Associate Approval for Posting',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 12,
+                                      label: 'Managing Approval for Posting',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 13,
+                                      label: 'EIC Approval for Posting',
+                                      reason: null),
+                                  _buildApprovalTile(
+                                      context: context,
+                                      approved: topicView['projectStep'] >= 14,
+                                      label: 'Posted',
+                                      reason: null),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -661,13 +779,55 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
               ),
               topicViewer.when(
                 data: (topicView) {
+                  if (latestContent == null) {
+                    return const CircularProgressIndicator();
+                  }
                   return _conditionalRenderApproval(
-                      _canUserEditFuture, topicView, hasPubmatImages);
+                    _canUserEditFuture,
+                    topicView,
+                    latestContent.pubmatUrls.isNotEmpty,
+                  );
                 },
                 error: (error, stack) => Text('Error: $error'),
                 loading: () => const CircularProgressIndicator(),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  SizedBox _buildPreviewContentDialog(
+      AsyncValue<TopicContentModel> taskContent,
+      Map<String, dynamic> topicView,
+      BuildContext context,
+      AsyncValue<List<String>> allImageView) {
+    return SizedBox(
+      width: MediaQuery.of(context).size.width * 0.8,
+      child: SingleChildScrollView(
+        child: taskContent.when(
+          data: (viewContent) {
+            if (viewContent.pubmatUrls.isEmpty &&
+                viewContent.headline.isEmpty &&
+                viewContent.writtenContent.isEmpty) {
+              return const Center(
+                child: Text(
+                  'Content Preview will appear here once available',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            }
+
+            return _articlePreview(viewContent, context, topicView);
+          },
+          error: (error, stack) => Center(child: Text('Error: $error')),
+          loading: () => const Center(
+            child: CircularProgressIndicator(),
           ),
         ),
       ),
@@ -695,8 +855,8 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         ),
         const SizedBox(height: 10),
         viewContent.pubmatUrls.isNotEmpty
-            ? SizedBox(
-                height: MediaQuery.of(context).size.height * .35,
+            ? AspectRatio(
+                aspectRatio: 1, // Always square
                 child: PageView.builder(
                   itemCount: viewContent.pubmatUrls.length,
                   controller: _pageController,
@@ -709,6 +869,8 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                         borderRadius: BorderRadius.circular(20),
                         child: Image.network(
                           item.elementAt(index),
+                          fit: BoxFit.contain,
+                          alignment: Alignment.center,
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
                             return Center(
@@ -722,12 +884,9 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                             );
                           },
                           errorBuilder: (context, error, stackTrace) {
-                            return const Text('Failed to load image');
+                            return const Center(
+                                child: Text('Failed to load image'));
                           },
-                          fit: BoxFit.cover,
-                          alignment: Alignment.center,
-                          width: MediaQuery.of(context).size.width * .8,
-                          height: MediaQuery.of(context).size.height * .35,
                         ),
                       ),
                     );
@@ -745,6 +904,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         const SizedBox(height: 10),
         Text(
           viewContent.writtenContent,
+          textAlign: TextAlign.justify,
           softWrap: true,
           style: const TextStyle(
             color: Colors.black,
@@ -777,109 +937,113 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
             viewContent.writtenStatus == 'Submitted')
           const Align(
             alignment: Alignment.bottomCenter,
-            child: Text(
-              'Approve all subtask content!',
-              style: TextStyle(
-                color: Colors.green,
-                fontSize: 15,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'Approve all subtask content!',
+                style: TextStyle(
+                  color: Colors.green,
+                  fontSize: 15,
+                ),
               ),
             ),
           ),
         if (viewContent.pubmatStatus == 'Submitted' &&
             viewContent.writtenStatus == 'Submitted')
           FutureBuilder<bool>(
-              future: _canUserEditFuture,
-              builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                if (snapshot.hasData) {
-                  final userCanEdit = snapshot.data!;
+            future: _canUserEditFuture,
+            builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+              if (snapshot.hasData) {
+                final userCanEdit = snapshot.data!;
 
-                  return userCanEdit
-                      ? Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Confirm Approval'),
-                                      content: const Text(
-                                          'Are you sure you want to approve these works?'),
-                                      actions: <Widget>[
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(context).pop(false),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () async {
-                                            Navigator.of(context).pop(true);
-
-                                            print('works approved');
-                                          },
-                                          child: const Text('Approve'),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-
-                                if (confirm == true) {
-                                  try {
-                                    await firebaseFunctions.massApprove(
-                                      widget.id,
-                                      viewContent.pubmatId,
-                                      viewContent.writingId,
-                                    );
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Works approved successfully!'),
-                                        backgroundColor: Colors.green,
+                return userCanEdit
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: const Text('Confirm Approval'),
+                                    content: const Text(
+                                        'Are you sure you want to approve these works?'),
+                                    actions: <Widget>[
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(false),
+                                        child: const Text('Cancel'),
                                       ),
-                                    );
-                                  } catch (error) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                            'Failed to approve works: $error'),
-                                        backgroundColor: Colors.red,
+                                      TextButton(
+                                        onPressed: () async {
+                                          Navigator.of(context).pop(true);
+
+                                          print('works approved');
+                                        },
+                                        child: const Text('Approve'),
                                       ),
-                                    );
-                                  }
+                                    ],
+                                  );
+                                },
+                              );
+
+                              if (confirm == true) {
+                                try {
+                                  await firebaseFunctions.massApprove(
+                                    widget.id,
+                                    viewContent.pubmatId,
+                                    viewContent.writingId,
+                                  );
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('Works approved successfully!'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                } catch (error) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          'Failed to approve works: $error'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
                                 }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                elevation: 10,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              elevation: 10,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Align(
-                                alignment: Alignment.center,
-                                child: Text(
-                                  'Approve Topic Contents',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                  ),
+                            ),
+                            child: const Align(
+                              alignment: Alignment.center,
+                              child: Text(
+                                'Approve Topic Contents',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
-                          ],
-                        )
-                      : const SizedBox.shrink();
-                } else if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else {
-                  return const CircularProgressIndicator();
-                }
-              })
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink();
+              } else if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              } else {
+                return const CircularProgressIndicator();
+              }
+            },
+          )
       ],
     );
   }
@@ -939,12 +1103,15 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         ),
         child: const Align(
           alignment: Alignment.center,
-          child: Text(
-            'Timeline',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              'Timeline',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
@@ -1325,71 +1492,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
     );
   }
 
-  Widget _buildApprovalDialogContent(Map<String, dynamic> topicView) {
-    final String status = topicView['status'] ?? '';
-    List<_ApprovalRoleConfig> approvalConfigs = [];
-
-    switch (status) {
-      case 'pendingAPR':
-      case 'To Do':
-      case 'Doing':
-        approvalConfigs = [
-          _ApprovalRoleConfig(
-              approvedKey: 'eicApproved',
-              roleName: 'Editor-In-Chief',
-              rejectionReasonKey: 'eicRejected'),
-          _ApprovalRoleConfig(
-              approvedKey: 'AssociateApproved',
-              roleName: 'Associate Editor',
-              rejectionReasonKey: 'AssociateRejected'),
-          _ApprovalRoleConfig(
-              approvedKey: 'ManagingApproved',
-              roleName: 'Managing Editor',
-              rejectionReasonKey: 'ManagingRejected'),
-        ];
-        break;
-      case 'pendingPST':
-      case 'Done':
-        approvalConfigs = [
-          _ApprovalRoleConfig(
-              approvedKey: 'eicApprovedPST',
-              roleName: 'Editor-In-Chief for Posting',
-              rejectionReasonKey: 'eicRejected'),
-          _ApprovalRoleConfig(
-              approvedKey: 'AssociateApprovedPST',
-              roleName: 'Associate Editor for Posting',
-              rejectionReasonKey: 'AssociateRejected'),
-          _ApprovalRoleConfig(
-              approvedKey: 'ManagingApprovedPST',
-              roleName: 'Managing Editor for Posting',
-              rejectionReasonKey: 'ManagingRejected'),
-        ];
-        break;
-      default:
-        // For any other status, approvalConfigs will be empty.
-        break;
-    }
-
-    if (approvalConfigs.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      mainAxisSize: MainAxisSize.min, // Important for AlertDialog content
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: approvalConfigs.map((config) {
-        return _buildApprovalTile(
-          context: context,
-          approved: topicView[config.approvedKey],
-          role: config.roleName,
-          reason: topicView.containsKey(config.rejectionReasonKey)
-              ? topicView[config.rejectionReasonKey]
-              : null,
-        );
-      }).toList(),
-    );
-  }
-
   void showAllImages(
     BuildContext context,
     AsyncValue<List<String>> retAllImage,
@@ -1734,25 +1836,22 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
   Widget _buildApprovalTile({
     required BuildContext context,
     required bool? approved,
-    required String role,
+    required String label,
     required String? reason,
   }) {
     Widget leadingIcon;
     Widget trailingIcon;
-    if (approved == true) {
-      leadingIcon = const Icon(Icons.check_circle, color: Colors.green);
-      trailingIcon = const SizedBox.shrink();
-    } else if (approved == false) {
+    if (reason != null) {
       trailingIcon = IconButton(
         icon: const Icon(Icons.help_outline, color: Colors.grey),
         onPressed: () async {
           await showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              title: Text('$role Rejection Reason'),
+              title: Text('$label Rejection Reason'),
               content: reason != null
                   ? Text('Reason: $reason')
-                  : Text('No specific reason provided.'),
+                  : const Text('No specific reason provided.'),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
@@ -1766,6 +1865,9 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
       );
 
       leadingIcon = const Icon(Icons.cancel, color: Colors.red);
+    } else if (approved == true) {
+      leadingIcon = const Icon(Icons.check_circle, color: Colors.green);
+      trailingIcon = const SizedBox.shrink();
     } else {
       leadingIcon = const Icon(Icons.help_outline, color: Colors.grey);
       trailingIcon = const SizedBox.shrink();
@@ -1773,12 +1875,18 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
 
     return ListTile(
       leading: leadingIcon,
-      title: Text(
-        '$role Approved',
-        style: const TextStyle(
-          color: Color(0xFF505050),
-          fontSize: 13,
-          fontWeight: FontWeight.w400,
+      title: Align(
+        alignment: Alignment.centerLeft,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF505050),
+              fontSize: 13,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
         ),
       ),
       trailing: trailingIcon,
