@@ -61,12 +61,26 @@ class _SubTaskViewState extends ConsumerState<SubTaskView> {
                     ),
                     child: GestureDetector(
                       onTap: () {
-                        if (tasksView.value!.length >= 2) {
-                          Fluttertoast.showToast(
-                              msg: "Cannot assign more than 2 tasks in a topic",
-                              toastLength: Toast.LENGTH_SHORT,
-                              backgroundColor: const Color(0XFFD23737));
-                          print('no more tasks allowed to create');
+                        final isPhoto = widget.section == 'Photojournalism';
+                        final maxTasks = isPhoto ? 3 : 2;
+                        final currentTasks = tasksView.value?.length ?? 0;
+
+                        if (currentTasks >= maxTasks) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text("Task Limit Reached"),
+                              content: Text(
+                                "Cannot assign more than $maxTasks tasks in a topic",
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: const Text("OK"),
+                                ),
+                              ],
+                            ),
+                          );
                         } else {
                           Navigator.push(
                             context,

@@ -19,6 +19,7 @@ import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:multi_image_picker_view/multi_image_picker_view.dart';
+import 'package:timeline_tile/timeline_tile.dart';
 
 class DoAssignedTaskPage extends ConsumerStatefulWidget {
   final String topicId, taskId, section, type, status;
@@ -48,7 +49,9 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
   late Future<bool> _canUserEditFuture;
   final TextEditingController _commentController = TextEditingController();
   bool isContentSubmitted = false;
+  bool isProofRead = false;
   bool wasSubmitPressed = false;
+  bool imagesSelected = false;
 
   Future<void> _refreshData() async {
     ref.invalidate(taskWrittenProvider);
@@ -88,8 +91,8 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
     maxImages: 200,
     picker: (allowMultiple) async {
       final pickedFiles = await ImagePicker().pickMultiImage(
-        maxWidth: 1024,
-        maxHeight: 1024,
+        maxWidth: 2048,
+        maxHeight: 2048,
         imageQuality: 100,
       );
 
@@ -664,11 +667,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                     headerText: 'Task Content',
                                     trailing: IconButton(
                                       onPressed: () {
-                                        Fluttertoast.showToast(
-                                            msg: "guide thing opened",
-                                            toastLength: Toast.LENGTH_LONG,
-                                            backgroundColor:
-                                                const Color(0XFFD23737));
+                                        _taskHelperDialog(context);
                                       },
                                       icon: const Icon(
                                         Icons.help_outline,
@@ -845,6 +844,146 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<dynamic> _taskHelperDialog(BuildContext context) {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.edit_note_rounded, color: Color(0xFF020B40)),
+              SizedBox(width: 8),
+              Text(
+                "Task Guide",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF020B40),
+                ),
+              ),
+            ],
+          ),
+          content: SizedBox(
+              width: MediaQuery.of(context).size.width * .8,
+              child: switch (widget.type) {
+                'Writing' => _guideBuilder(stepGuideWriting, 'write'),
+                'Pubmat' => _guideBuilder(stepGuidePubmat, 'pubmat'),
+                'Photography' => _guideBuilder(stepGuidePhotography, 'photo'),
+                _ => const SizedBox.shrink(),
+              }),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  ListView _guideBuilder(
+      List<Map<String, String>> guideType, String guideName) {
+    return ListView.builder(
+      itemCount: guideType.length,
+      shrinkWrap: true,
+      itemBuilder: (context, index) {
+        String stepGuideName = guideType[index]['section']!;
+        String stepGuideSubt = guideType[index]['subtitle']!;
+
+        bool isComplete = false;
+
+        switch (guideName) {
+          case 'write':
+            // Assuming: 0 = headline, 1 = content, 2 = proofread, 3 = submit
+            if (index == 0 && _headlineController.text.isNotEmpty) {
+              isComplete = true;
+            } else if (index == 1 && _contentController.text.isNotEmpty) {
+              isComplete = true;
+            } else if (index == 2 && isProofRead) {
+              isComplete = true;
+            } else if (index == 3 && wasSubmitPressed) {
+              isComplete = true;
+            }
+            break;
+
+          case 'photo':
+            // Assuming: 0 = caption, 1 = images, 2 = submit
+            if (index == 0 && _captionController.text.isNotEmpty) {
+              isComplete = true;
+            } else if (index == 1 && imagesSelected) {
+              isComplete = true;
+            } else if (index == 2 && wasSubmitPressed) {
+              isComplete = true;
+            }
+            break;
+
+          case 'pubmat':
+            // Assuming: 0 = images, 1 = submit
+            if (index == 0 && imagesSelected) {
+              isComplete = true;
+            } else if (index == 1 && wasSubmitPressed) {
+              isComplete = true;
+            }
+            break;
+
+          default:
+            isComplete = false;
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Text Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      stepGuideName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF020B40),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      stepGuideSubt,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Status Icon
+              CircleAvatar(
+                radius: 14,
+                backgroundColor:
+                    isComplete ? Colors.green[100] : Colors.grey[300],
+                child: Icon(
+                  isComplete ? Icons.check_circle : Icons.help_outline,
+                  color: isComplete
+                      ? const Color.fromARGB(255, 121, 213, 255)
+                      : Colors.grey,
+                  size: 18,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1068,6 +1207,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
 
                       setState(() {
                         isContentSubmitted = false;
+                        isProofRead = true;
                       });
 
                       TextEditingController reviewController =
@@ -1573,6 +1713,7 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
                                   MultiImagePickerView(
                                     controller: controller,
                                     builder: (context, imageFile) {
+                                      imagesSelected = true;
                                       return Stack(
                                         children: [
                                           DefaultDraggableItemWidget(
@@ -2008,3 +2149,48 @@ class _DoAssignedTaskPageState extends ConsumerState<DoAssignedTaskPage> {
     );
   }
 }
+
+final List<Map<String, String>> stepGuideWriting = [
+  {
+    "section": "Headline",
+    "subtitle": "Create Article Headline",
+  },
+  {
+    "section": "Content",
+    "subtitle": "Create Article Content",
+  },
+  {
+    "section": "Proofread",
+    "subtitle": "Proofread your Work",
+  },
+  {
+    "section": "Submit",
+    "subtitle": "Confirm Submission",
+  },
+];
+
+final List<Map<String, String>> stepGuidePubmat = [
+  {
+    "section": "Select Image/s",
+    "subtitle": "Select the Image/s to upload",
+  },
+  {
+    "section": "Upload",
+    "subtitle": "Upload Images to Storage",
+  },
+];
+
+final List<Map<String, String>> stepGuidePhotography = [
+  {
+    "section": "Caption",
+    "subtitle": "Create a Short Caption",
+  },
+  {
+    "section": "Select Images",
+    "subtitle": "Selec the Images to upload",
+  },
+  {
+    "section": "Upload",
+    "subtitle": "Upload Images to Storage",
+  },
+];

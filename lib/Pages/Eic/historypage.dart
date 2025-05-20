@@ -41,7 +41,7 @@ class _TopicHistoryPageState extends ConsumerState<TopicHistoryPage> {
         filteredTopics = historyData.value!;
       } else {
         filteredTopics = historyData.value!
-            .where((topic) => topic.sectionName == selectedSection)
+            .where((topic) => topic.section == selectedSection)
             .toList();
       }
     }
@@ -88,7 +88,7 @@ class _TopicHistoryPageState extends ConsumerState<TopicHistoryPage> {
                         child: ParentTopicCard(
                           id: item.id,
                           topicTitle: item.title,
-                          section: item.sectionName!,
+                          section: item.section,
                           status: item.status,
                           deadline: item.deadline,
                           totalSubtask: item.totalSubtask,

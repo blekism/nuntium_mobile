@@ -31,6 +31,7 @@ class ProviderInvalidator {
     ref.invalidate(userSectionProvider);
     ref.invalidate(historyProvider);
     ref.invalidate(postsForApprovalProvider);
+    ref.invalidate(searchItemsProvider);
 
     print('all providers have been invalidated');
   }

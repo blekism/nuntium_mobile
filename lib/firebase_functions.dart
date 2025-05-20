@@ -940,7 +940,11 @@ class FirebaseFunctions {
           .orderBy('created_at', descending: true)
           .snapshots()
           .asyncMap((snapshot) {
-        return Future.wait(snapshot.docs.map((topicDoc) async {
+        final filteredDocs = snapshot.docs.where((doc) {
+          return !doc.data().containsKey('eicApproved') ||
+              doc['eicApproved'] != false;
+        }).toList();
+        return Future.wait(filteredDocs.map((topicDoc) async {
           final topicData = topicDoc.data();
           final deadline = topicDoc['deadline'] as Timestamp;
           final dateString =
@@ -1001,8 +1005,12 @@ class FirebaseFunctions {
           .orderBy('created_at', descending: true) // ✅ Allowed
           .snapshots()
           .asyncMap((snapshot) {
-        final filteredDocs =
-            snapshot.docs.where((doc) => doc['status'] != 'Done').toList();
+        final filteredDocs = snapshot.docs.where((doc) {
+          return doc['status'] != 'Done' &&
+              (!doc.data().containsKey('eicApproved') ||
+                  doc['eicApproved'] != false);
+        }).toList();
+
         return Future.wait(filteredDocs.map((topicDoc) async {
           final topicData = topicDoc.data();
           final deadline = topicDoc['deadline'] as Timestamp;
@@ -1063,42 +1071,29 @@ class FirebaseFunctions {
     Query query = db.collection('tasks');
 
     if (sectionName != 'All') {
-      // history view for eic, managing, associate
       query = query.where('section', isEqualTo: sectionName);
     }
-    // For 'All', we don't add a section filter, effectively getting all tasks.
-    // We always order by deadline.
-    query = query.where('status', isEqualTo: 'Done');
-    query = query.orderBy('created_at', descending: true);
+
+    // Fetch all tasks with status Done or Rejected, then filter locally
+    query = query.where('status',
+        whereIn: ['Done', 'Rejected']).orderBy('created_at', descending: true);
 
     return query.snapshots().asyncMap((snapshot) async {
-      // Fetch all section names first to minimize reads inside the loop
-      final sectionIds = snapshot.docs
-          .map((doc) => doc['section'] as String?)
-          .where((id) => id != null)
-          .toSet();
-      final sectionNames = <String, String>{};
-      if (sectionIds.isNotEmpty) {
-        final sectionDocs = await db
-            .collection('sections')
-            .where(FieldPath.documentId, whereIn: sectionIds.toList())
-            .get();
-        for (var doc in sectionDocs.docs) {
-          // Assuming the field name for the section name is 'sectionType'
-          sectionNames[doc.id] = doc.data()['sectionType'] as String? ?? doc.id;
-        }
-      }
-
       return Future.wait(snapshot.docs.map((topicDoc) async {
-        final topicData =
-            topicDoc.data() as Map<String, dynamic>; // Cast to Map
+        final topicData = topicDoc.data() as Map<String, dynamic>;
+
+        final status = topicData['status'];
+        final eicApproved = topicData['eicApproved'] as bool? ?? true;
+
+        // Apply local filter: include 'Done' or 'Rejected + not approved'
+        if (status == 'Rejected' && eicApproved) {
+          return null; // Skip if Rejected but eicApproved is true
+        }
+
         final deadline = topicDoc['deadline'] as Timestamp;
         final dateString =
             DateFormat('dd/MM/yyyy hh:mm a').format(deadline.toDate());
-        final topicSectionId = topicData['section'] as String? ?? '';
-
-        // Get section name from the pre-fetched map, fallback to ID
-        final sectionName = sectionNames[topicSectionId] ?? topicSectionId;
+        final topicSectionName = topicData['section'] ?? '';
 
         final assignedTaskData =
             await topicDoc.reference.collection('assigned_tasks').get();
@@ -1133,11 +1128,9 @@ class FirebaseFunctions {
         return Topic(
           id: topicDoc.id,
           title: topicData['title'] ?? '',
-          section: topicSectionId, // Keep the original section ID here
-          sectionName: sectionName, // Add the fetched section name
-          status: topicData['status'] ?? '',
+          section: topicSectionName,
+          status: status,
           deadline: dateString,
-          // Ensure correct type casting or provide default values
           totalSubtask: (topicData['total_subtask'] as num?)?.toInt() ?? 0,
           completedSubtask:
               (topicData['completed_subtask'] as num?)?.toInt() ?? 0,
@@ -1145,10 +1138,11 @@ class FirebaseFunctions {
           members: members,
           projectStep: (topicData['projectStep'] as num?)?.toInt() ?? 0,
         );
-      }).toList());
+      }).toList())
+          .then((topics) =>
+              topics.whereType<Topic>().toList()); // Filter out nulls
     }).handleError((e) {
       print('Error fetching topic history: $e');
-      // Consider returning an empty list or rethrowing a more specific error
       return <Topic>[]; // Return empty list on error
     });
   }

@@ -22,17 +22,6 @@ class _EicHomepageState extends ConsumerState<EicHomepage> {
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Sections',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-          ),
           const SizedBox(height: 10),
           Expanded(
             child: sectionView.when(

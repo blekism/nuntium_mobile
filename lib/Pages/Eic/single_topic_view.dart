@@ -276,9 +276,19 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     final deadline = topicView['deadline'] as Timestamp;
                     final dateString = DateFormat('dd/MM/yyyy hh:mm a')
                         .format(deadline.toDate());
+                    final steps = getProgressSteps(topicView);
 
                     int totalSubtask = topicView['total_subtask'];
                     int completedSubtask = topicView['completed_subtask'];
+
+                    final currentStepIndex = steps.indexWhere(
+                        (step) => step.step == topicView['projectStep']);
+                    final bool hasNextStep =
+                        currentStepIndex + 1 < steps.length;
+                    final currentStepLabel =
+                        currentStepIndex != -1 && hasNextStep
+                            ? steps[currentStepIndex + 1].label
+                            : 'Content has been Published';
 
                     return SingleChildScrollView(
                       child: SizedBox(
@@ -667,7 +677,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Text(
-                                    '${topicView['projectStep']} of 14 steps completed!',
+                                    '${topicView['projectStep']} of ${steps.last.step} steps completed!',
                                     style: const TextStyle(
                                       color: Colors.black,
                                       fontSize: 18,
@@ -676,7 +686,7 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                   ),
                                   const SizedBox(height: 10),
                                   Text(
-                                    'Current Status: Pending Approval of Managing Editor',
+                                    'Next Step: $currentStepLabel',
                                     style: const TextStyle(
                                       color: Colors.black,
                                       fontSize: 16,
@@ -684,85 +694,23 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                     ),
                                   ),
                                   const SizedBox(height: 10),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 1,
-                                      label: 'Topic Created',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 2,
-                                      label: 'Associate Editor Approval',
-                                      reason: topicView
-                                              .containsKey('AssociateRejected')
-                                          ? topicView['AssociateRejected']
-                                          : null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 3,
-                                      label: 'Managing Editor Approval',
-                                      reason: topicView
-                                              .containsKey('ManagingRejected')
-                                          ? topicView['ManagingRejected']
-                                          : null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 4,
-                                      label: 'Editor-in-Chief Approval',
-                                      reason:
-                                          topicView.containsKey('eicRejected')
-                                              ? topicView['eicRejected']
-                                              : null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 5,
-                                      label: 'Pubmat Task Auto Created',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 6,
-                                      label: 'Writing Task Auto Created',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 7,
-                                      label: 'Pubmat Task Submitted',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 8,
-                                      label: 'Writing Task Submitted',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 9,
-                                      label: 'Pubmat Task Approved',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 10,
-                                      label: 'Writing Task Approved',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 11,
-                                      label: 'Associate Approval for Posting',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 12,
-                                      label: 'Managing Approval for Posting',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 13,
-                                      label: 'EIC Approval for Posting',
-                                      reason: null),
-                                  _buildApprovalTile(
-                                      context: context,
-                                      approved: topicView['projectStep'] >= 14,
-                                      label: 'Posted',
-                                      reason: null),
+                                  Column(
+                                    children: steps.map((step) {
+                                      final approved =
+                                          topicView['projectStep'] >= step.step;
+                                      final reason = step.reasonKey != null &&
+                                              topicView
+                                                  .containsKey(step.reasonKey)
+                                          ? topicView[step.reasonKey]
+                                          : null;
+                                      return _buildApprovalTile(
+                                        context: context,
+                                        approved: approved,
+                                        label: step.label,
+                                        reason: reason,
+                                      );
+                                    }).toList(),
+                                  ),
                                 ],
                               ),
                             ),
@@ -1130,7 +1078,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
         }
@@ -1138,93 +1085,87 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
         final bool userCanEdit = snapshot.data ?? false;
         final String status = topicView['status'] ?? '';
 
-        List<Widget> widgets = [];
-
-        if (status == 'pendingPST' && hasPubmatImages) {
-          widgets.add(
-            const Align(
+        // Helper for a colored info message
+        Widget infoMsg(String msg, {Color color = Colors.green}) => Align(
               alignment: Alignment.bottomCenter,
-              child: Text(
-                'This Topic is PENDING FOR PUBLISHING',
-                style: TextStyle(color: Colors.green, fontSize: 15),
-              ),
-            ),
-          );
-        } else if (status == 'pendingPST' && !hasPubmatImages) {
-          widgets.add(
-            const Align(
-              alignment: Alignment.bottomCenter,
-              child: Text(
-                'This Topic has no uploaded PUBMATS yet.',
-                style: TextStyle(color: Colors.green, fontSize: 15),
-              ),
-            ),
-          );
-        }
+              child: Text(msg, style: TextStyle(color: color, fontSize: 15)),
+            );
 
-        if (showShowApprovalPST(topicView, userCanEdit) &&
-            status == 'pendingPST') {
-          widgets.add(
-            Row(
+        // Helper for a disabled button
+        Widget disabledButton(String label) => ElevatedButton(
+              onPressed: null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey,
+                elevation: 10,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Align(
+                alignment: Alignment.center,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            );
+
+        // Approval for Publishing (PST)
+        if (status == 'pendingPST') {
+          if (!hasPubmatImages) {
+            return infoMsg('This Topic has no uploaded PUBMATS yet.');
+          }
+          if (showShowApprovalPST(topicView, userCanEdit)) {
+            return Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 ElevatedButton(
-                  onPressed: hasPubmatImages
-                      ? () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                title: const Text('Confirm Approval'),
-                                content: const Text(
-                                    'Are you sure you want to approve this now?'),
-                                actions: <Widget>[
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(false),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop(true);
-                                    },
-                                    child: const Text('Approve'),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-
-                          if (confirm == true) {
-                            try {
-                              await firebaseFunctions.updateToPost(widget.id);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Topic approved successfully!'),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        }
-                      : () async {
-                          Fluttertoast.showToast(
-                              msg:
-                                  "Topic has no pubmat yet. cannot approve for publishing",
-                              toastLength: Toast.LENGTH_SHORT,
-                              backgroundColor: const Color(0XFFD23737));
-                        },
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Confirm Approval'),
+                          content: const Text(
+                              'Are you sure you want to approve this now?'),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Approve'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                    if (confirm == true) {
+                      try {
+                        await firebaseFunctions.updateToPost(widget.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Topic approved successfully!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: hasPubmatImages
-                        ? Colors.green
-                        : const Color.fromARGB(87, 76, 175, 79),
+                    backgroundColor: Colors.green,
                     elevation: 10,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -1243,50 +1184,26 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                   ),
                 ),
               ],
-            ),
-          );
-        } else if (showShowPSTRespondent(topicView, userCanEdit) &&
-            status == 'pendingPST') {
-          widgets.add(
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: TextButton(
-                onPressed: () {},
-                child: const Text(
-                  'You have already responded to this approval',
-                  style: TextStyle(color: Colors.red, fontSize: 15),
-                ),
-              ),
-            ),
-          );
-        } else if (topicView['role'] == 'eic' &&
-            !topicView.containsKey('eicApprovedPST') &&
-            status == 'pendingPST') {
-          widgets.add(
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: TextButton(
-                onPressed: () {},
-                child: const Text(
-                  'Waiting for approval of other board members',
-                  style: TextStyle(color: Colors.red, fontSize: 15),
-                ),
-              ),
-            ),
-          );
+            );
+          }
+          if (showShowPSTRespondent(topicView, userCanEdit)) {
+            return infoMsg('You have already responded to this approval',
+                color: Colors.red);
+          }
+          if (topicView['role'] == 'eic' &&
+              !topicView.containsKey('eicApprovedPST')) {
+            return infoMsg('Waiting for approval of other board members',
+                color: Colors.red);
+          }
+          return infoMsg('This Topic is PENDING FOR PUBLISHING');
         }
 
-        if (status == 'pendingAPR' || status == 'Rejected') {
-          widgets.add(
-            const Align(
-              alignment: Alignment.bottomCenter,
-              child: Text(
-                'This Topic is PENDING FOR APPROVAL',
-                style: TextStyle(color: Colors.red, fontSize: 15),
-              ),
-            ),
-          );
-
+        // Approval for Creation (APR) or Rejected
+        if ((status == 'pendingAPR' || status == 'Rejected') &&
+            !topicView.containsKey('eicApproved')) {
+          List<Widget> widgets = [
+            infoMsg('This Topic is PENDING FOR APPROVAL', color: Colors.red),
+          ];
           if (showShowApprovalAPR(topicView, userCanEdit) &&
                   status == 'pendingAPR' ||
               status == 'Rejected') {
@@ -1310,16 +1227,14 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                 child: const Text('Cancel'),
                               ),
                               TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop(true);
-                                },
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
                                 child: const Text('Approve'),
                               ),
                             ],
                           );
                         },
                       );
-
                       if (confirm == true) {
                         try {
                           await firebaseFunctions.approveToCreate(widget.id);
@@ -1363,7 +1278,6 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     onPressed: () async {
                       final TextEditingController rejectionReasonController =
                           TextEditingController();
-
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (BuildContext context) {
@@ -1392,30 +1306,24 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                                 child: const Text('Cancel'),
                               ),
                               TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop(true);
-                                },
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
                                 child: const Text('Reject'),
                               ),
                             ],
                           );
                         },
                       );
-
                       if (confirm == true) {
                         try {
                           final rejectionReason =
                               rejectionReasonController.text;
-
-                          // Pass the rejection reason to the database
                           await firebaseFunctions.rejectToCreate(
                             widget.id,
                             rejectionReason,
                             topicView['role'],
                           );
-
                           ref.invalidate(topicDataProvider(widget.id));
-
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Topic rejected successfully!'),
@@ -1457,37 +1365,27 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
           } else if (showShowAPRRespondent(topicView, userCanEdit) &&
                   status == 'pendingAPR' ||
               status == 'Rejected') {
-            widgets.add(
-              const Align(
-                alignment: Alignment.bottomCenter,
-                child: Text(
-                  'You have already responded to this approval!',
-                  style: TextStyle(color: Colors.red, fontSize: 15),
-                ),
-              ),
-            );
+            widgets.add(infoMsg('You have already responded to this approval!',
+                color: Colors.red));
           } else if (topicView['role'] == 'eic' &&
               !topicView.containsKey('eicApproved') &&
               status == 'pendingAPR') {
-            widgets.add(
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: TextButton(
-                  onPressed: () {},
-                  child: const Text(
-                    'Waiting for approval of other board members',
-                    style: TextStyle(color: Colors.red, fontSize: 15),
-                  ),
-                ),
-              ),
-            );
+            widgets.add(infoMsg('Waiting for approval of other board members',
+                color: Colors.red));
           }
+          return Column(mainAxisSize: MainAxisSize.min, children: widgets);
         }
 
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: widgets,
-        );
+        // Rejected by EIC
+        if (status == 'Rejected' &&
+            topicView.containsKey('eicApproved') &&
+            topicView['eicApproved'] == false) {
+          return infoMsg('Topic has been rejected by the Editor-In-Chief',
+              color: Colors.red);
+        }
+
+        // Default: nothing to show
+        return const SizedBox.shrink();
       },
     );
   }
@@ -1894,14 +1792,59 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
   }
 }
 
-class _ApprovalRoleConfig {
-  final String approvedKey;
-  final String roleName;
-  final String rejectionReasonKey;
+class ProgressStep {
+  final int step;
+  final String label;
+  final String? reasonKey; // The key in topicView for rejection reason
 
-  _ApprovalRoleConfig({
-    required this.approvedKey,
-    required this.roleName,
-    required this.rejectionReasonKey,
-  });
+  ProgressStep(this.step, this.label, {this.reasonKey});
+}
+
+// In your build method or a helper function:
+List<ProgressStep> getProgressSteps(Map<String, dynamic> topicView) {
+  final type = topicView['section']; // Adjust this key to your actual type key
+
+  if (type == 'Photojournalism') {
+    return [
+      ProgressStep(1, 'Topic Created'),
+      ProgressStep(2, 'Associate Editor Approval',
+          reasonKey: 'AssociateRejected'),
+      ProgressStep(3, 'Managing Editor Approval',
+          reasonKey: 'ManagingRejected'),
+      ProgressStep(4, 'Editor-in-Chief Approval', reasonKey: 'eicRejected'),
+      ProgressStep(5, 'Subtask 1 Created'),
+      ProgressStep(6, 'Subtask 2 Created'),
+      ProgressStep(7, 'Subtask 3 Created'),
+      ProgressStep(8, 'Member 1 Submission'),
+      ProgressStep(9, 'Member 2 Submission'),
+      ProgressStep(10, 'Member 3 Submission'),
+      ProgressStep(11, 'Subtask 1 Approval'),
+      ProgressStep(12, 'Subtask 2 Approval'),
+      ProgressStep(13, 'Subtask 3 Approval'),
+      ProgressStep(14, 'Associate Approval for Posting'),
+      ProgressStep(15, 'Managing Approval for Posting'),
+      ProgressStep(16, 'EIC Approval for Posting'),
+      ProgressStep(17, 'Article Posted'),
+    ];
+  } else {
+    // Default: Writing and Pubmat
+    return [
+      ProgressStep(1, 'Topic Created'),
+      ProgressStep(2, 'Associate Editor Approval',
+          reasonKey: 'AssociateRejected'),
+      ProgressStep(3, 'Managing Editor Approval',
+          reasonKey: 'ManagingRejected'),
+      ProgressStep(4, 'Editor-in-Chief Approval', reasonKey: 'eicRejected'),
+      ProgressStep(5, 'Pubmat Task Auto Created'),
+      ProgressStep(6, 'Writing Task Auto Created'),
+      ProgressStep(7, 'Pubmat Task Submitted'),
+      ProgressStep(8, 'Writing Task Submitted'),
+      ProgressStep(9, 'Pubmat Task Approved'),
+      ProgressStep(10, 'Writing Task Approved'),
+      ProgressStep(11, 'Associate Approval for Posting'),
+      ProgressStep(12, 'Managing Approval for Posting'),
+      ProgressStep(13, 'EIC Approval for Posting'),
+      ProgressStep(14, 'Posted'),
+    ];
+  }
 }
