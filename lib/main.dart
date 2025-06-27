@@ -258,6 +258,7 @@ class _AuthCheckerState extends State<AuthChecker> {
       if (mounted) {
         if (userDoc.exists) {
           final role = userDoc['role'] as String?;
+          print('user role upon login is $role');
           if (role != null) {
             setState(() {
               userRole = role;
@@ -334,9 +335,10 @@ class _AuthCheckerState extends State<AuthChecker> {
                 userRole: userRole,
               );
             // case 'contributor':
-            //   return ContribHomePage(
+            //   return SecMemberLandingPage(
             //     onLogout: _onSignOut,
             //     userRole: userRole,
+            //     uid: snapshot.data!.uid,
             //   );
             case 'section_writer':
               return SecMemberLandingPage(

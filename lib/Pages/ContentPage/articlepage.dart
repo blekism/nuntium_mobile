@@ -89,7 +89,8 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
                   const SizedBox(height: 10),
                   _articleTitle(articleView),
                   const SizedBox(height: 10),
-                  _authors(),
+                  _authors(articleView['writingAuthor'],
+                      articleView['pubmatAuthor']),
                   const SizedBox(height: 5),
                   _publishedAt(dateString),
                   const SizedBox(height: 5),
@@ -97,7 +98,7 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
                   const SizedBox(height: 20),
                   _articleImage(articleView, context),
                   const SizedBox(height: 10),
-                  _credits(),
+                  // _credits(),
                   const SizedBox(height: 10),
                   _articleContent(articleView),
                   const SizedBox(height: 10),
@@ -412,18 +413,18 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
     );
   }
 
-  Text _credits() {
-    return Text(
-      'Credits to photo',
-      softWrap: true,
-      maxLines: 3,
-      style: const TextStyle(
-        color: Colors.black,
-        fontSize: 11,
-        fontWeight: FontWeight.w400,
-      ),
-    );
-  }
+  // Text _credits() {
+  //   return Text(
+  //     'Credits to photo',
+  //     softWrap: true,
+  //     maxLines: 3,
+  //     style: const TextStyle(
+  //       color: Colors.black,
+  //       fontSize: 11,
+  //       fontWeight: FontWeight.w400,
+  //     ),
+  //   );
+  // }
 
   SizedBox _articleImage(
       Map<String, dynamic> articleView, BuildContext context) {
@@ -490,11 +491,11 @@ class _ArticlePageState extends ConsumerState<ArticlePage> {
     );
   }
 
-  Align _authors() {
+  Align _authors(String writer, String pubmat) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(
-        'By Blakey-kunnie and Hannah Duppybaby',
+        'By $writer and $pubmat',
         softWrap: true,
         maxLines: 3,
         style: const TextStyle(

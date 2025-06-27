@@ -127,21 +127,21 @@ class _AppdrawerState extends ConsumerState<Appdrawer> {
                   },
                 )
               : const SizedBox.shrink(),
-          widget.userRole != 'reader' &&
-                  FirebaseAuth.instance.currentUser != null
-              ? ListTile(
-                  title: const Text('Work History'),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => TopicHistoryPage(
-                                userId: FirebaseAuth.instance.currentUser!.uid,
-                              )),
-                    );
-                  },
-                )
-              : const SizedBox.shrink(),
+          // widget.userRole != 'reader' &&
+          //         FirebaseAuth.instance.currentUser != null
+          //     ? ListTile(
+          //         title: const Text('Work History'),
+          //         onTap: () {
+          //           Navigator.push(
+          //             context,
+          //             MaterialPageRoute(
+          //                 builder: (context) => TopicHistoryPage(
+          //                       userId: FirebaseAuth.instance.currentUser!.uid,
+          //                     )),
+          //           );
+          //         },
+          //       )
+          //     : const SizedBox.shrink(),
           ListTile(
             title: const Text('Read History'),
             onTap: () {

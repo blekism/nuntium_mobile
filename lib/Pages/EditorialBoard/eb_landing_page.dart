@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuntium_mobile/Pages/AdminSearch/adminsearch.dart';
 import 'package:nuntium_mobile/Pages/Calendar/calendarpage.dart';
 import 'package:nuntium_mobile/Pages/Eic/historypage.dart';
 import 'package:nuntium_mobile/Pages/Eic/instacreate.dart';
@@ -59,6 +60,9 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
             secEd: true,
           ),
           const CalendarPage(),
+          AdminSearchPage(
+            section: section.sectionName,
+          ),
           TopicHistoryPage(sectionName: section.sectionName),
         ];
 
@@ -81,7 +85,8 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
         appbarTitle: switch (_currentIndex) {
           0 => 'Homepage',
           1 => 'Calendar',
-          2 => 'History',
+          2 => 'Search',
+          3 => 'History',
           _ => '',
         },
         hasNavigated: false,
@@ -141,6 +146,14 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
         ),
         BottomNavigationBarItem(
           icon: Image.asset(
+            'assets/images/searchicon.png',
+            width: iconSize,
+            height: iconSize,
+          ),
+          label: 'Search',
+        ),
+        BottomNavigationBarItem(
+          icon: Image.asset(
             'assets/images/history.png',
             width: iconSize,
             height: iconSize,
@@ -197,21 +210,21 @@ class _EbLandingPageState extends ConsumerState<EbLandingPage> {
                       // Navigator.push(context, MaterialPageRoute(builder: (context) => const AnotherPage()));
                     },
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.edit_note), // Example Icon 2
-                    title: const Text('Upload Termly'),
-                    onTap: () {
-                      Navigator.pop(context); // Close the bottom sheet
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const UploadTermlyPage(),
-                        ),
-                      );
-                      // Example: Navigate to another page
-                      // Navigator.push(context, MaterialPageRoute(builder: (context) => const AnotherPage()));
-                    },
-                  ),
+                  // ListTile(
+                  //   leading: const Icon(Icons.edit_note), // Example Icon 2
+                  //   title: const Text('Upload Termly'),
+                  //   onTap: () {
+                  //     Navigator.pop(context); // Close the bottom sheet
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(
+                  //         builder: (context) => const UploadTermlyPage(),
+                  //       ),
+                  //     );
+                  //     // Example: Navigate to another page
+                  //     // Navigator.push(context, MaterialPageRoute(builder: (context) => const AnotherPage()));
+                  //   },
+                  // ),
                 ],
               ),
             );

@@ -14,6 +14,7 @@ class ParentTopicCard extends StatefulWidget {
   final String member1, member2;
   final int otherMembers;
   final int projectStep;
+  final bool isLoading;
 
   const ParentTopicCard({
     super.key,
@@ -28,6 +29,7 @@ class ParentTopicCard extends StatefulWidget {
     required this.member2,
     this.otherMembers = 0,
     required this.projectStep,
+    this.isLoading = false,
   });
 
   @override

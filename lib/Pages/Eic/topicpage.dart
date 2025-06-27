@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuntium_mobile/Pages/Eic/create_task_page.dart';
@@ -111,8 +109,9 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                   );
                 }
 
-                return Padding(
+                return Container(
                   padding: const EdgeInsets.all(15.0),
+                  width: MediaQuery.of(context).size.width * .95,
                   child: ListView.builder(
                     shrinkWrap: true,
                     itemCount: filteredTopics.length,
@@ -139,6 +138,7 @@ class _TopicPageState extends ConsumerState<TopicPage> {
                           member2: member2Image,
                           otherMembers: item.otherMembers,
                           projectStep: item.projectStep,
+                          isLoading: false,
                         ),
                       );
                     },
@@ -147,8 +147,9 @@ class _TopicPageState extends ConsumerState<TopicPage> {
               },
               error: (error, stack) => Center(child: Text('Error: $error')),
               loading: () => const Center(
-                child: CircularProgressIndicator(),
-              ),
+                  child: CircularProgressIndicator(
+                color: Color(0XFF020B40),
+              )),
             ),
           ),
         ],

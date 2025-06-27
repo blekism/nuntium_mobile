@@ -679,6 +679,7 @@ class FirebaseFunctions {
         .collection('posts')
         .where('isTermly', isEqualTo: true)
         .where('needsApproval', isEqualTo: false)
+        .orderBy('datePosted', descending: true)
         .snapshots()
         .map((snapshots) {
       return snapshots.docs.map((doc) {
@@ -2341,15 +2342,17 @@ class FirebaseFunctions {
     }
   }
 
-  Future<List<Topic>> searchTopics() async {
+  Future<List<Topic>> searchTopics(String section) async {
     try {
-      QuerySnapshot userSearch;
+      Query query =
+          db.collection('tasks').orderBy('created_at', descending: true);
 
-      // Determine the query based on user input
-      userSearch = await db
-          .collection('tasks')
-          .orderBy('created_at', descending: true)
-          .get();
+      // Add section filter if not 'All'
+      if (section != 'All') {
+        query = query.where('section', isEqualTo: section);
+      }
+
+      QuerySnapshot userSearch = await query.get();
 
       // Check if the query returned any documents
       if (userSearch.docs.isEmpty) {

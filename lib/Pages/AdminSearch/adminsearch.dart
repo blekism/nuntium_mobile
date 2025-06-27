@@ -7,7 +7,11 @@ import 'package:nuntium_mobile/models/topic.dart';
 import 'package:nuntium_mobile/providers/data_provider.dart';
 
 class AdminSearchPage extends ConsumerStatefulWidget {
-  const AdminSearchPage({super.key});
+  final String section;
+  const AdminSearchPage({
+    super.key,
+    this.section = 'All',
+  });
 
   @override
   ConsumerState<AdminSearchPage> createState() => _AdminSearchPageState();
@@ -52,7 +56,7 @@ class _AdminSearchPageState extends ConsumerState<AdminSearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final searchItemsView = ref.watch(searchItemsProvider);
+    final searchItemsView = ref.watch(searchItemsProvider(widget.section));
 
     return GestureDetector(
       onTap: () {

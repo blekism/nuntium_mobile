@@ -32,37 +32,43 @@ class _EicHomepageState extends ConsumerState<EicHomepage> {
                   );
                 }
 
-                return ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: section.docs.length,
-                    itemBuilder: (context, index) {
-                      final sectionDoc = section.docs[index];
+                return SizedBox(
+                  width: MediaQuery.of(context).size.width * .95,
+                  child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: section.docs.length,
+                      itemBuilder: (context, index) {
+                        final sectionDoc = section.docs[index];
 
-                      final sectionData =
-                          sectionDoc.data() as Map<String, dynamic>?;
+                        final sectionData =
+                            sectionDoc.data() as Map<String, dynamic>?;
 
-                      if (sectionData != null) {
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                              left: 16.0, right: 16.0, bottom: 20),
-                          child: SectionCardTemplate(
-                            imageAsset: sectionData['imageAsset']!,
-                            isLoading: false,
-                            sectionPhoto: sectionData['sectionPhoto']!,
-                            sectionType: sectionData['sectionType']!,
-                            totalMembers: sectionData['totalMembers']!,
-                            totalTask: sectionData['totalTask']!,
-                          ),
-                        );
-                      } else {
-                        return const Center(
-                          child: Text('Error loading section data'),
-                        );
-                      }
-                    });
+                        if (sectionData != null) {
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                                left: 16.0, right: 16.0, bottom: 20),
+                            child: SectionCardTemplate(
+                              imageAsset: sectionData['imageAsset']!,
+                              isLoading: false,
+                              sectionPhoto: sectionData['sectionPhoto']!,
+                              sectionType: sectionData['sectionType']!,
+                              totalMembers: sectionData['totalMembers']!,
+                              totalTask: sectionData['totalTask']!,
+                            ),
+                          );
+                        } else {
+                          return const Center(
+                            child: Text('Error loading section data'),
+                          );
+                        }
+                      }),
+                );
               },
               error: (error, stack) => Center(child: Text('Error: $error')),
-              loading: () => const SectionCardTemplate(isLoading: true),
+              loading: () => const Align(
+                alignment: Alignment.topCenter,
+                child: SectionCardTemplate(isLoading: true),
+              ),
             ),
           )
         ],

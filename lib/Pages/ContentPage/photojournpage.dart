@@ -114,7 +114,7 @@ class _PhotoJournPageState extends ConsumerState<PhotoJournPage> {
                   const SizedBox(height: 10),
                   _articleTitle(articleView),
                   const SizedBox(height: 10),
-                  _authors(),
+                  _authors(articleView['authors'], isPhotojournalism: true),
                   const SizedBox(height: 5),
                   _publishedAt(dateString),
                   const SizedBox(height: 5),
@@ -527,11 +527,31 @@ class _PhotoJournPageState extends ConsumerState<PhotoJournPage> {
     );
   }
 
-  Align _authors() {
+  Widget _authors(dynamic authorData, {bool isPhotojournalism = false}) {
+    String displayText;
+
+    if (isPhotojournalism) {
+      // Expecting a List of authors
+      if (authorData is List) {
+        displayText = 'Photos By ${authorData.join(' and ')}';
+      } else {
+        displayText = 'By Unknown';
+      }
+    } else {
+      // Expecting a writing and pubmat author (as a Map or Tuple)
+      if (authorData is Map &&
+          authorData.containsKey('writer') &&
+          authorData.containsKey('pubmat')) {
+        displayText = 'By ${authorData['writer']} and ${authorData['pubmat']}';
+      } else {
+        displayText = 'By Unknown';
+      }
+    }
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(
-        'By Blakey-kunnie and Hannah Duppybaby',
+        displayText,
         softWrap: true,
         maxLines: 3,
         style: const TextStyle(

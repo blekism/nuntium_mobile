@@ -276,10 +276,10 @@ class _TopicSingleReadState extends ConsumerState<TopicSingleRead> {
                     final deadline = topicView['deadline'] as Timestamp;
                     final dateString = DateFormat('dd/MM/yyyy hh:mm a')
                         .format(deadline.toDate());
-                    final steps = getProgressSteps(topicView);
 
                     int totalSubtask = topicView['total_subtask'];
                     int completedSubtask = topicView['completed_subtask'];
+                    final steps = getProgressSteps(topicView);
 
                     final currentStepIndex = steps.indexWhere(
                         (step) => step.step == topicView['projectStep']);
